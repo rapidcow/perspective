@@ -420,10 +420,11 @@ def load_panel_with_date(loader, files, date):
                           f'different attributes; the printed information '
                           f'might be inconsistent', RuntimeWarning)
             break
-    entries = (e for p in panels for e in p.entries())
     # Create a new panel
     merged_panel = Panel.from_panel(panels[0])
     # Set the panel of each entry to the new panel
-    for entry in entries:
-        entry.panel = merged_panel
+    for panel in panels:
+        # Iterating over a copy of the entries list is necessary!
+        for entry in panel.get_entries():
+            entry.panel = merged_panel
     return merged_panel
