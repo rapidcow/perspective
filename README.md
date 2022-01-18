@@ -6,3 +6,6 @@ A Python library providing backup utility for the iOS journaling app
 
 Now the library is pretty much complete... except potentially with
 millions of bugs.
+
+When I am done, you should be able to find a brief introduction to this
+library in the `docs/` directory.
