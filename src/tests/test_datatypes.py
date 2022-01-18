@@ -1,3 +1,5 @@
+"""Test the psp.datatypes module."""
+
 import unittest
 from psp import datatypes
 

@@ -86,13 +86,11 @@ loaded result == dumped objects
         self.assertEqual(e1.date_time.time(), datetime.time(2, 2))
         self.assertEqual(e1.get_data(), 'First example...')
         self.assertEqual(e1.get_raw_data(), b'First example...')
-        # self.assertEqual(e1.data['raw'], b'First example...')
 
         self.assertEqual(e2.date_time.date(), p1.date)
         self.assertEqual(e2.date_time.time(), datetime.time(12, 34, 56))
         self.assertEqual(e2.get_data(), 'Vaporeons are great')
         self.assertEqual(e2.get_raw_data(), b'Vaporeons are great')
-        # self.assertEqual(e2.data['raw'], b'Vaporeons are great')
 
     # TODO: Test more after specifications are written out
 

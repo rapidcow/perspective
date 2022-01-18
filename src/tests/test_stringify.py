@@ -1,5 +1,5 @@
-"""Test the psp.timeutil module."""
-from datetime import date, datetime, timezone
+"""Test the psp.stringify module."""
+from datetime import date, datetime, timedelta, timezone, tzinfo
 from textwrap import dedent
 import unittest
 
@@ -37,4 +37,42 @@ class TestStringifyPanel(unittest.TestCase):
 
 
 class TestStringifyEntry(unittest.TestCase):
-    pass
+    def test_time_zone_coercion(self):
+        panel = Panel(date(2021, 12, 25))
+        pt = timezone(timedelta(hours=-8), 'PST')
+        et = timezone(timedelta(hours=-5), 'EST')
+        utc = timezone.utc
+        entry = Entry(panel, datetime(2021, 12, 25, 16, 40, tzinfo=utc))
+        entry.set_data('Text')
+        formatter = stringify.EntryFormatter(width=33)
+
+        formatter.configure(time_zone=pt)
+        self.assertEqual(
+            formatter.format(entry), dedent(
+                """\
+                4:40 PM [+00:00]
+                  Text"""))
+        formatter.configure(coerce_time_zone=True)
+        # 4:40 PM UTC is equivalent to 8:40 AM in Pacific Standard Time
+        self.assertEqual(
+            formatter.format(entry), dedent(
+                """\
+                8:40 AM
+                  Text"""))
+        formatter.configure(time_zone=et)
+        # This time it's 11:40 AM
+        self.assertEqual(
+            formatter.format(entry), dedent(
+                """\
+                11:40 AM
+                  Text"""))
+
+        # No coercion should take place if time zone matches
+        formatter.configure(time_zone=utc)
+        expected = dedent(
+            """\
+            4:40 PM
+              Text""")
+        self.assertEqual(formatter.format(entry), expected)
+        formatter.configure(coerce_time_zone=False)
+        self.assertEqual(formatter.format(entry), expected)
