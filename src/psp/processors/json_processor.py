@@ -964,7 +964,8 @@ class JSONDumper:
     # INTERFACES FOR DUMPING:
     # 1.  a list of Panel() objects
     #     each entry will call back the method get_entry_filename(), which
-    #     can be overridden if needed.  This following dump() method
+    #     can be overridden if needed.  The following dump() method
+    #     implements this.
     #
     # 2.  a list of Panel() objects, joined with a list of export paths
     #     this is exposed as the basic_dump() method
