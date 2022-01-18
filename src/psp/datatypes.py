@@ -4,7 +4,6 @@ from collections import namedtuple, deque
 from functools import lru_cache as _cache
 import itertools
 import os
-from typing import Tuple
 
 __all__ = [
     # Membership check

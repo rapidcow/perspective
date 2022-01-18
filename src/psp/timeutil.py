@@ -174,17 +174,6 @@ def format_offset(off):
     return s
 
 
-# This is not used (gone with the Python 2 cmp() function!)
-# def compare_datetime(dt1, dt2):
-#     utc_time1 = dt1.astimezone(datetime.timezone.utc)
-#     utc_time2 = dt2.astimezone(datetime.timezone.utc)
-#     return _cmp(utc_time1, utc_time2)
-
-
-# def _cmp(x, y):
-#     return 0 if x == y else 1 if x > y else -1
-
-
 def to_utc(dt):
     """Convert datetime to UTC"""
     return dt.astimezone(datetime.timezone.utc)

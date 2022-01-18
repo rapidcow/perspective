@@ -11,7 +11,7 @@ import json
 import os
 import shutil
 
-from .. import Panel, Entry      # Types from psp.types
+from ..types import Panel, Entry
 from .. import datatypes
 from .. import timeutil
 
@@ -354,15 +354,6 @@ class JSONLoader:
                                     f'{output[-1].date}') from exc
                 raise
 
-            # if self.validate:
-            #     try:
-            #         panel.validate()
-            #         for ent in panel.entries:
-            #             ent.validate()
-            #     except (TypeError, ValueError) as exc:
-            #         raise LoadError(
-            #             f'validation error while processing {panel.date}'
-            #         ) from exc
             if panel is not None:
                 output.append(panel)
 
@@ -684,9 +675,6 @@ class JSONLoader:
             if enc is None:
                 enc = self._infer_encoding_from_type(type_)
 
-        # obj.data['type'] = type_
-        # obj.data['format'] = fmt
-        # obj.data['encoding'] = enc
         obj.set_type(type_)
         obj.set_format(fmt)
         obj.set_encoding(enc)
@@ -822,7 +810,7 @@ class JSONLoader:
         index_1, index_2 = length - 2, length - 1
         # Hooman index!  Maybe?
         index_1 += 1
-        index_2 += 2
+        index_2 += 1
         if panel_1.date > panel_2.date:
             self._warn('panel #{} ({}) is after panel #{} ({})'
                        .format(index_1, panel_1.date, index_2, panel_2.date),
@@ -931,6 +919,7 @@ class JSONDumper:
                 sort_keys=False,
             ),
             # Time zone
+            #
             # When this is None, JSONDumper does not attempt to set a global
             # variable for the entries (every entry has its own time zone).
             #
@@ -940,13 +929,6 @@ class JSONDumper:
             # if the offset is different from this one, it is then explicitly
             # written out in each entry.
             #
-            # Oh, and speaking of time zones, the time zone that outnumbers
-            # any other time zone in a panel AND appears more than twice gets
-            # the local variable for the panel. (thinking about how i might
-            # implement that, yikes...)  (UPDATE: WE AIN'T DOING THAT.  IF
-            # THERE ARE TOO MANY PANELS OF IN A FOREIGN TIME ZONE, IT'S UP TO
-            # THE USER TO SPLIT UP THE BACKUP FILES.  It's simply too
-            # inconsistent to implement.)
             'default_time_zone_offset': None,
             'paths': ('assets',),
 
@@ -982,7 +964,7 @@ class JSONDumper:
     # INTERFACES FOR DUMPING:
     # 1.  a list of Panel() objects
     #     each entry will call back the method get_entry_filename(), which
-    #     can be overridden if needed.
+    #     can be overridden if needed.  This following dump() method
     #
     # 2.  a list of Panel() objects, joined with a list of export paths
     #     this is exposed as the basic_dump() method
@@ -1076,9 +1058,6 @@ class JSONDumper:
         panels = list(panels)
         default_offset = self.get_option('default_time_zone_offset')
         data = collections.OrderedDict()
-        # XXX: I guess you can sort a dictionary by sorting the tuples
-        # dict.items() generates?  Without the ugly sorted(d.items(),
-        # key=lambda x: x[0]), that is...
         if self.get_option('checksum'):
             cksum = self.__get_checksum(panels, entry_list)
             data['checksum'] = collections.OrderedDict(sorted(cksum.items()))
@@ -1195,11 +1174,6 @@ class JSONDumper:
                                         fnmatch.fnmatch(other, pattern)):
                                     no_match = False
                                     break
-                    # has_no_match = unique_names or not any(
-                    #     any(fnmatch.fnmatch(
-                    #             p, os.path.join(path_pat, test_path))
-                    #         for p in relative_paths if p != rpath)
-                    #     for path_pat in paths)
                     if no_match:
                         input_paths.append(test_path)
                         break

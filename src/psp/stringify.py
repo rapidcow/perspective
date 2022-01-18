@@ -15,25 +15,6 @@ __all__ = [
     'format_bytes',
 ]
 
-# Determine platform thingies that strftime might not work in
-# Single digit version
-_SD_H = '%-H'
-_SD_I = '%-I'
-_SD_d = '%-d'
-# Space-padded version
-_SP_H = '%k'
-_SP_I = '%l'
-# Space-padded day '%e' seems to work just fine, so I'm not gonna put it here.
-
-import platform
-pf = platform.system()
-if pf == 'Windows':
-    # The minus signs don't work on Windows --- undo everything.
-    _SD_H = _SP_H = '%H'
-    _SD_I = _SP_I = '%I'
-    _SD_d = '%d'
-del platform, pf
-
 
 def _extend_lines(buf, lines):
     for line in lines:
@@ -354,7 +335,7 @@ class PanelFormatter(Formatter):
 
     # Can be subclassed (public method too!)
     def get_title(self, panel):
-        date_str = panel.date.strftime(f'%A, %B {_SD_d}, %Y')
+        date_str = panel.date.strftime(f'%A, %B {panel.date.day}, %Y')
         rating = panel.get_attribute('rating')
         if rating is None:
             return date_str
@@ -362,18 +343,12 @@ class PanelFormatter(Formatter):
 
 
 class EntryFormatter(Formatter):
-    # INHERITED
-    # wrapper = None
-    # width = None
-    # indent = ''
-
     def __init__(self, width=80, wrapper=None, **options):
         super().__init__(width, wrapper)
         self._all_options.update({
             'base_dir', 'time_format', 'date_time_sep',
             'entry_title_attr_sep', 'label_insight', 'content_indent',
             'question_content_vsep', 'content_caption_vsep',
-
             'time_zone', 'coerce_time_zone',
         })
 
@@ -405,18 +380,22 @@ class EntryFormatter(Formatter):
         base_dir = self.get_option('base_dir') or os.getcwd()
         # infer time zone
         time_zone = self.get_option('time_zone') or entry.date_time.tzinfo
-        title = self._get_title(entry)
+
+        panel_date = entry.panel.date
+        entry_time = entry.date_time
+        title = self._get_title(panel_date, entry_time)
 
         # Potential need to specify time zone
         entry_time_zone = entry.date_time.tzinfo
-        entry_time = entry.date_time
         tz_displayed = False
+        # XXX: Do we use == or is for comparing two tzinfo's?
+        # (I found this: https://bugs.python.org/issue28601)
         if not (time_zone == entry_time_zone or
                 time_zone.utcoffset(entry_time) ==
                 entry_time_zone.utcoffset(entry_time)):
             if self.get_option('coerce_time_zone'):
                 time_coerced = entry_time.astimezone(time_zone)
-                title = self._get_title(entry.replace(date_time=time_coerced))
+                title = self._get_title(panel_date, time_coerced)
             else:
                 offset_str = timeutil.format_offset(entry_time.utcoffset())
                 assert offset_str  # should be aware???
@@ -471,19 +450,19 @@ class EntryFormatter(Formatter):
         return ''.join(buf)
 
     # Default implementation (as in basicproc.py)
-    def _get_title(self, entry):
-        panel_date = entry.panel.date
-        entry_time = entry.date_time
-
-        # formats with a '_pad' suffix have a space before the hour
-        # (e.g. ' 5:20 AM').  The ones without it don't (e.g. '5:20 AM').
+    def _get_title(self, panel_date, entry_time):
+        # formats with a '_pad' suffix have a space before the hour with
+        # only a single digit (e.g. ' 5:20 AM').  The ones without it don't
+        # (e.g. '5:20 AM').
         time_format_opt = self.get_option('time_format')
         if time_format_opt == '12 hour':
-            time_format = f'{_SD_I}:%M %p'
-            time_format_pad = f'{_SP_I}:%M %p'
+            # Convert to 12 hour
+            hour_12 = (entry_time.hour-1) % 12 + 1
+            time_format = f'{hour_12}:%M %p'
+            time_format_pad = f'{hour_12:2}:%M %p'
         elif time_format_opt == '24 hour':
-            time_format = f'{_SD_H}:%M'
-            time_format_pad = f'{_SP_H}:%M'
+            time_format = f'{entry_time.hour}:%M'
+            time_format_pad = f'{entry_time.hour:2}:%M'
         else:
             raise ValueError("time_format should be one of the following "
                              "values: '12 hour', '24 hour'")
@@ -655,15 +634,13 @@ def format_bytes(
         raise ValueError("unit must be either 'tens' or 'twos'")
 
 
-# Only up to terrabyte (TB) is actually used.  Anything above that
-# would be unrealistic.
 BYTES_TENS_UNITS = [
     'kB', 'MB', 'GB', 'TB',
-    # 'PB', 'EB', 'ZB', 'YB',
+    'PB', 'EB', 'ZB', 'YB',
 ]
 BYTES_TWOS_UNITS = [
     'KiB', 'MiB', 'GiB', 'TiB',
-    # 'PiB', 'EiB', 'ZiB', 'YiB',
+    'PiB', 'EiB', 'ZiB', 'YiB',
 ]
 
 # ====================================
