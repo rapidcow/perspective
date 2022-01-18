@@ -556,7 +556,7 @@ class EntryFormatter(Formatter):
         return self.__wrap_with_indent(entry)
 
     def __get_path(self, path):
-        return os.path.relpath(path, start=self.base_dir)
+        return os.path.relpath(path, start=self.get_option('base_dir'))
 
     def wrap_caption(self, entry):
         caption = entry.get_attribute('caption')
