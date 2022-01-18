@@ -79,7 +79,7 @@ loaded result == dumped objects
         self.assertEqual(attrs, {'desc': 'Sus!', 'tz': '+00:00'})
         p1 = panels[0]
         self.assertEqual(p1.date, datetime.date(2020, 2, 2))
-        e = list(p1.get_entries())
+        e = p1.get_entries()
         e1 = e[0]
         e2 = e[1]
         self.assertEqual(e1.date_time.date(), p1.date)

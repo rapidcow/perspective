@@ -471,9 +471,11 @@ class EntryFormatter(Formatter):
             if panel_date == entry_time.date():
                 fmt = time_format
             else:
-                fmt = '%b %e{}{}'.format(self.date_time_sep, time_format_pad)
+                sep = self.get_option('date_time_sep')
+                fmt = '%b %e{}{}'.format(sep, time_format_pad)
         else:
-            fmt = '%b %e, %Y{}{}'.format(self.date_time_sep, time_format_pad)
+            sep = self.get_option('date_time_sep')
+            fmt = '%b %e, %Y{}{}'.format(sep, time_format_pad)
         return entry_time.strftime(fmt)
 
     def wrap_question(self, entry):

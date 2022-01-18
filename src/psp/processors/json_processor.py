@@ -482,7 +482,7 @@ class JSONLoader:
                     f'error while loading entry {index}') from exc
             if entry is not None:
                 # Link to the panel and append the entry now
-                entry.panel = obj
+                obj.add_entry(entry)
 
         return obj
 
@@ -556,7 +556,7 @@ class JSONLoader:
 
         # Do not link to the panel yet (so that user can override this method
         # and return a None instead if an entry is not desired)
-        obj = Entry(None, date_time)
+        obj = Entry(date_time)
 
         # Process 'data' or 'input'
         self._process_entry_data(obj, entry, attrs)

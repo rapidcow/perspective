@@ -11,8 +11,9 @@ class TestStringifyPanel(unittest.TestCase):
     def test_basics(self):
         panel = Panel(date(2022, 1, 18))
         time = datetime(2022, 1, 18, 13, 0, 0, tzinfo=timezone.utc)
-        entry = Entry(panel, time)
+        entry = Entry(time)
         entry.set_data('Hello world!')
+        panel.add_entry(entry)
         formatter = stringify.PanelFormatter(width=33)
         self.assertEqual(
             formatter.format(panel),
@@ -42,7 +43,8 @@ class TestStringifyEntry(unittest.TestCase):
         pt = timezone(timedelta(hours=-8), 'PST')
         et = timezone(timedelta(hours=-5), 'EST')
         utc = timezone.utc
-        entry = Entry(panel, datetime(2021, 12, 25, 16, 40, tzinfo=utc))
+        entry = Entry(datetime(2021, 12, 25, 16, 40, tzinfo=utc))
+        panel.add_entry(entry)
         entry.set_data('Text')
         formatter = stringify.EntryFormatter(width=33)
 

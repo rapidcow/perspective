@@ -16,7 +16,7 @@ from .stringify import PanelFormatter
 from .processors.json_processor import JSONLoader, JSONDumper
 from .processors.json_processor import LoadError
 from .timeutil import parse_date, to_utc
-from .types import Panel, Entry
+from .types import Panel
 
 __all__ = ['main']
 
@@ -426,5 +426,5 @@ def load_panel_with_date(loader, files, date):
     for panel in panels:
         # Iterating over a copy of the entries list is necessary!
         for entry in panel.get_entries():
-            entry.panel = merged_panel
+            merged_panel.add_entry(entry)
     return merged_panel

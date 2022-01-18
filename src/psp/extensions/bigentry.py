@@ -52,8 +52,8 @@ _ARCHIVE_FORMATS = [
 class BigEntry(Entry):
     __slots__ = ()
 
-    def __init__(self, panel, date_time, *, insight=False):
-        super().__init__(panel, date_time, insight=insight)
+    def __init__(self, date_time, *, insight=False):
+        super().__init__(date_time, insight=insight)
         self.set_main_file_type('plain')
         self.set_main_file_encoding('utf-8')
         self.set_main_file_format(None)
