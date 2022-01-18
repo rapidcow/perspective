@@ -1,153 +1,206 @@
 """Data types inference rules for their names, file extension, etc."""
 
+from collections import namedtuple, deque
 from functools import lru_cache as _cache
+import itertools
+import os
+from typing import Tuple
 
 __all__ = [
     # Membership check
     'has_type', 'has_extension', 'has_alias',
+    # Listing stuff
+    'list_types', 'list_extensions', 'list_aliases',
     # Lookup
-    'get_is_text', 'get_extension', 'get_aliases',
+    'is_text_type', 'get_extension', 'get_aliases',
     # Reverse lookup
     'path_to_type', 'alias_check',
     # New type registeration
     'register_data_type', 'delete_data_type',
     # Cache
     'clear_cache',
-    # Debug
-    'get_datatypes',
 ]
+
+
+class dtype(namedtuple('dtype', ['is_text', 'exts', 'aliases'])):
+    __slots__ = ()
+
+    def __new__(cls, is_text, exts=(), aliases=()):
+        if not isinstance(is_text, bool):
+            raise TypeError(f'is_text should be a bool, not {is_text!r}')
+        if not isinstance(exts, (list, tuple)):
+            raise TypeError(f'exts should be a list or tuple, not {exts!r}')
+        exts = tuple(exts)
+        if not isinstance(aliases, (list, tuple)):
+            raise TypeError(f'aliases should be a list or tuple, not '
+                            f'{aliases!r}')
+        aliases = tuple(aliases)
+        for i, ext in enumerate(exts, start=1):
+            if not isinstance(ext, str):
+                raise TypeError(f'item {i} of exts is not str: {ext!r}')
+        for i, alias in enumerate(aliases, start=1):
+            if not isinstance(alias, str):
+                raise TypeError(f'item {i} of aliases is not str: {alias!r}')
+        return super().__new__(cls, is_text, exts, aliases)
+
 
 # Internal storage:
 #   [name, is text, extensions, aliases]
-_types = [
+_types = {
     # General text
-    ('plain', True, ('.txt',), ()),
+    'plain': dtype(True, ('.txt',), ()),
     # General binary
-    ('binary', False, (), ()),
+    'binary': dtype(False, (), ()),
     # I love these
-    ('markdown', True, ('.md', '.markdown'), ('md',)),
-    ('html', True,  ('.html',), ()),
-    ('css',  True,  ('.css',), ()),
-    ('tex',  True,  ('.tex', '.sty', '.cls', '.dtx'), ()),
+    'markdown': dtype(True, ('.md', '.markdown'), ('md',)),
+    'html': dtype(True, ('.html',), ()),
+    'css':  dtype(True, ('.css',), ()),
+    'tex':  dtype(True, ('.tex', '.sty', '.cls', '.dtx'), ()),
     # Okay but why
-    ('xml',  True,  ('.xml',), ()),
-    ('json', True,  ('.json',), ()),
-    ('yaml', True,  ('.yaml', '.yml'), ('yml',)),
-    ('zip',  False, ('.zip',), ()),
+    'xml':  dtype(True, ('.xml',), ()),
+    'json': dtype(True, ('.json',), ()),
+    'yaml': dtype(True, ('.yaml', '.yml'), ('yml',)),
+    # Archive files
+    'zip': dtype(False, ('.zip',), ()),
+    'tar': dtype(False, ('.tar',), ()),
+    'gztar': dtype(False, ('.tar.gz', '.tgz'), ('targz',)),
+    'bztar': dtype(False, ('.tar.bz2', '.tbz'), ('tarbz',)),
+    # Compressed files
+    'gz': dtype(False, ('.gz',), ()),
+    'bz': dtype(False, ('.bz2',), ()),
     # Programming languages
-    ('python', True, ('.py',), ()),
-    ('c',    True,  ('.c',), ()),
-    ('c++',  True,  ('.cc', '.cpp'), ()),
-    ('java', True,  ('.java',), ()),
-    ('javascript', True, ('.js',), ()),
-    ('perl', True,  ('.pl',), ()),
+    'python': dtype(True, ('.py',), ()),
+    'c':    dtype(True, ('.c',), ()),
+    'c++':  dtype(True, ('.cc', '.cpp'), ()),
+    'java': dtype(True, ('.java',), ()),
+    'javascript': dtype(True, ('.js',), ()),
+    'perl': dtype(True, ('.pl',), ()),
     # Image
-    ('png',  False, ('.png',), ()),
-    ('jpeg', False, ('.jpg', '.jpeg'), ('jpg',)),
-    ('tiff', False, ('.tiff',), ()),
-    ('heic', False, ('.heic',), ()),
+    'png':  dtype(False, ('.png',), ()),
+    'jpeg': dtype(False, ('.jpg', '.jpeg'), ('jpg',)),
+    'tiff': dtype(False, ('.tiff',), ()),
+    'heic': dtype(False, ('.heic',), ()),
     # Video
-    ('mp4',  False, ('.mp4',), ()),
-    ('mov',  False, ('.mov',), ()),
-    ('wmv',  False, ('.wmv',), ()),
-    ('avi',  False, ('.avi',), ()),
+    'mp4':  dtype(False, ('.mp4',), ()),
+    'mov':  dtype(False, ('.mov',), ()),
+    'wmv':  dtype(False, ('.wmv',), ()),
+    'avi':  dtype(False, ('.avi',), ()),
     # Audio
-    ('mp3',  False, ('.mp3',), ()),
-    ('flac', False, ('.flac',), ()),
-    ('wav',  False, ('.wav',), ()),
-    ('m4a',  False, ('.m4a',), ()),
-    ('aiff', False, ('.aiff',), ()),
-    ('midi', False, ('.midi',), ()),
-    # Misc
-    ('pdf',  False, ('.pdf',), ()),
-    ('musescore', False, ('.mscz',), ('musescore_compressed',)),
-    ('musescore_uncompressed', True, ('.mscx',), ()),
-]
+    'mp3':  dtype(False, ('.mp3',), ()),
+    'flac': dtype(False, ('.flac',), ()),
+    'wav':  dtype(False, ('.wav',), ()),
+    'm4a':  dtype(False, ('.m4a',), ()),
+    'aiff': dtype(False, ('.aiff',), ()),
+    'midi': dtype(False, ('.midi',), ()),
+    # Document types
+    'pdf':  dtype(False, ('.pdf',), ()),
+    # Microsoft Office files (since everyone loves them so much...)
+    'docx': dtype(False, ('.docx',), ('word', 'word_open_xml')),
+    'doc':  dtype(False, ('.doc',),  ('word_binary',)),
+    'pptx': dtype(False, ('.pptx',), ('powerpoint',
+                                         'powerpoint_open_xml',)),
+    'ppt':  dtype(False, ('.ppt',),  ('powerpoint_binary',)),
+    'xlsx': dtype(False, ('.xlsx',), ('excel', 'excel_open_xml')),
+    'xls':  dtype(False, ('.xls',),  ('excel_binary',)),
+    'musescore': dtype(False, ('.mscz',), ('musescore_compressed',)),
+    'musescore_uncompressed': dtype(True, ('.mscx',), ()),
+    'lilypond': dtype(True, ('.ly',), ()),
+    'lilypond-tex': dtype(True, ('.lytex',), ()),
+}
+
+# Extension to name (multiple names may have the same name, in which case
+# the extension is not considered)
+_ext2type = {}
+
+# Alias to name (should be unique; i mean that's the whole point of having
+# an alias!)
+_alias2name = {}
 
 
-def _check():
-    names = []
-    exts_l = []
-    aliases_l = []
-    for name, _, exts, aliases in _types:
-        assert isinstance(name, str)
-        assert (isinstance(exts, tuple)
-                and all(isinstance(ext, str) for ext in exts))
-        assert (isinstance(aliases, tuple)
-                and all(isinstance(alias, str) for alias in aliases))
-        names.append(name)
-        exts_l.extend(exts)
-        aliases_l.extend(aliases)
-    assert len(set(names)) == len(names), 'duplicate name'
-    assert len(set(exts_l)) == len(exts_l), 'duplicate extension'
-    assert len(set(aliases_l)) == len(aliases_l), 'duplicate alias'
-    assert (len(set(names + aliases_l)) == len(names)
-            + len(aliases_l)), 'name and alias overlap'
+def _make_conv():
+    """Make conversion tables"""
+    _ext2type.clear()
+    _alias2name.clear()
+    ambiguous_ext = set()
+    for name, (is_text, exts, aliases) in _types.items():
+        for ext in exts:
+            if ext not in _ext2type:
+                _ext2type[ext] = name
+            else:
+                ambiguous_ext.add(ext)
 
-_check()
+        for ext in ambiguous_ext:
+            del _ext2type[ext]
+
+        for alias in aliases:
+            if alias not in _alias2name:
+                _alias2name[alias] = name
+            else:
+                raise ValueError(f'duplicate alias: {alias!r}')
+            if alias in _ext2type:
+                raise ValueError(f'alias {alias!r} is already a type name')
 
 
-@_cache()
+_make_conv()
+_NoValue = object()
+
+
 def has_type(name):
-    for tup in _types:
-        if tup[0] == name:
-            return True
-    return False
+    return name in _types
 
 
-def path_to_type(path, default=None):
+def path_to_type(path, *, default=_NoValue):
     try:
         return _path_to_type(path)
     except LookupError:
-        if default is None:
+        if default is _NoValue:
             raise
     return default
 
 
 def _path_to_type(path):
-    parts = path.split('.')
+    parts = os.path.basename(path).split('.')
     # The part after the leading dot is not an extension
     if parts and not parts[0]:
         parts.pop(0)
     # Strip out the file name part.  The rest are all going to be tested
     # for extension.
-    parts = parts[1:]
-    parts.reverse()
+    parts = deque(parts[1:])
 
-    extensions = []
     while parts:
-        extensions.append(parts.pop())
         try:
-            return _ext_to_type('.' + '.'.join(reversed(extensions)))
-        except LookupError:
+            return _ext2type['.' + '.'.join(parts)]
+        except KeyError:
             pass
+        parts.popleft()
     raise LookupError(path)
 
 
-@_cache
-def _ext_to_type(ext):
-    for name, _, exts, _ in _types:
-        for extension in exts:
-            if extension == ext:
-                return name
-    raise LookupError(ext)
+def get_extensions(name):
+    """Get extensions for data type with the name 'name'.
+    LookupError is raised if the name is not registered.
+    """
+    return _types[name].exts
 
 
-def get_extension(name, default=None):
+def get_extension(name, *, default=_NoValue):
+    """Get the first extension of the extension list associated
+    with the type 'name'.  LookupError is raised when default is
+    not provided and either 'name' is not registered or no extensions
+    exist are associated with this type.
+    """
     try:
-        return _get_extension(name)
-    except LookupError:
-        if default is None:
+        exts = _types[name].exts
+    except KeyError:
+        if default is _NoValue:
             raise
-    return default
-
-
-@_cache()
-def _get_extension(name):
-    for type_name, _, exts, _ in _types:
-        if type_name == name:
-            return exts[0] if exts else ''
-    raise LookupError(name)
+        return default
+    if not exts:
+        if default is _NoValue:
+            raise LookupError(f'no extensions are associated with the type '
+                              f'{name!r}')
+        return default
+    return exts[0]
 
 
 @_cache()
@@ -159,102 +212,93 @@ def has_extension(ext):
     return True
 
 
-def get_is_text(name, default=None):
+def is_text_type(name, *, default=_NoValue):
     try:
-        return _get_is_text(name)
+        return _types[name].is_text
     except LookupError:
-        if default is None:
+        if default is _NoValue:
             raise
     return default
 
 
-@_cache()
-def _get_is_text(name):
-    for type_name, is_text, _, _ in _types:
-        if type_name == name:
-            return is_text
-    raise LookupError(name)
-
-
-def get_aliases(name, default=None):
+def get_aliases(name, *, default=_NoValue):
     try:
-        return _get_aliases(name)
+        return _types[name].aliases
     except LookupError:
-        if default is None:
+        if default is _NoValue:
             raise
     return default
 
 
-@_cache
-def _get_aliases(name):
-    for type_name, _, _, aliases in _types:
-        if type_name == name:
-            return aliases
-    raise LookupError(name)
-
-
-@_cache()
 def alias_check(name):
-    for type_name, _, _, aliases in _types:
-        if name in aliases:
-            return type_name
+    if name in _alias2name:
+        return _alias2name[name]
     return name
 
 
-@_cache()
 def has_alias(alias):
-    return alias_check(alias) != alias
+    return alias in _alias2name
 
 
-def register_data_type(name, is_text, exts, aliases=None):
-    # str, bool, list of str, list of str
-    if has_type(name):
+def register_data_type(name, type_tuple):
+    if name in _types:
         raise ValueError(f'{name!r} has already been registered')
+    t = dtype(type_tuple)
     exts = tuple(exts)
     for ext in exts:
-        if has_extension(ext):
-            raise ValueError(f'extension {ext!r} exists')
         if '.' not in ext:
             raise ValueError(f'extension {ext!r} has no dot')
-    if aliases is None:
-        aliases = ()
-    else:
-        aliases = tuple(aliases)
     for alias in aliases:
-        if has_alias(alias):
-            raise ValueError(f'alias {alias!r} exists')
-    _types.append((name, is_text, exts, aliases))
-    try:
-        _check()
-        clear_cache()
-    except:
-        _types.pop()
-        raise
+        if alias in _alias2name:
+            raise ValueError(f'alias {alias!r} is already an alias of '
+                             f'{alias_check(alias)}')
+        if alias in _types:
+            raise ValueError(f'alias {alias!r} is a registered type name')
+
+    _types[name] = t
+    for ext in exts:
+        _ext2type[ext] = name
+    for alias in aliases:
+        _alias2name[alias] = name
+    clear_cache()
 
 
 def delete_data_type(name):
-    for index, tup in enumerate(_types):
-        if tup[0] == name:
-            break
-    else:
-        raise ValueError(f'{name!r} is not registered')
-    entry = _types.pop(index)
     try:
+        t = _types.pop(name)
+    except KeyError:
+        raise ValueError(f'{name!r} is not registered') from None
+    try:
+        _make_conv()
         clear_cache()
     except:
-        _types.append(entry)
+        # XXXXX: Is this really good???
+        _types[name] = t
         raise
-    return entry
+    return t
 
 
 def clear_cache():
     """Clear all cache of function wrappers in this module."""
-    for func in (has_type, has_extension, has_alias,
-                 _get_is_text, _get_extension, _get_aliases,
-                 _ext_to_type, alias_check):
-        func.cache_clear()
+    has_extension.cache_clear()
 
 
-def get_datatypes():
-    """Get a copy of the internal list of datatypes."""
-    return _types.copy()
+def list_types():
+    """Return a list of all registered type names."""
+    # I know i don't have to write .keys() for those who might ask...
+    # but i prefer to be explicit here. :)
+    return list(_types.keys())
+
+
+def list_extensions():
+    """Return a list of all (not necessaily unique) registered file
+    extensions.
+    """
+    values = (t.exts for t in _types.values())
+    return list(itertools.chain.from_iterable(values))
+
+
+def list_aliases():
+    """Return a list of all registered type aliases."""
+    values = (t.aliases for t in _types.values())
+    return list(itertools.chain.from_iterable(values))
