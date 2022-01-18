@@ -15,7 +15,7 @@ setup(
     version='0.1.0',
     description='A program for backing up entries in Perspective <3',
     long_description=read('README.md'),
-    author='some rapid cow',
-    author_email='thegent1ecow7513@gmail.com',
-    packages=['psp', 'psp.processors'],
+    author='rapidcow',
+    author_email='eyzmeng@gmail.com',
+    packages=['psp', 'psp.processors', 'psp.extensions'],
 )

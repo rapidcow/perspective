@@ -3,28 +3,37 @@
 # date and time parsing is actually just date + ' ' + time
 __all__ = [
     'parse_timezone', 'parse_datetime', 'parse_date', 'parse_time',
-    'is_naive', 'get_local_timezone', 'to_utc',
+    'is_naive', 'get_local_timezone', 'to_utc', 'format_offset',
 ]
 
 import re
 import time
 import datetime
+# 'zoneinfo' is a module introduced in Python 3.9.  The first-party package
+# 'tzdata' may be installed with pip so that 'parse_timezone()' handles
+# named regions such as "America/Los_Angeles".
+#
+# Since we only require the users to have a Python 3.8 distribution, this is
+# an optional feature of this module.
 try:
     import zoneinfo
 except ImportError:
     zoneinfo = None
 
 _RE_OFFSET = re.compile(r"""
-    ^([+-])?                # group 1: optional sign
+    \A (?: UTC | GMT )?     # can be proceded with UTC or GMT
+    ([+-])?                 # group 1: optional sign
     (                       # group 2: time component
       \d{2} : \d{2}         #   hours and minutes
       (?:
         \d{2}               #   seconds
         (?: \. \d{1,6} )?   #   microseconds
       )?
-    )$
+    )\Z
 """, flags=re.VERBOSE)
 
+# Public interface for adding more formats timeutil (used by JSONLoader)
+# can recognize...?
 DATETIME_FORMATS = [
     # Formats used on Mac
     '%B %d, %Y at %H:%M',
@@ -64,6 +73,10 @@ def parse_timezone(s):
     datetime.timezone.utc
     >>> parse_timezone('08:00')
     datetime.timezone(datetime.timedelta(seconds=28800))
+
+    The following example only runs for Python 3.9+ and if `tzdata`
+    (https://pypi.org/project/tzdata/) is installed:
+
     >>> parse_timezone('America/Los_Angeles')
     zoneinfo.ZoneInfo(key='America/Los_Angeles')
     """
@@ -122,17 +135,10 @@ def is_naive(dt):
     """Determine whether a datetime.datetime is naive as per the
     Python 3 documentation.
 
-    See: {}
+    See: https://docs.python.org/3/library/datetime.html\
+#determining-if-an-object-is-aware-or-naive
     """
     return dt.tzinfo is None or dt.tzinfo.utcoffset(dt) is None
-
-
-# The link is too fricking long so I have to do this for the
-# code aesthetics TnT
-is_naive.__doc__ = is_naive.__doc__.format(
-    'https://docs.python.org/3/library/datetime.html'
-    '#determining-if-an-object-is-aware-or-naive'
-)
 
 
 def get_local_timezone():
@@ -168,14 +174,15 @@ def format_offset(off):
     return s
 
 
-def compare_datetime(dt1, dt2):
-    utc_time1 = dt1.astimezone(datetime.timezone.utc)
-    utc_time2 = dt2.astimezone(datetime.timezone.utc)
-    return _cmp(utc_time1, utc_time2)
+# This is not used (gone with the Python 2 cmp() function!)
+# def compare_datetime(dt1, dt2):
+#     utc_time1 = dt1.astimezone(datetime.timezone.utc)
+#     utc_time2 = dt2.astimezone(datetime.timezone.utc)
+#     return _cmp(utc_time1, utc_time2)
 
 
-def _cmp(x, y):
-    return 0 if x == y else 1 if x > y else -1
+# def _cmp(x, y):
+#     return 0 if x == y else 1 if x > y else -1
 
 
 def to_utc(dt):

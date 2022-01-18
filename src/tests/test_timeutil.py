@@ -1,3 +1,4 @@
+"""Test the psp.timeutil module."""
 import datetime
 import unittest
 

@@ -1,7 +1,8 @@
-"""Perspective stuff."""
-
-__all__ = []
+"""The Perspective library."""
+__author__ = 'rapidcow (Ethan Meng <eyzmeng@gmail.com>)'
 
 from . import types
-from .types import *
-__all__.extend(types.__all__)
+from .types import Panel, Entry
+__all__ = [
+    'Panel', 'Entry',
+]
