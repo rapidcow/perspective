@@ -67,24 +67,64 @@ class Panel:
         # use the builtin str() representation of datetime.date
         return '<{} object on {}>'.format(clsname, self.date)
 
-    def __bool__(self):
-        """Truth value of a panel is always True (so that the
-        `if entry.panel` idiom is possible).
-        """
-        return True
-
+    # Once instantiated, the date cannot be changed.
     @property
     def date(self):
         """Date of the current panel."""
         return self._date
 
     def entries(self):
-        yield from self._entries
+        """Get an iterator of the list of entries."""
+        return iter(self._entries)
 
     def get_entries(self):
+        """Get a copy of the list of entries."""
         return list(self._entries)
 
-    # Entries are ONLY to be manipulated by the Entry class privately...
+    def add_entry(self, entry):
+        """Add an entry to the current panel.
+
+        This will remove the entry from its existing panel (so don't worry
+        about calling remove_entry()), and a validation will be performed on
+        the entry to check if the date_time is valid.
+
+        The panel attribute of the entry will be changed to self on success.
+        """
+        if not isinstance(entry, Entry):
+            raise TypeError(f'entry should be an Entry object, '
+                            f'not {entry!r}')
+        if entry.has_panel():
+            entry.panel.remove_entry(entry)
+        entry._panel = self
+        # Make sure proper validation is performed given this new panel.
+        # The way we do this though is a bit tricky...
+        entry.insight = entry.insight
+        self._entries.append(entry)
+
+    def add_entries(self, entries):
+        """Call self.add_entry(entry) for each entry in entries."""
+        for entry in entries:
+            self.add_entry(entry)
+
+    def remove_entry(self, entry):
+        """Remove an entry from the current panel.  A ValueError will be
+        raised by list.remove() if the entry is not in the current panel.
+        """
+        self._entries.remove(entry)
+        entry._panel = None
+
+    # You could write `entry in panel.get_entries()` and
+    # `len(panel.get_entries())`... but like, really?
+    # Making a copy every time?
+    #
+    # (With these methods you can write instead `entry in panel`
+    # and panel.n_entries().  "Length of panel" doesn't read well
+    # to me and so that's why I didn't define __len__().)
+    def __contains__(self, entry):
+        return entry in self._entries
+
+    def n_entries(self):
+        return len(self._entries)
 
     # ==========
     # Attributes
@@ -104,7 +144,7 @@ class Panel:
         return self._attrs.get(key, default)
 
     def delete_attribute(self, key):
-        if key in {'rating'}:
+        if key == 'rating':
             raise ValueError(f'cannot remove {key!r}')
         return self._attrs.pop(key)
 
@@ -132,17 +172,11 @@ class Entry:
         '_data', '_meta', '_attrs',
     )
 
-    def __init__(self, panel, date_time, *, insight=False):
-        # Although not directly implied, the `panel` attribute MAY be
-        # None if the Entry doesn't want to have anything to do with the
-        # panel.
-        self.panel = panel
-        # Validation of date_time requires insight, so set it to
-        # something first (insight might be bool so we'll try to let
-        # the setter do that too)
-        self._insight = False
+    def __init__(self, date_time, *, insight=False):
+        self._panel = None
+        # Only validate after insight and date_time are successfully set
+        self._insight = insight
         self.date_time = date_time
-        self.insight = insight
         # These are the only 5 attributes that are always guaranteed to be
         # set... (None means that it is unset)
         self._data = {
@@ -172,7 +206,8 @@ class Entry:
     @classmethod
     def from_entry(cls, entry):
         assert isinstance(entry, Entry)
-        obj = cls(entry.panel, entry.date_time)
+        # Panel linking will NOT implicitly happen
+        obj = cls(entry.date_time)
         obj.insight = entry.insight
         # This sure saves a lot of keystrokes
         for key, value in entry.get_data_dict().items():
@@ -186,34 +221,16 @@ class Entry:
     # =================
     # Direct attributes
     # =================
-    # XXX: One potential problem: If an Entry object `entry` were deleted, a
-    # reference to `entry` will exist throughout the lifetime of the object,
-    # and the panel's `get_entries()` call would still yield this entry...
-    #
-    # The only possible solution i can think of is
-    #
-    #     entry.panel = None
-    #     del entry
-    #
-    # but doesn't that feel very un-Pythonic (in that we're playing with
-    # something that feels like CPython reference counts in Python)?
     @property
     def panel(self):
+        """Panel that the entry belongs to, None if this entry does not
+        belong to a panel.  This attribute can only be changed through
+        calling either the remove_entry() method of the parent panel.
+        """
         return self._panel
 
-    @panel.setter
-    def panel(self, panel):
-        not_none = _assert_type_or_none(panel, Panel, 'panel')
-        if hasattr(self, '_panel') and self._panel is not None:
-            try:
-                self._panel._entries.remove(self)
-            except ValueError:
-                pass
-        if not_none:
-            panel._entries.append(self)
-        self._panel = panel
-
     def has_panel(self):
+        """Return self.panel is not None."""
         return self._panel is not None
 
     @property
@@ -390,7 +407,7 @@ class Entry:
         return self._attrs.get(key, default)
 
     def delete_attribute(self, key):
-        no_delete = ('posted',)
+        no_delete = ('posted', 'created')
         if key in no_delete:
             raise ValueError(f'cannot delete attributes: {key!r}')
         return self._data.pop(key)
