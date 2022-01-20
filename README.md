@@ -18,7 +18,7 @@ python3 -m pip install --user .
 ```
 
 where `python3` is the name of your Python 3 interpretor.  To confirm you
-have successfully installed, you may run `python3 -m psp -v` or just import
+have successfully installed, you may run `python3 -m psp -V` or just import
 `psp` into Python.
 
 And to uninstall the library, you will have to do manually delete the files
