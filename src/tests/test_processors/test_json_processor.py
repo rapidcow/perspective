@@ -20,37 +20,39 @@ def tearDownModule():
 
 
 class TestLoader(unittest.TestCase):
-    _ = """
-test
-
-entry:
-    plain, utf-8
-    plain, cp-1252
-    image
-    has extension '.jpg', '.mp3', ...
-    has no extension
-
-
-time zone inheritance:
-    from the panel
-    from the entry itself
-
-
-time and datetime parsing:
-    just... test it
-
-
-
-
-dumping
-
-reverse-inference of type and encoding
-time and datetime
-loaded result == dumped objects
-"""
-
-    del _
-
+# TODO:
+# test
+#
+# entry:
+#     plain, utf-8
+#     plain, cp-1252
+#     image
+#     has extension '.jpg', '.mp3', ...
+#     has no extension
+#
+#
+# time zone inheritance:
+#     from the panel
+#     from the entry itself
+#
+#
+# time and datetime parsing:
+#     just... test it
+#
+#
+# stuff including
+# *   question
+# *   caption
+# *   transcription
+# *   metadata (should be passed on verbatim)
+# *   ignored options (a warning in the case of any other option
+#                      at entry-level)
+#
+# also
+# *   checksum
+#
+#
+#
     def test_basic(self):
         bk1 = os.path.join(_dir, '1.json')
         with open(bk1, 'w') as fp:
@@ -96,56 +98,58 @@ loaded result == dumped objects
 
 
 class TestDumper(unittest.TestCase):
+
+# dumping
+#
+# reverse-inference of type and encoding
+# time and datetime
+# loaded result == dumped objects
+
+
     def test_path_shortening(self):
+# Test 1:
+#
+#     paths = [ a/*, b/* ]
+#     export_paths = [ a/one.md, b/one.md ]
+#
+#     input_paths should be uneffected (i.e. the same)
+#
+#
+# Test 2:
+#
+#     paths = [ a/*, b/*, . ]
+#     export_paths = [ a/1/one.md, b/one.md ]
+#
+#     input_paths should be [ 1/one.md, b/one.md ]
+#     (remove the . and it should raise a warning that 'b' cannot be found
+#     and that you must explicitly append the '.' path)
+#
+#
+# Test 3 (ill-defined paths):
+#
+#     paths = [ s*, sus ]
+#     export_paths = [ sus/tree.txt, s/task.txt ]
+#
+#     It is possible to use 'tree.txt' and 'task.txt'.
+#     (TODO: update JSONLoader so that it doesn't complain about these cases!)
+#
+#
+#
+#
+#
+# Cases where special characters are in the file themselves (like 'a*.txt' and
+# 'among_us.txt')
+#
+# Test 4: (special chars)
+#
+#     paths = [ a, b ]
+#     # Literal asterisk
+#     export_paths = [ a/a*.txt, b/among_us.txt ]
+#
+#     While the dumper is checking for the validity of 'a*.txt', it might
+#     accidentally match against 'b/among_us.txt', causing it to use 'a/a*.txt'
+#     instead of the shorter path.
+#
+#     (check for alike cases for ? and []??  Or is it unnecessary...?)
+#
         pass
-
-
-        test = """
-Test 1:
-
-    paths = [ a/*, b/* ]
-    export_paths = [ a/one.md, b/one.md ]
-
-    input_paths should be uneffected (i.e. the same)
-
-
-Test 2:
-
-    paths = [ a/*, b/*, . ]
-    export_paths = [ a/1/one.md, b/one.md ]
-
-    input_paths should be [ 1/one.md, b/one.md ]
-    (remove the . and it should raise a warning that 'b' cannot be found
-    and that you must explicitly append the '.' path)
-
-
-Test 3 (ill-defined paths):
-
-    paths = [ s*, sus ]
-    export_paths = [ sus/tree.txt, s/task.txt ]
-
-    It is possible to use 'tree.txt' and 'task.txt'.
-    (TODO: update JSONLoader so that it doesn't complain about these cases!)
-
-
-
-
-
-Cases where special characters are in the file themselves (like 'a*.txt' and
-'among_us.txt')
-
-Test 4: (special chars)
-
-    paths = [ a, b ]
-    # Literal asterisk
-    export_paths = [ a/a*.txt, b/among_us.txt ]
-
-    While the dumper is checking for the validity of 'a*.txt', it might
-    accidentally match against 'b/among_us.txt', causing it to use 'a/a*.txt'
-    instead of the shorter path.
-
-    (check for alike cases for ? and []??  Or is it unnecessary...?)
-
-"""
-
-        del test
