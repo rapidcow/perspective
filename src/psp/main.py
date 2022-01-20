@@ -386,8 +386,10 @@ def _format_calendar(year, month, days, panels):
     text = calendar.TextCalendar().formatmonth(year, month)
     lines = text.splitlines()
     # Make it so that every line is 20 characters long
-    # (Will be space-padded at the end)
-    body = '\n'.join(format(line, '20') for line in lines)
+    # (Also note that separating title from the body is necessary because
+    # we don't want to replace anything there)
+    title = format(lines[0], '20')
+    body = '\n'.join(format(line, '20') for line in lines[1:])
     # Create a list of substitutions to be made, with each item as
     # (index, replace_string)
     subs_list = []
@@ -413,7 +415,7 @@ def _format_calendar(year, month, days, panels):
         buf.append(repl)
         start = index + 2
     buf.append(body[start:])
-    return ''.join(buf)
+    return title + '\n' + ''.join(buf)
 
 
 def _print_calendar(year, month, days, panels):

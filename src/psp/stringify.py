@@ -246,7 +246,8 @@ class PanelFormatter(Formatter):
         self._all_options.update({
             'base_dir', 'time_zone', 'coerce_time_zone',
             'sort_entries_by', 'reverse_entries', 'entry_indent',
-            'time_format', 'date_rating_sep',
+            'time_format', 'date_rating_sep', 'title_entries_vsep',
+            'entry_vsep', 'main_insight_entries_vsep',
         })
 
         def sort_func(entry):
@@ -265,6 +266,9 @@ class PanelFormatter(Formatter):
             coerce_time_zone=False,
 
             date_rating_sep='  ',
+            title_entries_vsep='\n\n',
+            entry_vsep='\n',
+            main_insight_entries_vsep='\n\n',
         )
         self.configure(**options)
 
@@ -317,30 +321,27 @@ class PanelFormatter(Formatter):
         _extend_lines(buf, lines)
 
         if main_entries or insight_entries:
-            buf.extend('\n\n')
+            buf.append(self.get_option('title_entries_vsep'))
+        entry_vsep = self.get_option('entry_vsep')
 
         # Main entries
         if main_entries:
             for entry in main_entries:
                 buf.append(entry_formatter.format(entry))
-                buf.extend('\n\n')
-            if insight_entries:
-                # Yes, more space!  (Two empty lines)
                 buf.append('\n')
-            else:
-                # Pop the second '\n' if there's nothing after this
-                # (The first will be popped at the end of this function)
-                buf.pop()
+                buf.append(entry_vsep)
+            buf.pop()
+            if insight_entries:
+                buf.append(self.get_option('main_insight_entries_vsep'))
 
         # Insight entries
         if insight_entries:
-            entry_title = ('Insight' if len(insight_entries) == 1
-                           else 'Insights')
-            buf.append(entry_title + '\n')
-            buf.append('-' * len(entry_title) + '\n')
+            lines = self.wrap_entry_header(insight_entries)
+            _extend_lines(buf, lines)
             for entry in insight_entries:
                 buf.append(entry_formatter.format(entry))
-                buf.extend('\n\n')
+                buf.append('\n')
+                buf.append(entry_vsep)
             buf.pop()
 
         buf.pop()
@@ -361,6 +362,11 @@ class PanelFormatter(Formatter):
 
     def wrap_title(self, title):
         return self._center_paragraph(title)
+
+    def wrap_entry_header(self, insight_entries):
+        if len(insight_entries) == 1:
+            return ['Insight', '-------']
+        return ['Insights', '--------']
 
 
 class EntryFormatter(Formatter):
