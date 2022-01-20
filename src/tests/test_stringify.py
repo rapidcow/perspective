@@ -7,6 +7,8 @@ from psp import stringify
 from psp.types import Entry, Panel
 
 
+# XXX: Do we test wide characters now?
+
 class TestStringifyPanel(unittest.TestCase):
     def test_basics(self):
         panel = Panel(date(2022, 1, 18))
@@ -35,6 +37,13 @@ class TestStringifyPanel(unittest.TestCase):
 
             1:00 PM
               Hello world!"""))
+
+    def test_entry_formatting(self):
+        # Test if the time_format, time_zone, coerce_time_zone,
+        # entry_indent options are passed on
+        #
+        # Test if the entry_formatter keyword argument works
+        pass
 
 
 class TestStringifyEntry(unittest.TestCase):
@@ -78,3 +87,31 @@ class TestStringifyEntry(unittest.TestCase):
         self.assertEqual(formatter.format(entry), expected)
         formatter.configure(coerce_time_zone=False)
         self.assertEqual(formatter.format(entry), expected)
+
+    # TODO: These
+    def test_question(self):
+        pass
+
+    def test_caption(self):
+        pass
+
+    def test_transcription(self):
+        pass
+
+    def test_options(self):
+        # Test these:
+        # *  time format
+        # *  label insight
+        pass
+
+    def test_horizontal_sep(self):
+        # Test these:
+        # *  date_time_sep
+        # *  entry_title_attr_sep
+        pass
+
+    def test_vertical_sep(self):
+        # Test these:
+        # *  question_content_vsep
+        # *  below_content_vsep
+        pass

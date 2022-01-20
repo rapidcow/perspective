@@ -1,6 +1,7 @@
 """Main program implementation"""
 
 import argparse
+import calendar
 import datetime
 import io
 import itertools
@@ -39,7 +40,10 @@ def load_config_from_file(file):
 
 
 def main():
-    parser = argparse.ArgumentParser()
+    parser = argparse.ArgumentParser(
+        prog='psp', description='psp library main program')
+    parser.add_argument('--version', '-V', action='version',
+                        version='%(prog)s pre-release')
     parser.add_argument('--config', '-c', help=
         'path to the Python configuration script')
 
@@ -240,13 +244,13 @@ def request_date_from_user(loader, files):
     return _get_year_from_user(dates, panels)
 
 
-def _get_year_from_user(dates, panels, skip_single=True):
+def _get_year_from_user(dates, panels, skip_one=True):
     width = get_terminal_width()
     years = sorted({d.year for d in dates})
-    if len(years) == 1 and skip_single:
+    if len(years) == 1 and skip_one:
         need_space = False
         year = years.pop()
-        print(f'You have only one year: {year}, automatically selecting it...')
+        print(f'Only one year found: {year}, automatically selecting it...')
     else:
         need_space = True
         print(f'Select one year from all the years below:')
@@ -275,14 +279,14 @@ def month_name(m):
             'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec')[m - 1]
 
 
-def _get_month_from_user(dates, panels, year):
+def _get_month_from_user(dates, panels, year, skip_one=True):
     width = get_terminal_width()
     year_dates = [d for d in dates if d.year == year]
     months = sorted({d.month for d in year_dates})
-    if len(months) == 1:
+    if len(months) == 1 and skip_one:
         need_space = False
         month = months.pop()
-        print(f'You have only one month in {year}: {month_name(month)}, '
+        print(f'Only one month in {year} found: {month_name(month)}, '
               f'automatically selecting it...')
     else:
         need_space = True
@@ -294,8 +298,12 @@ def _get_month_from_user(dates, panels, year):
                 continue
             if m.lower() in ('b', 'back', 'prev'):
                 print()
-                return _get_year_from_user(dates, panels, year)
+                return _get_year_from_user(dates, panels, False)
             month = 0
+            if m.lower() in ('cal', 'calendar'):
+                _print_calendar_for_year(year, panels)
+                print()
+                continue
             try:
                 month = int(m)
             except ValueError:
@@ -340,7 +348,7 @@ def _get_day_from_user(dates, panels, year, year_dates, month):
                 continue
             if d.lower() in ('b', 'back', 'prev'):
                 print()
-                return _get_month_from_user(dates, panels, year)
+                return _get_month_from_user(dates, panels, year, False)
             if d.lower() in ('cal', 'calendar'):
                 _print_calendar(year, month, days, panels)
                 print()
@@ -374,12 +382,15 @@ def _print_list(items, total_width, width, gap):
         print()
 
 
-def _print_calendar(year, month, days, panels):
-    import calendar
+def _format_calendar(year, month, days, panels):
     text = calendar.TextCalendar().formatmonth(year, month)
     lines = text.splitlines()
-    title = lines[0]
-    body = '\n'.join(lines[1:])
+    # Make it so that every line is 20 characters long
+    # (Will be space-padded at the end)
+    body = '\n'.join(format(line, '20') for line in lines)
+    # Create a list of substitutions to be made, with each item as
+    # (index, replace_string)
+    subs_list = []
     for day in days:
         this_date = datetime.date(year, month, day)
         try:
@@ -390,12 +401,53 @@ def _print_calendar(year, month, days, panels):
                      '32' if rating == ':)' else    # Green
                      '30')                          # Black
             day_str = format(day, '2')
-            body = body.replace(
-                day_str, f'\033[1;{color}m{day_str}\033[0m', 1)
+            subs_str = f'\033[1;{color}m{day_str}\033[0m'
+            subs_list.append((body.index(day_str), subs_str))
         except LookupError:
             pass
-    print(title)
-    print(body)
+    subs_list.sort()
+    buf = []
+    start = 0
+    for index, repl in subs_list:
+        buf.append(body[start:index])
+        buf.append(repl)
+        start = index + 2
+    buf.append(body[start:])
+    return ''.join(buf)
+
+
+def _print_calendar(year, month, days, panels):
+    text_lines = _format_calendar(year, month, days, panels)
+    for line in text_lines.splitlines():
+        print(line.rstrip())
+
+
+def _print_calendar_for_year(year, panels):
+    #
+    # Print calendars for each month like this:
+    #
+    #     Jan    Feb    Mar
+    #     Apr    May    Jun
+    #     Jul    Aug    Sep
+    #     Oct    Nov    Dec
+    #
+    not_first_row = False
+    calendar_sep = ' ' * 4
+    empty_row = ' ' * 20
+    for start_month in [1, 4, 7, 10]:
+        if not_first_row:
+            print()
+        calendars = []
+        for month in range(start_month, start_month + 3):
+            days = {pdate.day for pdate in panels.keys()
+                    if pdate.year == year and pdate.month == month}
+            calendars.append(_format_calendar(year, month, days, panels))
+        # Traverse each line of every calendar and print them out
+        for lines in itertools.zip_longest(
+                *(c.splitlines() for c in calendars),
+                fillvalue=empty_row):
+            print(calendar_sep.join(lines).rstrip())
+        not_first_row = True
 
 
 def load_panel_with_date(loader, files, date):

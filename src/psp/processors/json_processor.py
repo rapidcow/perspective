@@ -580,6 +580,12 @@ class JSONLoader:
             question_text = _ensure_text(question, 'question')
             obj.set_attribute('question', question_text)
 
+        # Transcription
+        if 'transcription' in entry:
+            text = entry.pop('transcription')
+            transcription = _ensure_text(text, 'transcription')
+            obj.set_attribute('transcription', transcription)
+
         if entry:
             keys_str = ', '.join(sorted(map(str, entry.keys())))
             plural = '' if len(entry) == 1 else 's'
@@ -665,7 +671,7 @@ class JSONLoader:
             # a new list for every entry... but it doesn't make sense to
             # have a path specific to a list stored somewhere in this
             # class either... so I'm kinda lost.)
-            lookup_paths = attrs.get('paths', [])
+            lookup_paths = attrs.get('paths', []).copy()
             lookup_paths.extend(self.get_option('paths'))
             obj.set_source(self._find_path(path, lookup_paths))
             if type_ is None:
@@ -723,6 +729,7 @@ class JSONLoader:
         for key, value in meta.items():
             obj.set_meta_attribute(key, value)
 
+    # This is a protected method (hence the single underscore)!
     def _find_path(self, path, paths):
         if not paths:
             dirpaths = ['.']
@@ -1322,13 +1329,17 @@ class JSONDumper:
 
     def __update_entry_attributes(self, entry_dict, entry):
         attrs = entry.get_attribute_dict()
+        question = attrs.pop('question', None)
+        if question is not None:
+            entry_dict['question'] = question
+
         caption = attrs.pop('caption', None)
         if caption is not None:
             entry_dict['caption'] = caption
 
-        question = attrs.pop('question', None)
-        if question is not None:
-            entry_dict['question'] = question
+        transcription = attrs.pop('transcription', None)
+        if transcription is not None:
+            entry_dict['transcription'] = transcription
 
     def wrap_meta_dict(self, entry):
         meta_dict = {}
