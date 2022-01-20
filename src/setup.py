@@ -12,7 +12,7 @@ def read(path):
 
 setup(
     name='psp',
-    version='0.1.0',
+    version='0.1.0',    # Not released
     description='A program for backing up entries in Perspective <3',
     long_description=read('README.md'),
     author='rapidcow',
