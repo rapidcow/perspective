@@ -21,14 +21,9 @@ where `python3` is the name of your Python 3 interpretor.  To confirm you
 have successfully installed, you may run `python3 -m psp -V` or just import
 `psp` into Python.
 
-And to uninstall the library, you will have to do manually delete the files
-from your site packages directory, which you can find by running
+And to uninstall the library, run
 
-```python
-import site
-print(site.getsitepackages())       # ...if installed without --user
-print(site.getusersitepackages())   # ...if installed with --user
-```
+    python3 -m pip uninstall psp
 
 ---
 
@@ -40,4 +35,3 @@ me if this makes no sense to you now.
 
 
 [Perspective]: https://apps.apple.com/app/id1186753097
-
