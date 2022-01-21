@@ -24,7 +24,7 @@ _ARCHIVE_FORMATS = [
 ]
 
 #
-# Some differences compared to psp.Entry:
+# Some differences compared to psp.types.Entry:
 #
 # Several data attributes added:
 #
@@ -146,9 +146,9 @@ class BigEntry(Entry):
 # The only difference this loader makes is when an entry dict contains
 # a dictionary for 'data'.  In that case, the dictionary must provide
 #
-#   *   Precisely one of 'raw' and 'input' (similar to 'data' and 'input');
+#   *   precisely one of 'raw' and 'input' (similar to 'data' and 'input');
 #       and
-#   *   The path of the main file within the archive, through 'main-file'.
+#   *   the path of the main file within the archive, through 'main-file'.
 #
 # The 'input' attribute, if provided, should be a path to the archive.
 # The 'raw' attribute, if provided, should a base64-encoded ASCII string.
@@ -173,9 +173,9 @@ class BigEntry(Entry):
 #         }
 #     }
 #
-# The inference rules will work as expected!  (I hope when i implement it
-# it does...)  So if 'main-file' is 'main.md', then you can expect the main
-# file type to be 'markdown'.
+# The inference rules will work as expected!  (I hope...)
+# So if 'main-file' is 'main.md', then you can expect the main file
+# type to be 'markdown'.
 #
 class BigLoader(JSONLoader):
     __slots__ = ()
@@ -186,10 +186,12 @@ class BigLoader(JSONLoader):
 
         arch_data = entry.pop('data')
         # Raise exception for extraneous keys
-        if any(k in entry for k in {'input', 'type', 'encoding'}):
-            raise ValueError(f'invalid key for entry: {k!r}')
-        if any(k in arch_data for k in {'data', 'data-encoding'}):
-            raise ValueError(f'invalid key for archive data: {k!r}')
+        for k in {'input', 'type', 'encoding'}:
+            if k in entry:
+                raise ValueError(f'invalid key for entry: {k!r}')
+        for k in {'data', 'data-encoding'}:
+            if k in arch_data:
+                raise ValueError(f'invalid key for archive data: {k!r}')
 
         # Get the important things: archive format and main file path,
         # also transfer the raw data/source path to 'entry' so we can use
