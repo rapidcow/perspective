@@ -1,8 +1,10 @@
 # `psp` --- A rework of the `basicproc.py` program
 
+(Go to [perspective](https://github.com/rapidcow/perspective) for
+instructions on how to install/uninstall this library.)
+
 Similar to how you use [`basicproc.py`][], the plan is that you can do the
-same while running it as a module (make sure to install it first using
-`python3 -m pip install .`!)
+same while running it as a module.
 
 For starters, say you have a `backup.json` file, like this:
 
@@ -144,18 +146,6 @@ There are plenty of different classes you can mess around with---even the
 entries and panels themselves!  (See [`psp.extensions.bigentry`][bigentry]
 for example; I use it personally to write blog-style diaries where I can
 include graphics.)
-
----
-
-On an additional note, to uninstall this, go to your local `site-packages/`
-folder, which you can find by running the following in Python:
-
-```python
-import site
-print(site.getsitepackages())
-```
-
-and find files with `psp` prefix and delete them.  Simple!
 
 There's also a ton of new interesting functions in the library... so be
 excited when I write about them in a documentation!
