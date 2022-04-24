@@ -1,6 +1,5 @@
 """Time utility."""
 
-# date and time parsing is actually just date + ' ' + time
 __all__ = [
     'parse_timezone', 'parse_datetime', 'parse_date', 'parse_time',
     'is_naive', 'get_local_timezone', 'to_utc', 'format_offset',
@@ -38,6 +37,30 @@ DATETIME_FORMATS = [
     # Formats used on Mac
     '%B %d, %Y at %H:%M',
     '%A, %B %d, %Y at %H:%M',
+    # ctime format (these two are equivalent)
+    '%c', '%a %b %d %H:%M:%S %Y',
+    '%a %b %d %H:%M:%S%z %Y', '%a %b %d %H:%M %Y',
+    # ctime format without the weekday
+    '%b %d %H:%M:%S %Y', '%b %d %H:%M %Y', '%b %d %H:%M:%S%z %Y',
+    # Miscellaneous
+    '%m/%d/%y %H:%M:%S%z',
+    '%m/%d/%y %H:%M:%S',
+    '%m/%d/%y %H:%M',
+]
+
+TIME_FORMATS = [
+    # 12-hour format
+    '%I:%M %p', '%I:%M%z %p',
+    '%I:%M:%S %p', '%I:%M:%S%z %p',
+    '%I:%M:%S.%f %p', '%I:%M:%S.%f%z %p',
+]
+
+DATE_FORMATS = [
+    '%b %d %Y', '%b %d, %Y', '%B %d %Y', '%B %d, %Y',
+    '%a %b %d %Y', '%a, %b %d, %Y', '%A %B %d %Y', '%A, %B %d, %Y',
+    '%d %b %Y', '%d %b, %Y', '%d %B %Y', '%d %B, %Y',
+    '%a %d %b %Y', '%a, %d %b, %Y', '%A %d %B %Y', '%A, %d %B, %Y',
+    '%m/%d/%y', '%m/%d/%Y',
 ]
 
 
@@ -91,23 +114,22 @@ def parse_timezone(s):
             return zoneinfo.ZoneInfo(s)
         except zoneinfo.ZoneInfoNotFoundError:
             pass
-    raise ValueError(f'invalid time zone: {s!r}')
+    raise ValueError(f'invalid time zone string: {s!r}')
 
 
 def parse_datetime(s, tzinfo=None, fold=None):
     """Parse a date-time string."""
-    parsed_dt = None
     try:
         parsed_dt = datetime.datetime.fromisoformat(s)
     except ValueError:
-        pass
-    for fmt in DATETIME_FORMATS:
-        try:
-            parsed_dt = datetime.datetime.strptime(s, fmt)
-        except ValueError:
-            pass
-    if parsed_dt is None:
-        raise ValueError(f'invalid date time: {s!r}')
+        for fmt in DATETIME_FORMATS:
+            try:
+                parsed_dt = datetime.datetime.strptime(s, fmt)
+            except ValueError:
+                continue
+            break
+        else:
+            raise ValueError(f'invalid datetime string: {s!r}') from None
 
     if tzinfo is not None and parsed_dt.tzinfo is None:
         parsed_dt = parsed_dt.replace(tzinfo=tzinfo)
@@ -118,12 +140,31 @@ def parse_datetime(s, tzinfo=None, fold=None):
 
 def parse_date(s):
     """Parse a date string."""
-    return datetime.date.fromisoformat(s)
+    try:
+        return datetime.date.fromisoformat(s)
+    except ValueError:
+        for fmt in DATE_FORMATS:
+            try:
+                return datetime.datetime.strptime(s, fmt).date()
+            except ValueError:
+                continue
+        else:
+            raise ValueError(f'invalid date string: {s!r}') from None
 
 
 def parse_time(s, tzinfo=None, fold=None):
     """Parse a time string."""
-    parsed_time = datetime.time.fromisoformat(s)
+    try:
+        parsed_time = datetime.time.fromisoformat(s)
+    except ValueError:
+        for fmt in TIME_FORMATS:
+            try:
+                parsed_time = datetime.datetime.strptime(s, fmt).timetz()
+            except ValueError:
+                continue
+            break
+        else:
+            raise ValueError(f'invalid time string: {s!r}') from None
     if tzinfo is not None and parsed_time.tzinfo is None:
         parsed_time = parsed_time.replace(tzinfo=tzinfo)
     if fold is not None:

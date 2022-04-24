@@ -174,9 +174,7 @@ class Entry:
 
     def __init__(self, date_time, *, insight=False):
         self._panel = None
-        # Only validate after insight and date_time are successfully set
-        self._insight = insight
-        self.date_time = date_time
+
         # These are the only 5 attributes that are always guaranteed to be
         # set... (None means that it is unset)
         self._data = {
@@ -186,19 +184,25 @@ class Entry:
             'raw': b'',
             'source': None,
         }
-        # The following inequality MUST be true all the time (unless one of
+        # The following inequalities MUST be true all the time (unless one of
         # these meta attribute is None, i.e. unset):
         #
-        #     created <= posted <= date_time
-        #
+        #     created <= posted,
+        #     created <= modified.
         self._meta = {
             # Posted: The posted time in the Perspective app
             'posted': date_time,
             # Created: The creation time of the file
             'created': None,
+            # Modified: The modification time of the file
+            'modified': None,
         }
         # Question and caption are not set by default (why? idk..)
         self._attrs = {}
+
+        # Only validate after insight and date_time are successfully set
+        self._insight = insight
+        self.date_time = date_time
 
     # Help subclasses get the data they need
     # (making a shallow copy of the object doesn't work; the whole object
@@ -499,31 +503,37 @@ class Entry:
         # We accept None for the 'posted' attribute (otherwise the
         # initialization would be way too complicated), although it would
         # always be set when loaded by json_processor.JSONLoader.
-        time = self.date_time
         if posted is None:
             return time
         self.__check_naive_datetime(posted, 'posted')
-        if timeutil.to_utc(posted) < timeutil.to_utc(time):
-            raise ValueError('time posted before entry time')
         created = self.get_meta_attribute('created')
-        self.__check_created_and_posted_time(time, created, posted)
+        self.__check_created_and_posted_time(created, posted)
         return posted
 
     def check_created_meta_attribute(self, created):
         """The 'created' meta attribute protocol.
         If `created` is None, return None.
         """
-        time = self.date_time
         if created is None:
             return None
         self.__check_naive_datetime(created, 'created')
         posted = self.get_meta_attribute('posted')
-        self.__check_created_and_posted_time(time, created, posted)
+        self.__check_created_and_posted_time(created, posted)
+        modified = self.get_meta_attribute('modified')
+        self.__check_created_and_modified_time(created, modified)
         return created
 
-    @staticmethod
-    def __check_created_and_posted_time(time, created, posted):
-        if not (created and posted):
+    def check_modified_meta_attribute(self, modified):
+        if modified is None:
+            return None
+        self.__check_naive_datetime(modified, 'modified')
+        created = self.get_meta_attribute('created')
+        self.__check_created_and_modified_time(created, modified)
+        return modified
+
+    def __check_created_and_posted_time(self, created, posted):
+        """Check for created <= posted."""
+        if created is None or posted or None:
             return
 
         # Creation time should be less than or equal to the entry time
@@ -533,16 +543,23 @@ class Entry:
 
         # In case the second value isn't provided (most cases),
         # allow up to 1 minute of difference
-        if time.second == 0 and time.microsecond == 0:
+        if posted.second == 0 and posted.microsecond == 0:
             tolerance = datetime.timedelta(seconds=60)
         else:
             tolerance = datetime.timedelta(0)
         if timeutil.to_utc(created) > timeutil.to_utc(posted) + tolerance:
             raise ValueError('creation time after time posted')
 
+    def __check_created_and_modified_time(self, created, modified):
+        """Check for created <= modified."""
+        if created is None or modified is None:
+            return
+        if timeutil.to_utc(created) > timeutil.to_utc(modified):
+            raise ValueError('creation time after modification time')
+
     def __repr__(self):
         clsname = type(self).__name__
-        # use the builtin str() representation of datetime.datetime
+        # use the str() representation of datetime.datetime
         return '<{} object at {}>'.format(clsname, self.date_time)
 
     # In basicproc.py, this is the is_binary() method.

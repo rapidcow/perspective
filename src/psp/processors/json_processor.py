@@ -1,6 +1,7 @@
 """Processor for JSON archives."""
 
 import base64
+import copy
 import collections
 import datetime
 import fnmatch
@@ -125,6 +126,8 @@ def _ensure_text(obj, key, extra=''):
         try:
             return ''.join(obj)
         except TypeError:
+            # We already know there's something wrong in the list, so
+            # let _assert_list_type() raise that error for us.
             _assert_list_type(obj, str, key, extra)
     header = f'{key!r}{extra}'
     clsname = type(obj).__name__
@@ -288,9 +291,15 @@ class JSONLoader:
     def load_data(self, data, date=None, *, get_attributes=False):
         panels, attrs = self.__split_data(data)
         if date is None:
-            if self.get_option('checksum'):
-                self.__checksum(panels, attrs)
             obj = self.__load_all_data(panels, attrs)
+            if self.get_option('checksum'):
+                try:
+                    cksum = attrs['checksum']
+                except KeyError:
+                    self._warn("data does not have key 'checksum'",
+                               LoadWarning)
+                else:
+                    self.checksum(obj, cksum)
         else:
             if isinstance(date, str):
                 date = timeutil.parse_date(date)
@@ -368,8 +377,7 @@ class JSONLoader:
 
     # Callback that can be overridden to load only certain panels
     # (this one skips empty JSON objects, so [ {}, null, '' ] are skipped)
-    @staticmethod
-    def panel_filter(panel_dict):
+    def panel_filter(self, panel_dict):
         return panel_dict
 
     def __load_single_panel(self, panels, attrs, date):
@@ -390,32 +398,18 @@ class JSONLoader:
             self.__check_entry_order(panel)
         return panel
 
-    def __checksum(self, panels, attrs):
-        try:
-            cksum = attrs['checksum']
-            panel_count = cksum['panels']
-            entry_count = cksum['entries']
-            total_bytes = cksum['total-bytes']
-        except KeyError as exc:
-            raise LoadError('failed to extract checksum') from exc
-        p_count = 0
-        e_count = 0
-        size = 0
-        loader = type(self)(base_dir=self.get_option('base_dir'),
-                            suppress_warnings=True)
-        for p in panels:
-            p_count += 1
-            try:
-                pobj = loader.process_panel(p.copy(), attrs.copy())
-            except Exception as exc:
-                self._warn(f'checksum failed, reason: {exc}', LoadWarning)
-                return
-            for eobj in pobj.get_entries():
-                e_count += 1
-                size += eobj.get_raw_data_size()
+    def checksum(self, panels, cksum):
+        expected_value = (cksum['panels'], cksum['entries'],
+                          cksum['total-bytes'])
+        panel_count = entry_count = total_bytes = 0
 
-        expected_value = (panel_count, entry_count, total_bytes)
-        actual_value = (p_count, e_count, total_bytes)
+        for panel in panels:
+            panel_count += 1
+            for entry in panel.entries():
+                entry_count += 1
+                total_bytes += entry.get_raw_data_size()
+        actual_value = (panel_count, entry_count, total_bytes)
+
         if expected_value != actual_value:
             self._warn(
                 f'checksum failed: expected (panel count, '
@@ -468,7 +462,8 @@ class JSONLoader:
         if panel:
             keys_str = ', '.join(sorted(map(str, panel.keys())))
             plural = '' if len(panel) == 1 else 's'
-            self._warn(f'ignored panel key{plural}: {keys_str}', LoadWarning)
+            self._warn(f'ignored panel key{plural}: {keys_str}',
+                       LoadWarning)
 
         for index, ent in enumerate(ents, start=1):
             # 'attrs' is only accessed and not mutated, so no need to copy.
@@ -589,7 +584,8 @@ class JSONLoader:
         if entry:
             keys_str = ', '.join(sorted(map(str, entry.keys())))
             plural = '' if len(entry) == 1 else 's'
-            self._warn(f'ignored entry key{plural}: {keys_str}', LoadWarning)
+            self._warn(f'ignored entry key{plural}: {keys_str}',
+                       LoadWarning)
 
         return obj
 
@@ -599,7 +595,7 @@ class JSONLoader:
         if 'type-format' in entry:
             type_format = entry.pop('type-format')
             _assert_type(type_format, str, 'type-format')
-            type_, fmt = type_format.split('-')
+            type_, fmt = type_format.split('-', 1)
         else:
             if 'type' in entry:
                 type_ = entry.pop('type')
@@ -691,8 +687,9 @@ class JSONLoader:
         meta = entry.pop('meta', {})
         obj_meta = {}
 
-        # Posting time
-        obj.set_meta_attribute('created', None)  # Defer validation
+        # Posting time (specific to the Perspective app)
+        # The default value of obj.date_time is already set by types.Entry,
+        # so we only need to handle non-default cases here.
         if 'posted' in meta:
             posted = meta.pop('posted')
             _assert_type(posted, str, 'posted')
@@ -700,19 +697,29 @@ class JSONLoader:
                 'posted', self.parse_datetime(
                     posted, tzinfo=obj.date_time.tzinfo,
                     fold=obj.date_time.fold))
-        else:
-            obj.set_meta_attribute('posted', obj.date_time)
 
         # Creation time
         if 'created' in meta:
             created = meta.pop('created')
             _assert_type(created, str, 'created')
-            obj.set_meta_attribute(
-                'created', self.parse_datetime(
-                    created, tzinfo=obj.date_time.tzinfo,
-                    fold=obj.date_time.fold))
+            time_created = self.parse_datetime(
+                created, tzinfo=obj.date_time.tzinfo,
+                fold=obj.date_time.fold)
         else:
-            obj.set_meta_attribute('created', None)
+            time_created = None
+
+        obj.set_meta_attribute('created', time_created)
+
+        if 'modified' in meta:
+            modified = meta.pop('modified')
+            _assert_type(modified, str, 'modified')
+            time_modified = self.parse_datetime(
+                modified, tzinfo=obj.date_time.tzinfo,
+                fold=obj.date_time.fold)
+        else:
+            time_modified = time_created
+
+        obj.set_meta_attribute('modified', time_modified)
 
         # Description
         desc = meta.pop('desc', '')
@@ -727,7 +734,7 @@ class JSONLoader:
         obj.set_meta_attribute('filename', filename)
 
         for key, value in meta.items():
-            obj.set_meta_attribute(key, value)
+            obj.set_meta_attribute(key, copy.deepcopy(value))
 
     # This is a protected method (hence the single underscore)!
     def _find_path(self, path, paths):
@@ -835,7 +842,8 @@ class JSONLoader:
         for index, panel in enumerate(panels_before, start=start_with + 1):
             if panel.date == this_panel.date:
                 self._warn('panel #{} is a duplicate of panel #{} ({})'
-                           .format(index, len(panels) - 1, panel.date))
+                           .format(index, len(panels) - 1, panel.date),
+                           LoadWarning)
                 return index + 1
         return start_with
 
@@ -1057,6 +1065,7 @@ class JSONDumper:
                 apath, rpath = self.__check_path(dirname, path, name)
                 relative_paths.append(rpath)
 
+        # TODO: Make this an option
         shorten_paths = True
         if shorten_paths:
             input_paths = self.__compute_input_paths(relative_paths, paths)
@@ -1067,8 +1076,7 @@ class JSONDumper:
         default_offset = self.get_option('default_time_zone_offset')
         data = collections.OrderedDict()
         if self.get_option('checksum'):
-            cksum = self.__get_checksum(panels, entry_list)
-            data['checksum'] = collections.OrderedDict(sorted(cksum.items()))
+            data['checksum'] = self.__get_checksum(panels, entry_list)
         data['desc'] = self.get_description()
         if default_offset is not None:
             # XXX: Lazy type checking
@@ -1145,7 +1153,7 @@ class JSONDumper:
                 # '1.txt', 'c/1.txt', then 'b/c/1.txt' and finally
                 # 'a/b/c/1.txt'.
                 test_path = os.path.join(*parts[i:])
-                test_dir = os.path.join(*parts[:i] or '.')
+                test_dir = os.path.join(*parts[:i] or ['.'])
                 # Boolean to keep track of whether we are able to find this
                 # path.  We don't have to worry about finding this path
                 # multiple times as long as we can ensure in the check after
@@ -1206,10 +1214,9 @@ class JSONDumper:
                 entry_count += 1
                 size += entry.get_raw_data_size()
 
-        return {
-            'panels': panel_count, 'entries': entry_count,
-            'total-bytes': size,
-        }
+        return OrderedDict([
+            ('panels', panel_count), ('entries', entry_count),
+            ('total-bytes', size)])
 
     def get_description(self):
         desc = self.get_option('desc')
@@ -1236,17 +1243,19 @@ class JSONDumper:
         # Keep text entries by default
         if entry.is_text():
             return
-        root, filename = self.basic_get_entry_filename(entry, panel, added)
-        return root, os.path.join(filename)
+        root, filename = self.basic_get_entry_filename(
+            entry, panel, added, 'assets')
+        return root, os.path.join('assets', filename)
 
-    def basic_get_entry_filename(self, entry, panel, added, *,
-                                 dirname='assets', ext=''):
+    def basic_get_entry_filename(
+            self, entry, panel, added, dirname, extension=None):
         base_name = (entry.date_time.replace(tzinfo=None)
                      .isoformat(sep='_').replace(':', '-'))
         if entry.date_time.date() != panel.date:
             base_name = panel.date.isoformat() + '_' + base_name
         file_count = 1
-        extension = datatypes.get_extension(entry.get_type(), default=ext)
+        if extension is None:
+            extension = datatypes.get_extension(entry.get_type(), default='')
         # No infinte loops!
         # (Worst case scenario, '1 <= file_count <= len(added)' all
         # coincide with the 'added' set, and the one above it coincides with
@@ -1284,29 +1293,23 @@ class JSONDumper:
         `panel_dict['entries']`.
         """
         panel_dict = collections.OrderedDict()
-        panel_dict['date'] = panel.date.isoformat()
+        panel_dict['date'] = self._format_date(panel.date)
         rating = panel.get_attribute('rating')
         if rating is not None:
             panel_dict['rating'] = rating
         panel_dict['entries'] = entries = []
         return panel_dict, entries
 
+    # TODO: Expose format functions as public API
     def wrap_entry(self, entry, panel):
-        """(entry, panel, offset) -> (entry_dict)
-        """
+        """(entry, panel, offset) -> (entry_dict)"""
         entry_dict = collections.OrderedDict()
         date_time = entry.date_time
-        default_offset = self.get_option('default_time_zone_offset')
-        # Strip out time zone if the offset can be inherited
-        if default_offset == date_time.utcoffset():
-            base_time = date_time.replace(tzinfo=None)
-        else:
-            base_time = date_time
         # Hide date if possible
         if date_time.date() == panel.date:
-            entry_dict['time'] = self._format_time(base_time.timetz())
+            entry_dict['time'] = self._format_time(date_time.timetz())
         else:
-            entry_dict['date-time'] = self._format_datetime(base_time)
+            entry_dict['date-time'] = self._format_datetime(date_time)
 
         entry_dict['type'] = entry.get_type()
         entry_dict['encoding'] = entry.get_encoding()
@@ -1345,20 +1348,17 @@ class JSONDumper:
         meta_dict = {}
         meta = entry.get_meta_dict()
         time = entry.date_time
-        default_offset = self.get_option('default_time_zone_offset')
-        created = meta.pop('created', None)
-        if created is not None and created != time:
-            created_offset = created.utcoffset()
-            if created_offset == default_offset:
-                created = created.replace(tzinfo=None)
-            meta_dict['created'] = self._format_datetime(created)
 
-        posted = meta.pop('posted', None)
-        if posted is not None and posted != time:
-            posted_offset = posted.utcoffset()
-            if posted_offset == default_offset:
-                posted = posted.replace(tzinfo=None)
-            meta_dict['posted'] = self._format_datetime(posted)
+        time_posted = meta.pop('posted')
+        time_created = meta.pop('created', None)
+        time_modified = meta.pop('modified', None)
+
+        if time_posted != time:
+            meta_dict['posted'] = self._format_datetime(time_posted)
+        if time_created is not None:
+            meta_dict['created'] = self._format_datetime(time_created)
+        if time_modified != time_created:
+            meta_dict['modified'] = self._format_datetime(time_modified)
 
         filename = meta.pop('filename', None)
         if filename is not None:
@@ -1371,16 +1371,25 @@ class JSONDumper:
         for key, value in meta.items():
             if isinstance(value, (int, float, str)):
                 meta_dict[key] = value
-            else:
+            elif value is not None:
                 meta_dict[key] = str(value)
         return meta_dict
 
+    def _format_date(self, d):
+        return d.isoformat()
+
     def _format_time(self, t):
         timespec = 'auto' if t.second or t.microsecond else 'minutes'
+        default_offset = self.get_option('default_time_zone_offset')
+        if t.utcoffset() == default_offset:
+            t = t.replace(tzinfo=None)
         return t.isoformat(timespec)
 
     def _format_datetime(self, dt):
         timespec = 'auto' if dt.second or dt.microsecond else 'minutes'
+        default_offset = self.get_option('default_time_zone_offset')
+        if dt.utcoffset() == default_offset:
+            dt = dt.replace(tzinfo=None)
         return dt.isoformat(' ', timespec)
 
     def _get_sorted_panels(self, panels):
