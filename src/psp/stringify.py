@@ -93,7 +93,7 @@ class Formatter(abc.ABC):
         }
         self._options = {
             'indent': '',
-            'strlen': len,  # for people who need CJK characters (like me!)
+            'strlen': len,  # can be replaced by say wcwidth.wcswidth
             'line_callback': str.rstrip,    # called on every line
         }
 
@@ -152,9 +152,12 @@ class Formatter(abc.ABC):
 
     def check_indent_option(self, indent):
         if not isinstance(indent, str):
-            raise TypeError(f'indent must be a str, not {indent!r}')
+            raise TypeError(f'indent should be a str, not {indent!r}')
         return indent
 
+    # Synonyms of get_option('indent') and configure(indent=...), but...
+    # this is a lot more readable (given just how many times indent is
+    # modified in this code)
     def get_indent(self):
         return self._options['indent']
 
@@ -183,30 +186,30 @@ class Formatter(abc.ABC):
     # Low-level wrapper of the wrapper.wrap function (does not strip)
     def _wrap(self, text):
         if self._is_wrapping_disabled():
-            return [text]
+            return [text] if text else []
         return self.wrapper.wrap(text)
 
     # The big guy (does strip)
     # (By strip we now mean calling line_callback(); it used to be just
     # simply calling str.rstrip())
-    def _wrap_paragraph(self, text, *, prefix='', fillchar=' '):
-        strlen = self.get_option('strlen')
-        callback = self.get_option('line_callback')
+    def _wrap_paragraph(self, text, *, prefix='', fillchar=' ',
+                        return_empty=False):
+        # return_empty = False will ensure that _wrap_paragraph() returns ['']
+        # when provided an empty string (as opposed to _wrap())
+        strlen = self._options['strlen']
+        callback = self._options['line_callback']
         if not (prefix or self.get_indent()):
-            return self._wrap(text)
-
+            if return_empty:
+                return self._wrap(text)
+            return self._wrap(text) or ['']
         indent = self.get_indent()
-        if self._is_wrapping_disabled():
-            return [callback(indent + line) for line in self._wrap(text)]
 
         if strlen(fillchar) != 1:
-            raise ValueError('fillchar should have a length of 1')
+            raise ValueError('fillchar should precisely have length 1')
         prefix_len = strlen(prefix)
-        width = self.width - strlen(indent) - prefix_len
         prefix_fill = prefix_len * fillchar
-        if width <= 0:
-            raise ValueError('prefix too long')
-        self.wrapper.width = width
+        if not self._is_wrapping_disabled():
+            self.wrapper.width = self.width - strlen(indent) - prefix_len
         lines = []
         # Use 'prefix' only on the first iteration
         indent_and_prefix = indent + prefix
@@ -216,28 +219,46 @@ class Formatter(abc.ABC):
             # Use 'prefix_fill' on every other iteration
             indent_and_prefix = indent + prefix_fill
 
+        if not lines and not return_empty:
+            lines.append(callback(indent_and_prefix))
         return lines
 
-    def _center_paragraph(self, text, fillchar=' '):
-        strlen = self.get_option('strlen')
-        callback = self.get_option('line_callback')
-        if self._is_wrapping_disabled():
-            # Keep in mind that self.width can be None
-            # But also Python treats width shorter than the string itself
-            # as formatting with no centering at all :D
-            indent = self.get_indent()
-            width = max(0, (self.width or 0) - strlen(indent))
-            line = '{}{:{}^{}}'.format(indent, text, fillchar, width)
-            return [callback(line)]
-        else:
-            lines = []
-            indent = self.get_indent()
-            width = self.width - strlen(indent)
-            # _wrap_paragraph will complain if width < 0
-            for line in self._wrap_paragraph(text):
-                line = '{}{:{}^{}}'.format(indent, line, fillchar, width)
-                lines.append(callback(line))
-            return lines
+    def _center_paragraph(self, text, *, fillchar=' ', return_empty=False):
+        strlen = self._options['strlen']
+        callback = self._options['line_callback']
+        indent = self.get_indent()
+
+        # Width can be negative in this case; in general the string itself
+        # will be returned if the length of the string is no less than the
+        # width.
+        width = (self.width or 0) - strlen(indent)
+        if not self._is_wrapping_disabled():
+            self.wrapper.width = width
+        lines = []
+        for line in self._wrap(text):
+            line = indent + self._center_line(line, width, fillchar)
+            lines.append(callback(line))
+
+        if not lines and not return_empty:
+            lines.append(callback(indent))
+        return lines
+
+    # Something weird about my Python 3.9.6 interpreter is that
+    # line.center(width, fillchar) and '{:{}^{}}'.format(line, fillchar,
+    # width) do not given the same result... (the former somehow adds more
+    # characters to the LEFT instead of to the RIGHT)  I guess it might be
+    # better if I added my own implementation here so that the results
+    # produced by the formatter are always the same.
+    def _center_line(self, line, width, fillchar=' '):
+        strlen = self._options['strlen']
+        if strlen(fillchar) != 1:
+            raise ValueError('fillchar should precisely have length 1')
+        diff = width - strlen(line)
+        if diff > 0:
+            left = diff // 2
+            right = diff - left
+            return ''.join([left * fillchar, line, right * fillchar])
+        return line
 
 
 class PanelFormatter(Formatter):
@@ -272,7 +293,7 @@ class PanelFormatter(Formatter):
         )
         self.configure(**options)
 
-    def format(self, panel, *, entry_formatter=None):
+    def format(self, panel, *, entry_formatter=None, set_options=True):
         if not isinstance(panel, Panel):
             raise TypeError('format() expected a Panel object, got {!r}'
                             .format(panel))
@@ -290,16 +311,21 @@ class PanelFormatter(Formatter):
             except StopIteration:
                 time_zone = timeutil.get_local_timezone()
 
+        options = dict(
+            indent=self.get_option('entry_indent'),
+            base_dir=base_dir,
+            time_format=self.get_option('time_format'),
+            label_insight=False,
+            time_zone=self.get_option('time_zone'),
+            coerce_time_zone=self.get_option('coerce_time_zone'),
+        )
         if entry_formatter is None:
-            entry_formatter = EntryFormatter(
-                self.width, self.wrapper,
-                indent=self.get_option('entry_indent'),
-                base_dir=base_dir,
-                time_format=self.get_option('time_format'),
-                label_insight=False,
-                time_zone=self.get_option('time_zone'),
-                coerce_time_zone=self.get_option('coerce_time_zone'),
-            )
+            entry_formatter = EntryFormatter(self.width, self.wrapper)
+            entry_formatter.configure(**options)
+        elif set_options:
+            entry_formatter.wrapper = self.wrapper
+            entry_formatter.width = self.width
+            entry_formatter.configure(**options)
 
         main_entries = []
         insight_entries = []
@@ -336,7 +362,7 @@ class PanelFormatter(Formatter):
 
         # Insight entries
         if insight_entries:
-            lines = self.wrap_entry_header(insight_entries)
+            lines = self.wrap_insight_header(insight_entries)
             _extend_lines(buf, lines)
             for entry in insight_entries:
                 buf.append(entry_formatter.format(entry))
@@ -363,7 +389,7 @@ class PanelFormatter(Formatter):
     def wrap_title(self, title):
         return self._center_paragraph(title)
 
-    def wrap_entry_header(self, insight_entries):
+    def wrap_insight_header(self, insight_entries):
         if len(insight_entries) == 1:
             return ['Insight', '-------']
         return ['Insights', '--------']
@@ -421,8 +447,9 @@ class EntryFormatter(Formatter):
 
         with self.indented(self.get_option('content_indent')):
             # Question
-            if entry.get_attribute('question', None) is not None:
-                _extend_lines(buf, self.wrap_question(entry))
+            question = self.get_question(entry)
+            if question is not None:
+                _extend_lines(buf, self.wrap_question(entry, question))
                 buf.append(self.get_option('question_content_vsep'))
 
             # Content
@@ -431,8 +458,8 @@ class EntryFormatter(Formatter):
             buf.pop()
 
             # Caption + transcription
-            caption = entry.get_attribute('caption', None)
-            transcription = entry.get_attribute('transcription', None)
+            caption = self.get_caption(entry)
+            transcription = self.get_transcription(entry)
             if caption is not None or transcription is not None:
                 if content_lines:
                     buf.append('\n')
@@ -486,11 +513,7 @@ class EntryFormatter(Formatter):
             title += ' [fold = {entry_time.fold}]'
 
         # Attributes to display after the title
-        attrs = []
-        if self.get_option('label_insight') and entry.insight:
-            attrs.append('insight')
-        if entry.is_text() and entry.get_type() != 'plain':
-            attrs.append(entry.get_type())
+        attrs = self.get_entry_attrs(entry)
 
         if attrs:
             attr_str = '({})'.format(', '.join(attrs))
@@ -498,6 +521,14 @@ class EntryFormatter(Formatter):
             return title + sep + attr_str
         else:
             return title
+
+    def get_entry_attrs(self, entry):
+        attrs = []
+        if self.get_option('label_insight') and entry.insight:
+            attrs.append('insight')
+        if entry.is_text() and entry.get_type() != 'plain':
+            attrs.append(entry.get_type())
+        return attrs
 
     # Default implementation (improved from basicproc.py)
     def __get_time_format(self, entry_time):
@@ -541,10 +572,6 @@ class EntryFormatter(Formatter):
     def wrap_header(self, header):
         return self._wrap_paragraph(header)
 
-    def wrap_question(self, entry):
-        return self._wrap_paragraph(entry.get_attribute('question'),
-                                    prefix='(Q) ')
-
     # TODO: For files like .py and .c (basically SOURCE code) we don't really
     # wanna display them...
     #
@@ -570,14 +597,15 @@ class EntryFormatter(Formatter):
 
     def wrap_text_content(self, entry):
         """Default implementation for wrapping text entries."""
-        text = entry.get_data()
+        text = self.get_content(entry)
         lines = []
         for par in text.splitlines():
-            # Don't treat empty lines as nothing as they usually
-            # separate paragraphs
-            wrapped = self._wrap_paragraph(par) or ['']
+            wrapped = self._wrap_paragraph(par)
             lines.extend(wrapped)
         return lines
+
+    def get_content(self, entry):
+        return entry.get_data()
 
     def wrap_binary_content(self, entry):
         """Default implementation for wrapping binary entries."""
@@ -591,52 +619,36 @@ class EntryFormatter(Formatter):
             text = f'{entry.get_type()} data sized {size_str}>'
         return self._wrap_paragraph(text, prefix='<')
 
-    # Internal implementation...
-    __indent_pattern = re.compile(r'^(\s*)(.*)$', flags=re.UNICODE)
-
-    def __wrap_with_indent(self, text):
-        lines = []
-        for par in text.splitlines():
-            match = self.__indent_pattern.match(par)
-            # Just in case the pattern did not match any leading whitespace
-            if match:
-                indent, rest = match.groups()
-            else:
-                indent, rest = '', par
-
-            wrapped = None  # sentinel
-            if indent:
-                try:
-                    wrapped = self._wrap_paragraph(rest, prefix=indent) or ['']
-                except ValueError:  # prefix might be too long
-                    pass
-
-            if wrapped is None:
-                wrapped = self._wrap_paragraph(par) or ['']
-            lines.extend(wrapped)
-        return lines or ['']
-
-    def wrap_markdown_entry(self, entry):
-        return self.__wrap_with_indent(entry.get_data())
-
     def __get_path(self, path):
         return os.path.relpath(path, start=self.get_option('base_dir'))
+
+    def get_question(self, entry):
+        return entry.get_attribute('question', None)
+
+    def wrap_question(self, entry, question):
+        return self._wrap_paragraph(question, prefix='(Q) ')
+
+    def get_caption(self, entry):
+        return entry.get_attribute('caption', None)
 
     def wrap_caption(self, entry, caption):
         lines = []
         prefix = 'Caption: '
         for par in caption.splitlines():
-            wrapped = self._wrap_paragraph(par, prefix=prefix) or ['']
+            wrapped = self._wrap_paragraph(par, prefix=prefix)
             lines.extend(wrapped)
             # len('Caption: ') equals 9
             prefix = ' ' * 9
         return lines
 
+    def get_transcription(self, entry):
+        return entry.get_attribute('transcription', None)
+
     def wrap_transcription(self, entry, transcription):
         lines = self._wrap_paragraph('Transcription:')
         with self.indented(self.get_option('transcription_indent')):
             for par in transcription.splitlines():
-                wrapped = self.__wrap_with_indent(par)
+                wrapped = self._wrap_paragraph(par)
                 lines.extend(wrapped)
         return lines
 

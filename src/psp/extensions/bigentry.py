@@ -18,8 +18,8 @@ __all__ = [
 ]
 
 
-# Archive format is essentially a subset of the DATA TYPES.
-_ARCHIVE_FORMATS = [
+# Archive formats are essentially a subset of DATA TYPES.
+ARCHIVE_FORMATS = [
     'zip', 'tar', 'gztar', 'bztar',
 ]
 
@@ -40,13 +40,13 @@ _ARCHIVE_FORMATS = [
 #
 # Some additional remarks:
 #
-#   *   is_text() returns True.
+#    *  is_text() returns True.
 #
-#   *   The old data-related functions (get_type(), get_encoding(),
+#    *  The old data-related functions (get_type(), get_encoding(),
 #       get_format(), get_source()) return information about the whole
 #       archive.
 #
-#   *   get_data() returns the text from the main file (for stringify to
+#    *  get_data() returns the text from the main file (for stringify to
 #       somewhat properly work).  get_raw_data() still works as expected.
 #
 class BigEntry(Entry):
@@ -74,8 +74,7 @@ class BigEntry(Entry):
                 return self.__extract_data_from_filename(fp.name)
             finally:
                 os.unlink(fp.name)
-        else:
-            return self.__extract_data_from_filename(self.get_source())
+        return self.__extract_data_from_filename(self.get_source())
 
     def __extract_data_from_filename(self, filename):
         arch_format = self.get_type()
@@ -93,6 +92,28 @@ class BigEntry(Entry):
         # This shouldn't happen...?
         raise ValueError(f'unknown archive format: {arch_format!r}')
 
+    def extractall(self, dirname):
+        if self.has_raw_data():
+            fp = tempfile.NamedTemporaryFile(delete=False)
+            try:
+                with fp:
+                    fp.write(self.get_raw_data())
+                return self.__extractall(fp.name, dirname)
+            finally:
+                os.unlink(fp.name)
+        return self.__extractall(self.get_source(), dirname)
+
+    def __extractall(self, filename, dirname):
+        arch_format = self.get_type()
+        if arch_format == 'zip':
+            with zipfile.ZipFile(filename) as zf:
+                zf.extractall(dirname)
+        elif arch_format in {'tar', 'gztar', 'bztar'}:
+            with tarfile.open(filename) as tf:
+                tf.extractall(dirname)
+        else:
+            raise ValueError(f'unknown archive format: {arch_format!r}')
+
     # Getters and setters (the rather boring part, you can say)
     def set_main_file(self, value):
         super().set_data_attribute('mf_name', value)
@@ -101,7 +122,7 @@ class BigEntry(Entry):
         return super().get_data_attribute('mf_name')
 
     def set_type(self, value):
-        if value not in _ARCHIVE_FORMATS:
+        if value not in ARCHIVE_FORMATS:
             raise ValueError(f'invalid archive format: {value!r}')
         super().set_type(value)
 
@@ -146,9 +167,9 @@ class BigEntry(Entry):
 # The only difference this loader makes is when an entry dict contains
 # a dictionary for 'data'.  In that case, the dictionary must provide
 #
-#   *   precisely one of 'raw' and 'input' (similar to 'data' and 'input');
-#       and
-#   *   the path of the main file within the archive, through 'main-file'.
+#   *  precisely one of 'raw' and 'input' (similar to 'data' with
+#      'data-encoding' being base64 and 'input'); and
+#   *  the path of the main file within the archive, through 'main-file'.
 #
 # The 'input' attribute, if provided, should be a path to the archive.
 # The 'raw' attribute, if provided, should a base64-encoded ASCII string.
@@ -162,7 +183,7 @@ class BigEntry(Entry):
 # looks better or something idk)
 #
 #     {
-#         "date-time": "2021-12-17 ",
+#         "date-time": "2021-12-17 12:00",
 #         "format": "the archive format",
 #         "data": {
 #             "input": "the path to the archive",
@@ -212,7 +233,7 @@ class BigLoader(JSONLoader):
         if arch_format is None:
             raise ValueError('unable to infer archive format; '
                              'must be explicitly specified')
-        if arch_format not in _ARCHIVE_FORMATS:
+        if arch_format not in ARCHIVE_FORMATS:
             raise ValueError(f'file type not an archive: {arch_format!r}')
         entry['type'] = arch_format
 
@@ -221,7 +242,7 @@ class BigLoader(JSONLoader):
 
         # Extracting type, encoding and format from archive data
         if 'type-format' in arch_data:
-            mf_type, mf_format = arch_data.pop('type-format').split('-')
+            mf_type, mf_format = arch_data.pop('type-format').split('-', 1)
         else:
             mf_type = arch_data.pop('type', None)
             mf_format = arch_data.pop('format', None)
@@ -262,17 +283,18 @@ class BigDumper(JSONDumper):
         self.configure(**options)
 
     def get_entry_filename(self, entry, panel, added):
+        # Always export big entries
         if isinstance(entry, BigEntry):
-            root, filename = super().get_basic_entry_filename(
-                entry, panel, added)
+            root, filename = super().basic_get_entry_filename(
+                entry, panel, added, 'doc')
             return root, os.path.join('doc', filename)
         return super().get_entry_filename(entry, panel, added)
 
     def write_entry_data(self, entry_dict, entry):
-        del entry_dict['type']
-        del entry_dict['encoding']
         if not isinstance(entry, BigEntry):
             return super().write_entry_data(entry_dict, entry)
+        del entry_dict['type']
+        del entry_dict['encoding']
         entry_dict['format'] = entry.get_type()
         data_dict = entry_dict['data'] = collections.OrderedDict()
         encoded_data = base64.b64encode(entry.get_raw_data())

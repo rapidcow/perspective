@@ -9,6 +9,7 @@ import os
 import shutil
 import sys
 import textwrap
+# Make sure importlib trick works
 if sys.version_info <= (3, 5):
     raise RuntimeError('Python 3.5+ is required to run psp as __main__')
 import importlib.util
@@ -23,12 +24,17 @@ __all__ = ['main']
 
 
 def get_terminal_width():
+    # This should fall back to (columns=80, lines=24)
     return shutil.get_terminal_size().columns
 
 
 def load_config_from_file(file):
+    with open(file):    # Test for file existence
+        pass
     # Code from https://stackoverflow.com/a/67692
     spec = importlib.util.spec_from_file_location('config', file)
+    if spec is None:
+        raise RuntimeError(f'failed to load configuration file {file!r}')
     config = importlib.util.module_from_spec(spec)
     # XXX: Why do we need this???
     sys.path.insert(1, os.path.dirname(file))
@@ -39,13 +45,25 @@ def load_config_from_file(file):
     return config
 
 
+def get_date(s):
+    if s.strip().lower() == 'today':
+        return datetime.date.today()
+    if s.strip().lower() == 'yesterday':
+        return datetime.date.today() - datetime.timedelta(1)
+    return parse_date(s)
+
+
 def main():
     parser = argparse.ArgumentParser(
         prog='psp', description='psp library main program')
     parser.add_argument('--version', '-V', action='version',
                         version='%(prog)s pre-release')
-    parser.add_argument('--config', '-c', help=
-        'path to the Python configuration script')
+    parser.add_argument('--config', '-c',
+        help='path to the Python configuration script')
+    parser.add_argument('--wlevel', '-w', action='count', default=0,
+        help=('warning level. 0 (default) for suppressing all warnings, '
+              '1 for emitting warnings, 2 and above for raising warnings '
+              'as exceptions'))
 
     subparsers = parser.add_subparsers(required=True, dest='subname')
 
@@ -54,20 +72,24 @@ def main():
     parser_file = argparse.ArgumentParser(add_help=False)
     file_group = parser_file.add_mutually_exclusive_group()
     file_group.add_argument('files', nargs='*', default=['backup.json'],
-        help=("backup files to load (default 'backup.json'); cannot be "
-              "provided if the --source option is present"))
+        help=("backup files to load (default 'backup.json' if --source is "
+              "not provided); cannot be provided if the --source option "
+              "is present"))
     file_group.add_argument('--source', '-s', help=
-        "source to all backup files; cannot be provided if "
-        "the 'file' arguments are present")
+        "a file containing source paths (relative to the file itself or "
+        "absolute) to all backup files on each line; cannot be provided "
+        "if the 'file' arguments are present")
 
     # The 'print' subcommand
     parser_print = subparsers.add_parser(
         'print', help='print a panel', parents=[parser_file])
-    parser_print.add_argument('--date', '-d', type=parse_date, help=
+    parser_print.add_argument('--date', '-d', type=get_date, help=
         'date of the panel to load (if you omit this, psp-print will '
         'prompt you to enter one progressively)')
     parser_print.add_argument('--width', '-w', type=int,
-        default=get_terminal_width(), help='width of the panel to print')
+        default=get_terminal_width(), help=
+        'width of the panel to print (default is inferred from your '
+        'terminal size, if possible, otherwise 80)')
     parser_print.add_argument('--out', '-o', help=
         'file name to print the panel to (default stdout)')
 
@@ -79,7 +101,8 @@ def main():
     parser_cksum = subparsers.add_parser(
         'checksum', help='generate a checksum')
     parser_cksum.add_argument(
-        'cfile', help='backup file to generate checksum from')
+        'cfile', nargs='?', default='backup.json',
+        help='backup file to generate checksum from')
 
     # The 'merge' subcommand
     parser_merge = subparsers.add_parser(
@@ -128,6 +151,9 @@ def main():
             dirpath = os.path.dirname(srcpath)
             with io.open(srcpath) as fp:
                 for line in fp:
+                    # Skip empty lines
+                    if not line.strip():
+                        continue
                     filepath = os.path.join(dirpath, line.rstrip('\n'))
                     files.append(os.path.normpath(filepath))
         else:
@@ -135,13 +161,18 @@ def main():
 
     if args.subname == 'print':
         loader = Loader()
+        set_warning_level(loader, args.wlevel)
         if args.date is None:
             # print all available dates
             num_files = len(files)
             plural = '' if num_files == 1 else 's'
             wrapper = textwrap.TextWrapper(width=get_terminal_width())
-            print(wrapper.fill(
-                'Welcome to the psp-print command-line utility!'))
+            lines = wrapper.wrap(
+                'Welcome to the psp-print command-line utility!')
+            for line in lines:
+                print(line)
+            if len(lines) > 1:
+                print()
             print(wrapper.fill(
                 f"I'm about to load from the {num_files} file{plural} you "
                 f"specified, so let me know what panel you would like to "
@@ -164,11 +195,11 @@ def main():
         wrapper = textwrap.TextWrapper(
             width=max(5, get_terminal_width() - 4))
         loader = Loader()
+        set_warning_level(loader, args.wlevel)
         cwd = os.getcwd()
         for file in files:
             print(f'info {os.path.relpath(file, cwd)!r}:')
-            loader.configure(base_dir=os.path.dirname(file),
-                             suppress_warnings=True)
+            loader.configure(base_dir=os.path.dirname(file))
             attrs, panels = loader.load_all(file)
             if any(attrs.get('desc', '')):
                 print('  description:')
@@ -192,9 +223,10 @@ def main():
     elif args.subname == 'checksum':
         import json
         from collections import OrderedDict
-        loader = JSONLoader(base_dir=os.path.dirname(args.cfile), 
-                            suppress_warning=True)
-        panels = loader.load(args.cfile)
+        loader = Loader()
+        loader.configure(base_dir=os.path.dirname(args.cfile))
+        set_warning_level(loader, args.wlevel)
+        _, panels = loader.load_all(args.cfile)
         p_count = 0
         e_count = 0
         size = 0
@@ -203,12 +235,11 @@ def main():
             for entry in panel.entries():
                 e_count += 1
                 size += entry.get_raw_data_size()
-        cksum_dict = OrderedDict(sorted({
-            'panel': p_count,
-            'entries': e_count,
-            'total-bytes': size,
-        }.items()))
-        json.dump(cksum_dict, sys.stdout, indent=2)
+        cksum_dict = OrderedDict([
+            ('panel', p_count),
+            ('entries', e_count),
+            ('total-bytes', size)])
+        json.dump(cksum_dict, sys.stdout, indent=2, sort_keys=False)
         print('\n', flush=True)  # i don't know why
         while True:
             inp = input('Add this to backup? (y/[n]) ')
@@ -227,6 +258,11 @@ def main():
         assert False, 'unreachable'
 
 
+def set_warning_level(loader, level):
+    loader.configure(suppress_warnings=level == 0,
+                     error_on_warning=level >= 2)
+
+
 def request_date_from_user(loader, files):
     """Input from sys.stdin"""
     width = get_terminal_width()
@@ -235,10 +271,10 @@ def request_date_from_user(loader, files):
     for file in files:
         loader.configure(base_dir=os.path.dirname(file))
         try:
-            _, pn = loader.load_all(file)
+            _, panel_objects = loader.load_all(file)
         except (ValueError, LoadError) as exc:
             raise RuntimeError(f'failed to load {file!r}') from exc
-        panels.update((p.date, p) for p in pn)
+        panels.update((p.date, p) for p in panel_objects)
 
     dates = set(panels.keys())
     return _get_year_from_user(dates, panels)
@@ -246,19 +282,25 @@ def request_date_from_user(loader, files):
 
 def _get_year_from_user(dates, panels, skip_one=True):
     width = get_terminal_width()
+    wrapper = textwrap.TextWrapper(width)
     years = sorted({d.year for d in dates})
     if len(years) == 1 and skip_one:
         need_space = False
         year = years.pop()
-        print(f'Only one year found: {year}, automatically selecting it...')
+        print(wrapper.fill(
+            f'Only one year found: {year}, automatically selecting it...'))
     else:
         need_space = True
-        print(f'Select one year from all the years below:')
+        print(wrapper.fill(
+            f'Select one year from all the years below:'))
         _print_list((str(y).zfill(4) for y in years), min(49, width), 4, 3)
         while True:
             y = input('Year: ')
             if not y.strip():
                 continue
+            if y.lower() in ('p', 'print'):
+                _print_list((str(y).zfill(4) for y in years),
+                            min(49, width), 4, 3)
             try:
                 year = int(y)
             except ValueError:
@@ -275,23 +317,34 @@ def _get_year_from_user(dates, panels, skip_one=True):
 
 
 def month_name(m):
-    return ('Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun',
-            'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec')[m - 1]
+    return ('January', 'February', 'March', 'April', 'May', 'June',
+            'July', 'August', 'September', 'October', 'November',
+            'December')[m - 1]
+
+
+def month_abbr(m):
+    return month_name(m)[:3]
 
 
 def _get_month_from_user(dates, panels, year, skip_one=True):
     width = get_terminal_width()
+    wrapper = textwrap.TextWrapper(width)
     year_dates = [d for d in dates if d.year == year]
     months = sorted({d.month for d in year_dates})
     if len(months) == 1 and skip_one:
         need_space = False
         month = months.pop()
-        print(f'Only one month in {year} found: {month_name(month)}, '
-              f'automatically selecting it...')
+        print(wrapper.fill(
+            f'Only one month in {year} found: {month_name(month)}, '
+            f'automatically selecting it...'))
     else:
         need_space = True
-        print(f'Select one month from the months of {year} below:')
-        _print_list(map(month_name, months), min(48, width), 3, 3)
+        print(wrapper.fill(
+            f'Select one month from the months of {year} below:'))
+        # Fit all months if we can, otherwise six at most.
+        _print_list(map(month_abbr, months),
+                    36 if 36 < width < 6*len(months) else width,
+                    3, 3)
         while True:
             m = input('Month: ')
             if not m.strip():
@@ -300,9 +353,15 @@ def _get_month_from_user(dates, panels, year, skip_one=True):
                 print()
                 return _get_year_from_user(dates, panels, False)
             month = 0
-            if m.lower() in ('cal', 'calendar'):
+            if m.lower() in ('c', 'cal', 'calendar'):
                 _print_calendar_for_year(year, panels)
                 print()
+                continue
+            if m.lower() in ('p', 'print'):
+                _print_list(
+                    map(month_abbr, months),
+                    36 if 36 < width < 6*len(months) else width,
+                    3, 3)
                 continue
             try:
                 month = int(m)
@@ -313,14 +372,17 @@ def _get_month_from_user(dates, panels, year, skip_one=True):
                     try:
                         dt = datetime.datetime.strptime(m.strip(), fmt)
                         month = dt.month
-                    except:
+                    except ValueError:
                         pass
                     else:
                         break
             if month:
                 if month not in months:
-                    print(f'Error: {month} ({month_name(month)}) is not a '
-                          f'valid month')
+                    if 1 <= month <= 12:
+                        name = f' ({month_abbr(month)})'
+                    else:
+                        name = ''
+                    print(f'Error: {month}{name} is not a valid month')
                 else:
                     break
             else:
@@ -333,15 +395,19 @@ def _get_month_from_user(dates, panels, year, skip_one=True):
 
 def _get_day_from_user(dates, panels, year, year_dates, month):
     width = get_terminal_width()
+    wrapper = textwrap.TextWrapper(width)
     month_dates = [d for d in year_dates if d.month == month]
     days = sorted({d.day for d in month_dates})
     if len(days) == 1:
         day = days.pop()
-        print(f'You have only one day in {month_name(month)} {year}: {day}, '
-              f'automatically selecting it...')
+        print(wrapper.fill(
+            f'You have only one day in {month_name(month)} {year}: '
+            f'{day}, automatically selecting it...'))
     else:
-        print(f'Select one day from {month_name(month)} {year} below:')
-        _print_list((format(d, '2') for d in days), min(72, width), 2, 3)
+        print(wrapper.fill(
+            f'Select one day from {month_name(month)} {year} below:'))
+        # Fit 12 days at most?
+        _print_list((format(d, '2') for d in days), min(60, width), 2, 3)
         while True:
             d = input('Day: ')
             if not d.strip():
@@ -349,9 +415,13 @@ def _get_day_from_user(dates, panels, year, year_dates, month):
             if d.lower() in ('b', 'back', 'prev'):
                 print()
                 return _get_month_from_user(dates, panels, year, False)
-            if d.lower() in ('cal', 'calendar'):
+            if d.lower() in ('c', 'cal', 'calendar'):
                 _print_calendar(year, month, days, panels)
                 print()
+                continue
+            if d.lower() in ('p', 'print'):
+                _print_list((format(d, '2') for d in days), min(60, width),
+                            2, 3)
                 continue
             try:
                 day = int(d)
@@ -367,7 +437,8 @@ def _get_day_from_user(dates, panels, year, year_dates, month):
 
 
 def _print_list(items, total_width, width, gap):
-    # Compute number of columns we can fit
+    # Compute number of columns we can fit, and no matter how narrow
+    # the total width is we must have at least one column.
     col = max(1, total_width // (width+gap))
     col_count = 0
     gaps = ' ' * gap
@@ -378,6 +449,7 @@ def _print_list(items, total_width, width, gap):
         if col_count == col:
             print()
             col_count = 0
+    # Only end the line if we are still printing one
     if col_count:
         print()
 
@@ -395,9 +467,12 @@ def _format_calendar(year, month, days, panels):
     subs_list = []
     for day in days:
         this_date = datetime.date(year, month, day)
+        panel = panels[this_date]
         try:
-            panel = panels[this_date]
             rating = panel.get_attribute('rating')
+        except KeyError:
+            pass
+        else:
             color = ('31' if rating == ':(' else    # Red
                      '33' if rating == ':|' else    # Yellow
                      '32' if rating == ':)' else    # Green
@@ -405,8 +480,6 @@ def _format_calendar(year, month, days, panels):
             day_str = format(day, '2')
             subs_str = f'\033[1;{color}m{day_str}\033[0m'
             subs_list.append((body.index(day_str), subs_str))
-        except LookupError:
-            pass
     subs_list.sort()
     buf = []
     start = 0
@@ -446,7 +519,7 @@ def _print_calendar_for_year(year, panels):
             calendars.append(_format_calendar(year, month, days, panels))
         # Traverse each line of every calendar and print them out
         for lines in itertools.zip_longest(
-                *(c.splitlines() for c in calendars),
+                *[c.splitlines() for c in calendars],
                 fillvalue=empty_row):
             print(calendar_sep.join(lines).rstrip())
         not_first_row = True
@@ -463,8 +536,9 @@ def load_panel_with_date(loader, files, date):
         if panel is not None:
             panels.append(panel)
     if not panels:
-        raise ValueError(f'cannot find panel in the list of source '
-                         f'files given {date}')
+        raise ValueError(f'cannot find panel {date} in the given list of '
+                         f'source files, or a fatal error occured while '
+                         f'loading a backup file')
     # Pick any combination of two panels and check if they have the
     # exact same attributes; if not then throw a warning
     for p1, p2 in itertools.combinations(panels, 2):
