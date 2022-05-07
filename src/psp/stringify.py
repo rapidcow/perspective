@@ -1,4 +1,4 @@
-"""String formatter classes for the data types."""
+"""String formatter classes for panels and entries."""
 
 import abc
 import contextlib
@@ -681,7 +681,7 @@ def print_entry(entry, file=None, **options):
 
 def default_bytes_formatter(x):
     # x: float -> s: string
-    if x < 100:
+    if x < 100.0:
         return format(x, '.3g')
     return format(x, '.1f')
 
