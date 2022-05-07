@@ -173,7 +173,7 @@ class Entry:
     )
 
     def __init__(self, date_time, *, insight=False):
-        self.__check_aware_datetime(date_time)
+        self.__check_aware_datetime(date_time, 'date_time')
         self._panel = None
 
         # These are the only 5 attributes that are always guaranteed to be
