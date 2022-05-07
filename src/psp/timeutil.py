@@ -197,24 +197,21 @@ def format_offset(off):
     _format_offset() in the datetime module (used by functions like
     datetime.isoformat).
     """
-    s = ''
-    if off is not None:
-        if off.days < 0:
-            sign = '-'
-            off = -off
-        else:
-            sign = '+'
-        hh, mm = divmod(off, datetime.timedelta(hours=1))
-        mm, ss = divmod(mm, datetime.timedelta(minutes=1))
-        s += '%s%02d:%02d' % (sign, hh, mm)
-        if ss or ss.microseconds:
-            s += ':%02d' % ss.seconds
-
-            if ss.microseconds:
-                s += '.%06d' % ss.microseconds
+    if off.days < 0:
+        sign = '-'
+        off = -off
+    else:
+        sign = '+'
+    hh, mm = divmod(off, datetime.timedelta(hours=1))
+    mm, ss = divmod(mm, datetime.timedelta(minutes=1))
+    s = '%s%02d:%02d' % (sign, hh, mm)
+    if ss or ss.microseconds:
+        s += ':%02d' % ss.seconds
+        if ss.microseconds:
+            s += '.%06d' % ss.microseconds
     return s
 
 
 def to_utc(dt):
-    """Convert datetime to UTC"""
+    """Convert datetime to UTC."""
     return dt.astimezone(datetime.timezone.utc)

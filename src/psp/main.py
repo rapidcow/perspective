@@ -75,10 +75,10 @@ def main():
         help=("backup files to load (default 'backup.json' if --source is "
               "not provided); cannot be provided if the --source option "
               "is present"))
-    file_group.add_argument('--source', '-s', help=
-        "a file containing source paths (relative to the file itself or "
-        "absolute) to all backup files on each line; cannot be provided "
-        "if the 'file' arguments are present")
+    file_group.add_argument('--source', '-s',
+        help=("a file containing source paths (relative to the file "
+              "itself or absolute) to all backup files on each line; "
+              "cannot be provided if the 'file' arguments are present"))
 
     # The 'print' subcommand
     parser_print = subparsers.add_parser(
@@ -343,7 +343,7 @@ def _get_month_from_user(dates, panels, year, skip_one=True):
             f'Select one month from the months of {year} below:'))
         # Fit all months if we can, otherwise six at most.
         _print_list(map(month_abbr, months),
-                    36 if 36 < width < 6*len(months) else width,
+                    36 if 36 < width < 6 * len(months) else width,
                     3, 3)
         while True:
             m = input('Month: ')
@@ -360,7 +360,7 @@ def _get_month_from_user(dates, panels, year, skip_one=True):
             if m.lower() in ('p', 'print'):
                 _print_list(
                     map(month_abbr, months),
-                    36 if 36 < width < 6*len(months) else width,
+                    36 if 36 < width < 6 * len(months) else width,
                     3, 3)
                 continue
             try:
@@ -477,6 +477,7 @@ def _format_calendar(year, month, days, panels):
                      '33' if rating == ':|' else    # Yellow
                      '32' if rating == ':)' else    # Green
                      '30')                          # Black
+            # right-padded number of width 2
             day_str = format(day, '2')
             subs_str = f'\033[1;{color}m{day_str}\033[0m'
             subs_list.append((body.index(day_str), subs_str))
@@ -538,7 +539,7 @@ def load_panel_with_date(loader, files, date):
     if not panels:
         raise ValueError(f'cannot find panel {date} in the given list of '
                          f'source files, or a fatal error occured while '
-                         f'loading a backup file')
+                         f'loading some of the backup files')
     # Pick any combination of two panels and check if they have the
     # exact same attributes; if not then throw a warning
     for p1, p2 in itertools.combinations(panels, 2):

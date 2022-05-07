@@ -123,7 +123,7 @@ class Panel:
     def __contains__(self, entry):
         return entry in self._entries
 
-    def n_entries(self):
+    def count(self):
         return len(self._entries)
 
     # ==========
@@ -173,6 +173,7 @@ class Entry:
     )
 
     def __init__(self, date_time, *, insight=False):
+        self.__check_aware_datetime(date_time)
         self._panel = None
 
         # These are the only 5 attributes that are always guaranteed to be
@@ -200,9 +201,13 @@ class Entry:
         # Question and caption are not set by default (why? idk..)
         self._attrs = {}
 
-        # Only validate after insight and date_time are successfully set
-        self._insight = insight
-        self.date_time = date_time
+        # panel is None so far so we don't need to call
+        # __check_time_and_insight() for validation
+        #
+        # We're not using the date_time property setter so that subclasses
+        # have a chance to make these read-only
+        self._insight = bool(insight)
+        self._date_time = date_time
 
     # Help subclasses get the data they need
     # (making a shallow copy of the object doesn't work; the whole object
@@ -243,7 +248,7 @@ class Entry:
 
     @date_time.setter
     def date_time(self, dt):
-        self.__check_naive_datetime(dt, 'date_time')
+        self.__check_aware_datetime(dt, 'date_time')
         self.__check_time_and_insight(self.panel, dt, self.insight)
         self._date_time = dt
 
@@ -260,7 +265,7 @@ class Entry:
         self._insight = value
 
     @staticmethod
-    def __check_naive_datetime(dt, name):
+    def __check_aware_datetime(dt, name):
         _assert_type(dt, datetime.datetime, name)
         if timeutil.is_naive(dt):
             raise TypeError(f'{name} should be an aware datetime object')
@@ -376,9 +381,11 @@ class Entry:
                 pass
         except OSError as exc:
             if not os.path.exists(path):
-                raise ValueError(f'source path {path!r} does not exist')
+                raise ValueError(f'source path {path!r} '
+                                 f'does not exist') from exc
             if not os.path.isfile(path):
-                raise ValueError(f'source path {path!r} is not a file')
+                raise ValueError(f'source path {path!r} '
+                                 f'is not a file') from exc
             # We don't know what caused it... err.....
             raise ValueError(f'invalid source path {path!r}') from exc
         original_path = self._data['source']
@@ -505,7 +512,7 @@ class Entry:
         # always be set when loaded by json_processor.JSONLoader.
         if posted is None:
             return time
-        self.__check_naive_datetime(posted, 'posted')
+        self.__check_aware_datetime(posted, 'posted')
         created = self.get_meta_attribute('created')
         self.__check_created_and_posted_time(created, posted)
         return posted
@@ -516,7 +523,7 @@ class Entry:
         """
         if created is None:
             return None
-        self.__check_naive_datetime(created, 'created')
+        self.__check_aware_datetime(created, 'created')
         posted = self.get_meta_attribute('posted')
         self.__check_created_and_posted_time(created, posted)
         modified = self.get_meta_attribute('modified')
@@ -526,7 +533,7 @@ class Entry:
     def check_modified_meta_attribute(self, modified):
         if modified is None:
             return None
-        self.__check_naive_datetime(modified, 'modified')
+        self.__check_aware_datetime(modified, 'modified')
         created = self.get_meta_attribute('created')
         self.__check_created_and_modified_time(created, modified)
         return modified

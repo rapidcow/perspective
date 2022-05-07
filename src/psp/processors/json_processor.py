@@ -687,7 +687,7 @@ class JSONLoader:
         meta = entry.pop('meta', {})
         obj_meta = {}
 
-        # Posting time (specific to the Perspective app)
+        # Posted time (specific to the Perspective app)
         # The default value of obj.date_time is already set by types.Entry,
         # so we only need to handle non-default cases here.
         if 'posted' in meta:
@@ -986,12 +986,12 @@ class JSONDumper:
     #     this is exposed as the basic_dump() method
     def dump(self, panels, dirname):
         os.mkdir(dirname)
-        panels = self._get_sorted_panels(panels)
+        panels = self.get_sorted_panels(panels)
         entry_list = []
         files_added = set()
         export_paths = []
         for panel in panels:
-            entries = self._get_sorted_entries(panel.get_entries())
+            entries = self.get_sorted_entries(panel.get_entries())
             entry_list.append(entries)
             for entry in entries:
                 rv = self.get_entry_filename(entry, panel, files_added.copy())
@@ -1028,10 +1028,9 @@ class JSONDumper:
             raise
 
     def dumps(self, panels):
-        panels = self._get_sorted_panels(panels)
+        panels = self.get_sorted_panels(panels)
         entry_list = [
-            self._get_sorted_entries(panel.get_entries())
-            for panel in panels
+            self.get_sorted_entries(panel.get_entries()) for panel in panels
         ]
         data = self.__basic_dump_data(panels, entry_list, (), os.devnull)
         if 'paths' in data:
@@ -1293,23 +1292,18 @@ class JSONDumper:
         `panel_dict['entries']`.
         """
         panel_dict = collections.OrderedDict()
-        panel_dict['date'] = self._format_date(panel.date)
+        panel_dict['date'] = self.format_date(panel.date)
         rating = panel.get_attribute('rating')
         if rating is not None:
             panel_dict['rating'] = rating
         panel_dict['entries'] = entries = []
         return panel_dict, entries
 
-    # TODO: Expose format functions as public API
     def wrap_entry(self, entry, panel):
         """(entry, panel, offset) -> (entry_dict)"""
         entry_dict = collections.OrderedDict()
         date_time = entry.date_time
-        # Hide date if possible
-        if date_time.date() == panel.date:
-            entry_dict['time'] = self._format_time(date_time.timetz())
-        else:
-            entry_dict['date-time'] = self._format_datetime(date_time)
+        self.set_entry_time(entry_dict, date_time)
 
         entry_dict['type'] = entry.get_type()
         entry_dict['encoding'] = entry.get_encoding()
@@ -1354,11 +1348,11 @@ class JSONDumper:
         time_modified = meta.pop('modified', None)
 
         if time_posted != time:
-            meta_dict['posted'] = self._format_datetime(time_posted)
+            meta_dict['posted'] = self.format_datetime(time_posted)
         if time_created is not None:
-            meta_dict['created'] = self._format_datetime(time_created)
+            meta_dict['created'] = self.format_datetime(time_created)
         if time_modified != time_created:
-            meta_dict['modified'] = self._format_datetime(time_modified)
+            meta_dict['modified'] = self.format_datetime(time_modified)
 
         filename = meta.pop('filename', None)
         if filename is not None:
@@ -1375,27 +1369,34 @@ class JSONDumper:
                 meta_dict[key] = str(value)
         return meta_dict
 
-    def _format_date(self, d):
+    def format_date(self, d):
         return d.isoformat()
 
-    def _format_time(self, t):
+    def format_time(self, t):
         timespec = 'auto' if t.second or t.microsecond else 'minutes'
         default_offset = self.get_option('default_time_zone_offset')
         if t.utcoffset() == default_offset:
             t = t.replace(tzinfo=None)
         return t.isoformat(timespec)
 
-    def _format_datetime(self, dt):
+    def format_datetime(self, dt):
         timespec = 'auto' if dt.second or dt.microsecond else 'minutes'
         default_offset = self.get_option('default_time_zone_offset')
         if dt.utcoffset() == default_offset:
             dt = dt.replace(tzinfo=None)
         return dt.isoformat(' ', timespec)
 
-    def _get_sorted_panels(self, panels):
+    def set_entry_time(self, entry_dict, date_time):
+        # Hide date if possible
+        if date_time.date() == panel.date:
+            entry_dict['time'] = self.format_time(date_time.timetz())
+        else:
+            entry_dict['date-time'] = self.format_datetime(date_time)
+
+    def get_sorted_panels(self, panels):
         return sorted(panels, key=lambda p: p.date)
 
-    def _get_sorted_entries(self, entries):
+    def get_sorted_entries(self, entries):
         entries = sorted(entries, key=lambda e: timeutil.to_utc(e.date_time))
         entries.sort(key=lambda e: e.insight)
         return entries

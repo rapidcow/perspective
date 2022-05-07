@@ -209,7 +209,7 @@ class BigLoader(JSONLoader):
         # Raise exception for extraneous keys
         for k in {'input', 'type', 'encoding'}:
             if k in entry:
-                raise ValueError(f'invalid key for entry: {k!r}')
+                raise ValueError(f'invalid key for big entry: {k!r}')
         for k in {'data', 'data-encoding'}:
             if k in arch_data:
                 raise ValueError(f'invalid key for archive data: {k!r}')
@@ -237,8 +237,8 @@ class BigLoader(JSONLoader):
             raise ValueError(f'file type not an archive: {arch_format!r}')
         entry['type'] = arch_format
 
-        parsed = super().process_entry(panel, entry, attrs)
-        obj = BigEntry.from_entry(parsed)
+        base = super().process_entry(panel, entry, attrs)
+        obj = BigEntry.from_entry(base)
 
         # Extracting type, encoding and format from archive data
         if 'type-format' in arch_data:
