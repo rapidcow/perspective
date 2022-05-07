@@ -40,7 +40,7 @@ def split_line(line):
     try:
         kw, args = line.split(maxsplit=1)
     except ValueError:
-        return line.strip(), ''
+        return line.strip().upper(), ''
     return kw.upper(), args
 
 
@@ -173,7 +173,7 @@ class PlainEntryConverter:
                     if kw == 'BEGIN':
                         break
                     if self.is_nonempty(line):
-                        raise Error('Expecting BEGIN', lineno)
+                        raise Error('Expected BEGIN', lineno)
 
                 # Append the entry type
                 args = args.strip()
