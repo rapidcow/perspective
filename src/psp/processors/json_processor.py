@@ -174,8 +174,6 @@ class JSONLoader:
             'error_on_warning': False,
             'suppress_warnings': False,
             'warn_ambiguous_paths': True,
-            # Convenience stuff (when load() is called with a file path)
-            'encoding': 'utf-8',
 
             # directories paths to prepend to input paths when they're not
             # found
@@ -235,7 +233,8 @@ class JSONLoader:
             import warnings
             warnings.warn(msg, w, 2)
 
-    def load(self, file, date=None, *, get_attributes=False):
+    def load(self, file, date=None, *, encoding='utf-8',
+             get_attributes=False):
         """Load an archive from a file as a list of `Panel`s.
 
         If `date` is provided, optimize the loading process by only
@@ -253,6 +252,9 @@ class JSONLoader:
             A `datetime.date` instance or a `str` representing a date.
             The string must be valid for `timeutil.parse_date`.
 
+        encoding : str, default 'utf-8'
+            The encoding used to open `file` if it is a file path.
+
         get_attributes : bool, default False
             Whether to return the panel(s) with attributes (top-level
             configurations of the backup file) or not.
@@ -269,16 +271,16 @@ class JSONLoader:
         -   Return `panels` if `date` is not provided; and
         -   Return `panel` is `date` is provided.
         """
-        content = self.__handle_readable_file(file)
+        content = self.__handle_readable_file(file, encoding)
         data = json.loads(content, **self.get_option('json_options'))
         return self.load_data(data, date, get_attributes=get_attributes)
 
-    def __handle_readable_file(self, file):
+    def __handle_readable_file(self, file, encoding):
         """Handle a path-like or file-like object and return the file
         content on success.
         """
         if isinstance(file, (str, os.PathLike)):
-            with io.open(file, encoding=self.get_option('encoding')) as fp:
+            with io.open(file, 'r', encoding=encoding) as fp:
                 content = fp.read()
         elif hasattr(file, 'read'):
             content = file.read()
