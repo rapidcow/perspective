@@ -1,14 +1,19 @@
 """Export panels to HTML.  Something I wrote personally to compensate
 for the lack of images from the terminal output...
 
-This script relies on two external packages you should probably install
-using pip in advance, one is pandoc and the other is pyheif (only
-required when you have HEIC images).
+This script relies on three external packages you should probably install
+using pip in advance:
+
+* pandoc (used to parse Markdown entries)
+* pyheif (for reading HEIC files if you use iOS like me... >_>)
+* tqdm (fancy progress bar)
 
 And of course, you should install my psp package too. ;)
 """
 
+import datetime
 import html
+import json
 import os
 import re
 import shutil
@@ -17,13 +22,14 @@ import tempfile
 
 import pandoc
 import pandoc.types
+import psp.util
 import psp.datatypes
 import psp.timeutil
-from psp.stringify import EntryFormatter
-from psp.extensions.bigentry import BigEntry
+from psp.stringify import PanelFormatter, EntryFormatter
+from psp.extensions.bigentry import BigEntry, BigLoader, BigDumper
+import tqdm
 
-# The only public function in this script
-__all__ = ['write_panel_html']
+__all__ = ['write_panel_html', 'export_panels']
 
 time_format = '24 hour'
 
@@ -543,3 +549,74 @@ def tex_to_html(entry, dirpath, relpath):
         entry.extractall(dirpath)
         os.unlink(os.path.join(dirpath, entry.get_main_file()))
     return ''.join(parts)
+
+
+def export_panels(panels, outdir, *, dumper=None, loader=None,
+                  panel_formatter=None, entry_formatter=None):
+    if dumper is None:
+        dumper = BigDumper(
+            default_time_zone_offset=datetime.timedelta(hours=8))
+    if loader is None:
+        loader = BigLoader(error_on_warning=True)
+    if panel_formatter is None:
+        panel_formatter = PanelFormatter()
+    panel_formatter.width = 120
+    panel_formatter.configure(time_format=time_format)
+    if entry_formatter is None:
+        entry_formatter = EntryFormatter()
+
+    n_panels = len(panels)
+    progress_bar = tqdm.tqdm(panels)
+    for index, panel in enumerate(progress_bar):
+        dirpath = os.path.join(outdir, *str(panel.date).split('-'))
+        bk = os.path.join(dirpath, '_bk')
+        nav_elements = []
+        nav_info = {}
+        if index > 0:
+            prev_date = panels[index - 1].date
+            prev_path = os.path.join(
+                *['..'] * 3, *str(prev_date).split('-'), 'main.html')
+            nav_elements.append(f'<a href="{prev_path}">Prev</a>')
+            nav_info['prev'] = str(prev_date)
+        if index < n_panels - 1:
+            next_date = panels[index + 1].date
+            next_path = os.path.join(
+                *['..'] * 3, *str(next_date).split('-'), 'main.html')
+            nav_elements.append(f'<a href="{next_path}">Next</a>')
+            nav_info['next'] = str(next_date)
+        if os.path.exists(dirpath):
+            loader.configure(base_dir=os.path.join(dirpath, '_bk'))
+            try:
+                orig_panel = loader.load(os.path.join(bk, 'backup.json'))[0]
+                with open(os.path.join(bk, 'nav_info.json')) as fp:
+                    orig_nav_info = json.load(fp)
+            except FileNotFoundError:
+                pass
+            else:
+                if (psp.util.panels_equal(orig_panel, panel)
+                        and orig_nav_info == nav_info):
+                    progress_bar.set_description(f'skipping {panel.date}')
+                    continue
+            action = 'updating'
+            shutil.rmtree(dirpath)
+        else:
+            action = 'creating'
+        progress_bar.set_description(f'{action} {panel.date}')
+        os.makedirs(dirpath)
+        nav_elements.append('<a href="main.txt">Plain</a>')
+        if nav_elements:
+            content = '&nbsp;&nbsp;'.join(nav_elements)
+            extra = f'<div class="card">{content}</div>'
+        else:
+            extra = ''
+        write_panel_html(panel, dirpath, sidebar_extra=extra)
+        dumper.dump([panel], bk)
+        with open(os.path.join(bk, 'nav_info.json'), 'w') as fp:
+            json.dump(nav_info, fp)
+        loader.configure(base_dir=bk)
+        panel_formatter.configure(base_dir=bk)
+        panel = loader.load(os.path.join(bk, 'backup.json'))[0]
+        with open(os.path.join(dirpath, 'main.txt'), 'w') as fp:
+            fp.write(panel_formatter.format(
+                panel, entry_formatter=entry_formatter))
+            fp.write('\n')
