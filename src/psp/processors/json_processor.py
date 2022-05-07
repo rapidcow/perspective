@@ -1302,8 +1302,7 @@ class JSONDumper:
     def wrap_entry(self, entry, panel):
         """(entry, panel, offset) -> (entry_dict)"""
         entry_dict = collections.OrderedDict()
-        date_time = entry.date_time
-        self.set_entry_time(entry_dict, date_time)
+        self.set_entry_time(entry_dict, entry, panel)
 
         entry_dict['type'] = entry.get_type()
         entry_dict['encoding'] = entry.get_encoding()
@@ -1386,12 +1385,13 @@ class JSONDumper:
             dt = dt.replace(tzinfo=None)
         return dt.isoformat(' ', timespec)
 
-    def set_entry_time(self, entry_dict, date_time):
+    def set_entry_time(self, entry_dict, entry, panel):
         # Hide date if possible
-        if date_time.date() == panel.date:
-            entry_dict['time'] = self.format_time(date_time.timetz())
+        date_time = entry.date_time
+        if entry.date_time.date() == panel.date:
+            entry_dict['time'] = self.format_time(entry.date_time.timetz())
         else:
-            entry_dict['date-time'] = self.format_datetime(date_time)
+            entry_dict['date-time'] = self.format_datetime(entry.date_time)
 
     def get_sorted_panels(self, panels):
         return sorted(panels, key=lambda p: p.date)
