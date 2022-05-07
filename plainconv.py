@@ -192,7 +192,7 @@ class PlainEntryConverter:
                                     lineno) from None
                     lineno += 1
                     kw, args = split_line(line)
-                    if kw == 'END' and not self.is_nonempty(args):
+                    if kw == 'END' and not args.strip():
                         break
                     elif kw.startswith('END!'):
                         line = line.replace('END!', 'END', 1)
@@ -230,7 +230,7 @@ class PlainEntryConverter:
         ])
 
     def is_nonempty(self, line):
-        return line.strip()
+        return line.strip() and not line.lstrip().startswith('#')
 
     def make_panel(self, args):
         # reset the local year var for context
