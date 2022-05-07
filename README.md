@@ -34,7 +34,7 @@ incomplete now).
 I will include a brief introduction there so... please be patient with
 me if this makes no sense to you now.
 
-(For a brief demo, you can find it [here][Demo].)
+(For a brief demo, you can find one [here][Demo].)
 
 
 [Perspective]: http://blinky.co/perspective_app/
