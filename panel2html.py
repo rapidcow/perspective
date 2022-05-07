@@ -1,11 +1,12 @@
 """Export panels to HTML.  Something I wrote personally to compensate
 for the lack of images from the terminal output...
 
-This script relies on three external packages you should probably install
+This script relies on 4 external packages you should probably install
 using pip in advance:
 
 * pandoc (used to parse Markdown entries)
 * pyheif (for reading HEIC files if you use iOS like me... >_>)
+* PIL (used along with pyheif)
 * tqdm (fancy progress bar)
 
 And of course, you should install my psp package too. ;)
