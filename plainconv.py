@@ -407,14 +407,16 @@ if __name__ == '__main__':
     parser.add_argument('infile', nargs='?', default=None)
     # entry format
     parser.add_argument('--format', '-f', dest='fmt', type=int, default=1)
+    # default year
+    parser.add_argument('--year', '-y', type=int,
+                        default=datetime.date.today().year)
     args = parser.parse_args()
     conv = 'convert' if args.fmt == 1 else 'convert_ii'
-    this_year = datetime.date.today().year
     if args.infile is not None:
         with open(args.infile) as fp:
-            data = getattr(PlainEntryConverter(this_year), conv)(fp)
+            data = getattr(PlainEntryConverter(args.year), conv)(fp)
             print(json.dumps(data, indent=2, ensure_ascii=False))
     else:
         import sys
-        data = getattr(PlainEntryConverter(this_year), conv)(sys.stdin)
+        data = getattr(PlainEntryConverter(args.year), conv)(sys.stdin)
         print(json.dumps(data, indent=2, ensure_ascii=False))
