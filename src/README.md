@@ -1,6 +1,7 @@
 # `psp` --- A rework of the `basicproc.py` program
 
-(Go to [perspective](../) for instructions on how to install/uninstall this library.)
+(Go to [perspective](https://github.com/rapidcow/perspective/) for
+instructions on how to install/uninstall this library.)
 
 Similar to how you use [`basicproc.py`][], the plan is that you can do the
 same while running it as a module.
