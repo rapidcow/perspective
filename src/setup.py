@@ -12,10 +12,10 @@ def read(path):
 
 setup(
     name='psp',
-    version='0.1.0',    # Not released
+    version='0.1.1',
     description='A program for backing up entries in Perspective <3',
     long_description=read('README.md'),
     author='rapidcow',
-    author_email='eyzmeng@gmail.com',
+    author_email='thegentlecow@gmail.com',
     packages=['psp', 'psp.processors', 'psp.extensions'],
 )
