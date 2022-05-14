@@ -198,14 +198,15 @@ class Formatter(abc.ABC):
         # when provided an empty string (as opposed to _wrap())
         strlen = self._options['strlen']
         callback = self._options['line_callback']
+        if strlen(fillchar) != 1:
+            raise ValueError('fillchar should precisely have length 1')
+
         if not (prefix or self.get_indent()):
             if return_empty:
                 return self._wrap(text)
             return self._wrap(text) or ['']
         indent = self.get_indent()
 
-        if strlen(fillchar) != 1:
-            raise ValueError('fillchar should precisely have length 1')
         prefix_len = strlen(prefix)
         prefix_fill = prefix_len * fillchar
         if not self._is_wrapping_disabled():
@@ -227,6 +228,8 @@ class Formatter(abc.ABC):
         strlen = self._options['strlen']
         callback = self._options['line_callback']
         indent = self.get_indent()
+        if strlen(fillchar) != 1:
+            raise ValueError('fillchar should precisely have length 1')
 
         # Width can be negative in this case; in general the string itself
         # will be returned if the length of the string is no less than the
@@ -246,13 +249,11 @@ class Formatter(abc.ABC):
     # Something weird about my Python 3.9.6 interpreter is that
     # line.center(width, fillchar) and '{:{}^{}}'.format(line, fillchar,
     # width) do not given the same result... (the former somehow adds more
-    # characters to the LEFT instead of to the RIGHT)  I guess it might be
-    # better if I added my own implementation here so that the results
+    # characters to the LEFT instead of to the RIGHT.)  I guess it might
+    # be better if I added my own implementation here so that the results
     # produced by the formatter are always the same.
     def _center_line(self, line, width, fillchar=' '):
         strlen = self._options['strlen']
-        if strlen(fillchar) != 1:
-            raise ValueError('fillchar should precisely have length 1')
         diff = width - strlen(line)
         if diff > 0:
             left = diff // 2
@@ -272,7 +273,7 @@ class PanelFormatter(Formatter):
         })
 
         def sort_func(entry):
-            return timeutil.to_utc(entry.date_time)
+            return entry.date_time
 
         self.configure(
             base_dir=None,  # none to infer
@@ -299,26 +300,7 @@ class PanelFormatter(Formatter):
                             .format(panel))
 
         buf = []
-
-        # infer base dir
-        base_dir = self.get_option('base_dir') or os.getcwd()
-
-        # infer the time zone
-        time_zone = self.get_option('time_zone')
-        if not time_zone:
-            try:
-                time_zone = next(panel.entries()).date_time.tzinfo
-            except StopIteration:
-                time_zone = timeutil.get_local_timezone()
-
-        options = dict(
-            indent=self.get_option('entry_indent'),
-            base_dir=base_dir,
-            time_format=self.get_option('time_format'),
-            label_insight=False,
-            time_zone=self.get_option('time_zone'),
-            coerce_time_zone=self.get_option('coerce_time_zone'),
-        )
+        options = self.get_entry_formatter_options(panel)
         if entry_formatter is None:
             entry_formatter = EntryFormatter(self.width, self.wrapper)
             entry_formatter.configure(**options)
@@ -374,17 +356,42 @@ class PanelFormatter(Formatter):
 
         return ''.join(buf)
 
+    def get_entry_formatter_options(self, panel):
+        # infer base dir
+        base_dir = self.get_option('base_dir') or os.getcwd()
+        time_zone = self.get_option('time_zone')
+        # For convenience, hide all entry time zones if they happen to have
+        # the same offset.
+        if panel.has_entries():
+            entries = panel.entries()
+            first = next(entries).date_time
+            if all(e.date_time.tzinfo == first.tzinfo or
+                   e.date_time.utcoffset() == first.utcoffset()
+                   for e in entries):
+                time_zone = first.tzinfo
+        return dict(
+            indent=self.get_option('entry_indent'),
+            base_dir=base_dir,
+            time_format=self.get_option('time_format'),
+            label_insight=False,
+            time_zone=time_zone,
+            coerce_time_zone=self.get_option('coerce_time_zone'),
+        )
+
     # Can be subclassed (public method too!)
     def get_date_string(self, date):
         return date.strftime(f'%A, %B {date.day}, %Y')
 
     def get_title(self, panel):
         date_str = self.get_date_string(panel.date)
-        rating = panel.get_attribute('rating')
+        rating = self.get_rating(panel)
         if rating is None:
             return date_str
         sep = self.get_option('date_rating_sep')
         return f'{date_str}{sep}{rating}'
+
+    def get_rating(self, panel):
+        return panel.get_attribute('rating', None)
 
     def wrap_title(self, title):
         return self._center_paragraph(title)
@@ -402,8 +409,8 @@ class EntryFormatter(Formatter):
             'base_dir', 'time_zone', 'coerce_time_zone',
             'time_format', 'date_time_sep',
             'entry_title_attr_sep', 'label_insight', 'content_indent',
-            'question_content_vsep', 'below_content_vsep',
-            'transcription_indent',
+            'title_content_vsep', 'question_content_vsep',
+            'below_content_vsep', 'transcription_indent',
         })
 
         self.configure(
@@ -417,6 +424,7 @@ class EntryFormatter(Formatter):
 
             label_insight=False,
             content_indent='  ',
+            title_content_vsep='\n',
             question_content_vsep='\n',
             # For both 'caption' and 'transcription'
             below_content_vsep='\n',
@@ -446,6 +454,12 @@ class EntryFormatter(Formatter):
         _extend_lines(buf, lines)
 
         with self.indented(self.get_option('content_indent')):
+            # Title
+            title = self.get_entry_title(entry)
+            if title is not None:
+                _extend_lines(buf, self.wrap_entry_title(entry, title))
+                buf.append(self.get_option('title_content_vsep'))
+
             # Question
             question = self.get_question(entry)
             if question is not None:
@@ -483,38 +497,15 @@ class EntryFormatter(Formatter):
     # is merely a time, but the header would be the complete string of
     # information ready to be displayed
     def get_header(self, entry):
-        panel_date = entry.panel.date
         entry_time = entry.date_time
+        if entry.has_panel():
+            panel_date = entry.panel.date
+        else:
+            panel_date = entry_time.date()
         title = self.get_title(panel_date, entry_time)
-
-        # infer time zone
-        time_zone = self.get_option('time_zone') or entry.date_time.tzinfo
-
-        # Potential need to specify time zone
-        entry_time_zone = entry.date_time.tzinfo
-        tz_displayed = False
-        # XXX: Do we use == or is for comparing two tzinfo's?
-        # (I found this: https://bugs.python.org/issue28601)
-        if not (time_zone == entry_time_zone or
-                time_zone.utcoffset(entry_time) ==
-                entry_time_zone.utcoffset(entry_time)):
-            if self.get_option('coerce_time_zone'):
-                time_coerced = entry_time.astimezone(time_zone)
-                title = self.get_title(panel_date, time_coerced)
-            else:
-                offset_str = timeutil.format_offset(entry_time.utcoffset())
-                assert offset_str  # should be aware???
-                # TODO: Add a offset sep like attribute
-                title += f' [{offset_str}]'
-                tz_displayed = True
-
-        # Very cheap solution >.>
-        if not tz_displayed and entry_time.fold:
-            title += ' [fold = {entry_time.fold}]'
 
         # Attributes to display after the title
         attrs = self.get_entry_attrs(entry)
-
         if attrs:
             attr_str = '({})'.format(', '.join(attrs))
             sep = self.get_option('entry_title_attr_sep')
@@ -562,12 +553,54 @@ class EntryFormatter(Formatter):
         sep = self.get_option('date_time_sep')
         return entry_time.strftime(f'%b %e, %Y{sep}{time_format}')
 
-    def get_title(self, panel_date, entry_time):
+    def get_basic_title(self, panel_date, entry_time):
+        """get_title() except entry_time is naive"""
         if panel_date.year == entry_time.year:
             if panel_date == entry_time.date():
                 return self.get_short_title(entry_time)
             return self.get_long_title(entry_time)
         return self.get_full_title(entry_time)
+
+    def get_title(self, panel_date, entry_time):
+        """Return a representing the time of the entry."""
+        time_zone = self.get_option('time_zone')
+        entry_time_zone = entry_time.tzinfo
+
+        title = None
+
+        display_tz = False
+        display_time = entry_time
+        # When time zone is not provided, display time zone
+        if time_zone is None:
+            display_tz = True
+        else:
+            # Case of coercing time zone
+            if self.get_option('coerce_time_zone'):
+                display_time = (
+                    entry_time.astimezone(time_zone).replace(tzinfo=None))
+                title = self.get_basic_title(panel_date, display_time)
+            # If we're not coercing and entry's time zone have different
+            # offsets, display the time zone.
+            # (Comparison of two tzinfo: https://bugs.python.org/issue28601)
+            elif not (time_zone == entry_time_zone or
+                    time_zone.utcoffset(entry_time) ==
+                    entry_time_zone.utcoffset(entry_time)):
+                display_tz = True
+
+        if title is None:
+            title = self.get_basic_title(
+                panel_date, entry_time.replace(tzinfo=None))
+
+        if display_tz:
+            title += f' [{self.format_timezone(entry_time)}]'
+        # Cheap solution when the fold attribute != 0 >.>
+        elif display_time.fold:
+            title += f' [fold = {display_time.fold}]'
+
+        return title
+
+    def format_timezone(self, date_time):
+        return timeutil.format_offset(date_time.utcoffset())
 
     def wrap_header(self, header):
         return self._wrap_paragraph(header)
@@ -622,6 +655,12 @@ class EntryFormatter(Formatter):
     def __get_path(self, path):
         return os.path.relpath(path, start=self.get_option('base_dir'))
 
+    def get_entry_title(self, entry):
+        return entry.get_title()
+
+    def wrap_entry_title(self, entry, title):
+        return self._center_paragraph(title)
+
     def get_question(self, entry):
         return entry.get_attribute('question', None)
 
@@ -657,9 +696,11 @@ class EntryFormatter(Formatter):
 # Convenience interface
 # =====================
 
-def format_panel(panel, **options):
+def format_panel(panel, *, entry_formatter=None, set_options=True,
+                 **options):
     formatter = PanelFormatter(**options)
-    return formatter.format(panel)
+    return formatter.format(panel, entry_formatter=entry_formatter,
+                            set_options=set_options)
 
 
 def format_entry(entry, **options):
@@ -667,12 +708,12 @@ def format_entry(entry, **options):
     return formatter.format(entry)
 
 
-def print_panel(panel, file=None, **options):
-    return print(format_panel(panel, **options), file=file)
+def print_panel(panel, file=None, **kwargs):
+    return print(format_panel(panel, **kwargs), file=file)
 
 
-def print_entry(entry, file=None, **options):
-    return print(format_entry(entry, **options), file=file)
+def print_entry(entry, file=None, **kwargs):
+    return print(format_entry(entry, **kwargs), file=file)
 
 
 # ==============================

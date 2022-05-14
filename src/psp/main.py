@@ -5,8 +5,8 @@ import calendar
 import datetime
 import io
 import itertools
+import json
 import os
-import shutil
 import sys
 import textwrap
 # Make sure importlib trick works
@@ -121,15 +121,29 @@ def main():
     try:
         Loader = config.BackupLoader
     except AttributeError:
-        Loader = JSONLoader
+        class Loader(JSONLoader):
+            __slots__ = ()
+
+            def configure(self, **kwargs):
+                super().configure(**kwargs)
+
+            def load_json(self, file):
+                with open(file, encoding='utf-8') as fp:
+                    return json.load(fp)
+
+            def load_all(self, data):
+                return super().load_data(data)
+
+            def load_single(self, data, date):
+                return super().load_data(data, date=date)
 
     # Get backup dumper class
     try:
         Dumper = config.BackupDumper
     except AttributeError:
+        # XXX: Not needed yet
         class Dumper(JSONDumper):
-            def __init__(self, base_dir):
-                super().__init__(base_dir=base_dir)
+            __slots__ = ()
 
     # Get panel printer class
     try:
@@ -200,11 +214,13 @@ def main():
         for file in files:
             print(f'info {os.path.relpath(file, cwd)!r}:')
             loader.configure(base_dir=os.path.dirname(file))
-            attrs, panels = loader.load_all(file)
-            if any(attrs.get('desc', '')):
+            with open(file) as fp:
+                data = loader.load_json(file)
+                panels = loader.load_all(data)
+            if any(data.get('desc', '')):
                 print('  description:')
-                desc = (attrs['desc'] if isinstance(attrs['desc'], str)
-                        else ''.join(attrs['desc']))
+                desc = (data['desc'] if isinstance(data['desc'], str)
+                        else ''.join(data['desc']))
                 for par in desc.splitlines():
                     lines = wrapper.wrap(par) or ['']
                     for line in lines:
@@ -221,20 +237,13 @@ def main():
     elif args.subname == 'merge':
         raise RuntimeError('psp-merge coming soon!')
     elif args.subname == 'checksum':
-        import json
         from collections import OrderedDict
         loader = Loader()
         loader.configure(base_dir=os.path.dirname(args.cfile))
         set_warning_level(loader, args.wlevel)
-        _, panels = loader.load_all(args.cfile)
-        p_count = 0
-        e_count = 0
-        size = 0
-        for panel in panels:
-            p_count += 1
-            for entry in panel.entries():
-                e_count += 1
-                size += entry.get_raw_data_size()
+        data = loader.load_json(args.cfile)
+        panels = loader.load_all(data)
+        p_count, e_count, size = util.checksum(panels)
         cksum_dict = OrderedDict([
             ('panel', p_count),
             ('entries', e_count),
@@ -271,7 +280,8 @@ def request_date_from_user(loader, files):
     for file in files:
         loader.configure(base_dir=os.path.dirname(file))
         try:
-            _, panel_objects = loader.load_all(file)
+            data = loader.load_json(file)
+            panel_objects = loader.load_all(data)
         except (ValueError, LoadError) as exc:
             raise RuntimeError(f'failed to load {file!r}') from exc
         panels.update((p.date, p) for p in panel_objects)
@@ -291,8 +301,7 @@ def _get_year_from_user(dates, panels, skip_one=True):
             f'Only one year found: {year}, automatically selecting it...'))
     else:
         need_space = True
-        print(wrapper.fill(
-            f'Select one year from all the years below:'))
+        print(wrapper.fill('Select one year from the years below:'))
         _print_list((str(y).zfill(4) for y in years), min(49, width), 4, 3)
         while True:
             y = input('Year: ')
@@ -531,7 +540,8 @@ def load_panel_with_date(loader, files, date):
     for file in files:
         try:
             loader.configure(base_dir=os.path.dirname(file))
-            panel = loader.load_single(file, date)
+            data = loader.load_json(file)
+            panel = loader.load_single(data, date)
         except (ValueError, LookupError):
             continue
         if panel is not None:

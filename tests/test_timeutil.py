@@ -1,22 +1,22 @@
-"""Test the psp.timeutil module."""
-import datetime
+"""Test the psp.datatypes module."""
+
 import unittest
+from psp import datatypes
 
-from psp import timeutil
+
+class TestRegistration(unittest.TestCase):
+    pass
 
 
-class TestParseTimezone(unittest.TestCase):
-    """Test the function parse_timezone()."""
+class TestLookup(unittest.TestCase):
+    """General lookup functions."""
+    def test_is_text_type(self):
+        self.assertIs(datatypes.is_text_type('binary'), False)
+        self.assertIs(datatypes.is_text_type('plain'), True)
+        self.assertIs(datatypes.is_text_type('markdown'), True)
+        with self.assertRaises(LookupError, msg='among us'):
+            datatypes.is_text_type('among us')
 
-    def test_bad_offsets(self):
-        """Test invalid offset strings."""
-        bad_offsets = [
-            '00:00.',
-            '00:00.0',
-            '00:00:00.1234567',
-            '.1234',
-        ]
-        for offset_str in bad_offsets:
-            msg = f'invalid time zone: {offset_str!r}'
-            with self.assertRaisesRegex(ValueError, msg):
-                timeutil.parse_timezone(offset_str)
+    def test_path_to_type(self):
+        self.assertEqual(datatypes.path_to_type('test.jpeg'), 'jpeg')
+        self.assertEqual(datatypes.path_to_type('a.tar.gz'), 'gztar')
