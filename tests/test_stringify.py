@@ -1,6 +1,6 @@
 """Test the psp.stringify module."""
 from datetime import date, datetime, timedelta, timezone, tzinfo
-from textwrap import dedent
+from textwrap import TextWrapper, dedent
 import unittest
 
 from psp import stringify
@@ -8,6 +8,160 @@ from psp.types import Entry, Panel
 
 
 # XXX: Do we test wide characters now?
+
+class FormatterSubclass(stringify.Formatter):
+    def format(self, obj):
+        return str(obj)
+
+    # Expose protected methods
+    def wrap_paragraph(self, *args, **kwargs):
+        return self._wrap_paragraph(*args, **kwargs)
+
+    def center_paragraph(self, *args, **kwargs):
+        return self._center_paragraph(*args, **kwargs)
+
+
+ZERO = timedelta(0)
+HOUR = timedelta(hours=1)
+
+
+class TzWithFold(tzinfo):
+    """An imaginary time zone where the offset is -7 before Nov 07 2021 02:00
+    in local time but falls back to -8 from that time and on.
+
+    This mimics the falling back from Pacific Daylight Time to
+    Pacific Standard Time.
+
+    As per PEP 495, the FOLD attribute is used to disambiguate the time
+    period from Nov 07 2021 01:00 (inclusive) to 02:00 (exclusive) in local
+    time where a value of 1 denotes the offset after the change (-8) and 0
+    denotes the offset before the change (-7).
+
+    UTC to local time:
+
+            UTC | 08:00 | 08:30 | 08:59 | 09:00 | 09:30 | 09:59 | 10:00
+        --------+-------+-------+-------+-------+-------+-------+-------
+         -07:00 | 01:00 | 01:30 | 01:59 |       |       |       |
+         -08:00 |       |       |       | 01:00 | 01:30 | 01:59 | 02:00
+                 ^~~~~~~~~~~~~~~~~~~~~^   ^~~~~~~~~~~~~~~~~~~~^
+                        fold = 0                fold = 1
+
+    Local time to UTC:
+
+             00:00 | 00:30 |     01:00 | 01:30 | 01:59 |     02:00 | 02:30
+        -----------+-------+-----------+-------+-------+-----------+-------
+         (U) 07:00 | 07:30 | (0) 08:00 | 08:30 | 08:59 |           |
+                   |       | (1) 09:00 | 09:30 | 09:59 | (U) 10:00 | 10:11
+
+    (U) stands for unaffected (the fold attribute is ignored); (0) and (1)
+    denote fold being 0 and 1 respectively.
+    """
+    # Date of time zone change in local time, at 2 AM
+    MOVE_TIME = datetime(2021, 11, 7, 2)
+
+    def utcoffset(self, dt):
+        # dt.astimezone() subtracts this from the time, so it's
+        # kind of like adding 7 or 8 hours to the local time to get
+        # the UTC time...
+        dt = dt.replace(tzinfo=None)
+        if dt < self.MOVE_TIME - HOUR:
+            return -7 * HOUR
+        # Ambiguous local time where [MOVE_TIME - HOUR, MOVE_TIME) occurs
+        # twice
+        if self.MOVE_TIME - HOUR <= dt < self.MOVE_TIME:
+            return -8 * HOUR if dt.fold else -7 * HOUR
+        return -8 * HOUR
+
+    def fromutc(self, dt):
+        # The input to this function is a datetime with UTC values
+        # but with a tzinfo set to self.
+        if not isinstance(dt, datetime):
+            raise TypeError('fromutc() requires a datetime argument')
+        if dt.tzinfo is not self:
+            raise ValueError('dt.tzinfo is not self')
+
+        # To make it consistent let's convert the UTC time to local time
+        # with an offset of -7 (before the change) assumed.
+        # Take it as a naive guess before making adjustments or something idk
+        dt = dt.replace(tzinfo=None) - 7*HOUR
+        # The current time is fine as long as it's before falling back
+        if dt < self.MOVE_TIME:
+            return dt.replace(tzinfo=self)
+        # Within an hour after falling back, we're repeating the same
+        # interval so fold needs to be set to 1
+        if self.MOVE_TIME <= dt < self.MOVE_TIME + HOUR:
+            return (dt - HOUR).replace(tzinfo=self, fold=1)
+        return (dt - HOUR).replace(tzinfo=self)
+
+    def dst(self, dt):
+        return ZERO
+
+    def tzname(self, dt):
+        if dt >= self.MOVE_TIME:
+            return '-08:00'
+        return '-07:00'
+
+    def __repr__(self):
+        return f'{type(self).__name__}()'
+
+
+class TestFormatter(unittest.TestCase):
+    def test_wrap_paragraph(self):
+        f = FormatterSubclass(width=10)
+        # Inputting string containing merely whitespace characters
+        # should give nothing but the prefix
+        self.assertEqual(f.wrap_paragraph(''), [''])
+        self.assertEqual(f.wrap_paragraph(' \t\n'), [''])
+        self.assertEqual(f.wrap_paragraph('hello world'),
+                         ['hello world'])
+        self.assertEqual(f.wrap_paragraph('hello world', prefix='> '),
+                         ['> hello', '  world'])
+
+        # Indentation
+        # -----------
+        f.set_indent('| ')
+        self.assertEqual(f.wrap_paragraph(''), ['|'])
+        self.assertEqual(f.wrap_paragraph(' \t\n'), ['|'])
+        self.assertEqual(f.wrap_paragraph('hello world'),
+                         ['| hello', '| world'])
+        self.assertEqual(f.wrap_paragraph('hello world', prefix='> '),
+                         ['| > hello', '|   world'])
+
+        # Disabled wrapping
+        # -----------------
+        f.width = None
+        self.assertEqual(f.wrap_paragraph('hello world'), ['| hello world'])
+        f.width = 8
+        f.wrapper = None
+        self.assertEqual(f.wrap_paragraph('hello world'), ['| hello world'])
+        f.set_indent('ps> ')
+        self.assertEqual(f.wrap_paragraph('hello world'),
+                         ['ps> hello world'])
+
+    def test_center_paragraph(self):
+        # The extra character should be added to the RIGHT instead of
+        # to the LEFT.
+        f = FormatterSubclass(width=10)
+        self.assertEqual(f.center_paragraph(''), [''])
+        self.assertEqual(f.center_paragraph('hi world'),
+                         [' hi world '.rstrip()])
+        self.assertEqual(
+            f.center_paragraph('hello world!'),
+            ['  hello   '.rstrip(),
+             '  world!  '.rstrip()])
+
+        # Indentation
+        # -----------
+        f.set_indent('|')
+        self.assertEqual(f.center_paragraph(''), ['|'])
+        self.assertEqual(f.center_paragraph('hi'), ['|   hi    '.rstrip()])
+        f.configure(line_callback=lambda s: s)
+        self.assertEqual(f.center_paragraph('hi'), ['|   hi    '])
+        self.assertEqual(
+            f.center_paragraph('hello world'),
+            ['|  hello  ',
+             '|  world  '])
+
 
 class TestStringifyPanel(unittest.TestCase):
     def test_basics(self):
@@ -47,48 +201,95 @@ class TestStringifyPanel(unittest.TestCase):
 
 
 class TestStringifyEntry(unittest.TestCase):
-    def test_time_zone_coercion(self):
-        panel = Panel(date(2021, 12, 25))
-        pt = timezone(timedelta(hours=-8), 'PST')
-        et = timezone(timedelta(hours=-5), 'EST')
-        utc = timezone.utc
-        entry = Entry(datetime(2021, 12, 25, 16, 40, tzinfo=utc))
-        panel.add_entry(entry)
+    def test_time_zone_fold(self):
+        entries = []
+        dt = datetime(2021, 11, 7, 7, 30, tzinfo=timezone.utc)
+        for mm in range(0, 180, 30):
+            # Make it so that tz = -3, -2, -1, 0, 1, 2
+            tz = timezone(timedelta(hours=-3 + mm//30))
+            entry = Entry((dt + timedelta(minutes=mm)).astimezone(tz))
+            entry.set_data('Text')
+            entries.append(entry)
+        entry = Entry(datetime(2021, 11, 7, 9, 30, tzinfo=timezone.utc)
+                      .astimezone(TzWithFold()))
         entry.set_data('Text')
-        formatter = stringify.EntryFormatter(width=33)
+        entries.append(entry)
+        formatter = stringify.EntryFormatter()
+        formatter.configure(time_zone=TzWithFold(), coerce_time_zone=True)
+        fmt = '{}\n  Text'.format
+        expected = map(
+            fmt,
+            ('12:30 AM', '1:00 AM', '1:30 AM',
+             '1:00 AM [fold = 1]', '1:30 AM [fold = 1]',
+             '2:00 AM', '1:30 AM [fold = 1]'))
+        for exp, entry in zip(expected, entries):
+            self.assertEqual(formatter.format(entry), exp)
+        formatter.configure(coerce_time_zone=False)
+        expected = map(
+            fmt,
+            ('4:30 AM [-03:00]', '6:00 AM [-02:00]', '7:30 AM [-01:00]',
+             '9:00 AM [+00:00]', '10:30 AM [+01:00]', '12:00 PM [+02:00]',
+             '1:30 AM [fold = 1]'))
+        for exp, entry in zip(expected, entries):
+            self.assertEqual(formatter.format(entry), exp)
 
-        formatter.configure(time_zone=pt)
-        self.assertEqual(
-            formatter.format(entry), dedent(
-                """\
-                4:40 PM [+00:00]
-                  Text"""))
+        entries.clear()
+        dt = datetime(2021, 11, 7, 7, 30, tzinfo=timezone.utc)
+        for mm in range(0, 180, 30):
+            entry = Entry((dt + timedelta(minutes=mm))
+                          .astimezone(TzWithFold()))
+            entry.set_data('Text')
+            entries.append(entry)
+        expected = map(
+            fmt,
+            ('12:30 AM', '1:00 AM', '1:30 AM',
+             '1:00 AM [fold = 1]', '1:30 AM [fold = 1]',
+             '2:00 AM'))
+        # Should look the same regardless of time coercion
+        for value in True, False:
+            formatter.configure(coerce_time_zone=value)
+            for exp, entry in zip(expected, entries):
+                self.assertEqual(formatter.format(entry), exp)
+        formatter.configure(time_zone=timezone.utc)
+        expected = map(
+            fmt,
+            ('12:30 AM [-07:00]', '1:00 AM [-07:00]', '1:30 AM [-07:00]',
+             '1:00 AM [-08:00]', '1:30 AM [-08:00]', '2:00 AM [-08:00]'))
+        for exp, entry in zip(expected, entries):
+            self.assertEqual(formatter.format(entry), exp)
+
+    def test_time_zone_coercion(self):
+        pst = timezone(timedelta(hours=-8), 'PST')
+        est = timezone(timedelta(hours=-5), 'EST')
+        some_tz = timezone(timedelta(hours=1))
+        entry = Entry(datetime(2021, 12, 25, 16, 40, tzinfo=some_tz))
+        entry.set_data('Text')
+        formatter = stringify.EntryFormatter()
+
+        fmt = '{}\n  Text'.format
+        formatter.configure(time_zone=pst)
+        self.assertEqual(formatter.format(entry), fmt('4:40 PM [+01:00]'))
         formatter.configure(coerce_time_zone=True)
-        # 4:40 PM UTC is equivalent to 8:40 AM in Pacific Standard Time
-        self.assertEqual(
-            formatter.format(entry), dedent(
-                """\
-                8:40 AM
-                  Text"""))
-        formatter.configure(time_zone=et)
-        # This time it's 11:40 AM
-        self.assertEqual(
-            formatter.format(entry), dedent(
-                """\
-                11:40 AM
-                  Text"""))
+        # 3:40 PM UTC is equivalent to 7:40 AM in Pacific Standard Time
+        self.assertEqual(formatter.format(entry), fmt('7:40 AM'))
+        formatter.configure(time_zone=est)
+        # This time it should be 10:40 AM
+        self.assertEqual(formatter.format(entry), fmt('10:40 AM'))
 
         # No coercion should take place if time zone matches
-        formatter.configure(time_zone=utc)
-        expected = dedent(
-            """\
-            4:40 PM
-              Text""")
-        self.assertEqual(formatter.format(entry), expected)
+        formatter.configure(time_zone=timezone(timedelta(hours=1)))
+        self.assertEqual(formatter.format(entry), fmt('4:40 PM'))
         formatter.configure(coerce_time_zone=False)
-        self.assertEqual(formatter.format(entry), expected)
+        self.assertEqual(formatter.format(entry), fmt('4:40 PM'))
+
+    def test_title(self):
+        # Long title, short title and stuff
+        pass
 
     # TODO: These
+    def test_entry_title(self):
+        pass
+
     def test_question(self):
         pass
 
@@ -112,6 +313,7 @@ class TestStringifyEntry(unittest.TestCase):
 
     def test_vertical_sep(self):
         # Test these:
+        # *  title_entries_vsep
         # *  question_content_vsep
         # *  below_content_vsep
         pass

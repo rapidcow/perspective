@@ -158,19 +158,18 @@ class JSONLoader:
         # extended based on this.
         self._all_options = {
             # 'load_from_file', # 'validate',
-            'check_duplicate_panels', 'check_panel_order',
+            'check_panel_duplicates', 'check_panel_order',
             'check_entry_order', 'error_on_warning', 'suppress_warnings',
             'paths', 'base_dir', 'encoding', 'json_options',
-            'warn_ambiguous_paths', 'checksum',
+            'warn_ambiguous_paths',
         }
 
         self._options = {
-            # 'load_from_file': False,
-            # Checking (not strictly needed)
-            # 'validate': True,
-            'check_duplicate_panels': True,
             'check_panel_order': True,
             'check_entry_order': True,
+            # When check_panel_order is disabled, one may enable this to
+            # merely check for duplicate panels
+            'check_panel_duplicates': False,
             'error_on_warning': False,
             'suppress_warnings': False,
             'warn_ambiguous_paths': True,
@@ -180,19 +179,8 @@ class JSONLoader:
             'paths': (),
             # the base directory, used as the ROOT of relative paths
             'base_dir': os.getcwd(),
-            # decoders for the data-encoding attribute
-            'data_enc_table': {
-                'base16': base64.b16decode,
-                'base32': base64.b32decode,
-                'base64': base64.b64decode,
-                'base64_url': base64.urlsafe_b64decode,
-                'ascii85': base64.a85decode,
-                'base85': base64.b85decode,
-            },
             # keyword arguments to pass to json.loads
             'json_options': {},
-            # this is usually not desired i think...
-            'checksum': False,
         }
         self.configure(**options)
 
@@ -233,8 +221,7 @@ class JSONLoader:
             import warnings
             warnings.warn(msg, w, 2)
 
-    def load(self, file, date=None, *, encoding='utf-8',
-             get_attributes=False):
+    def load(self, file, date=None, *, encoding='utf-8'):
         """Load an archive from a file as a list of `Panel`s.
 
         If `date` is provided, optimize the loading process by only
@@ -255,25 +242,14 @@ class JSONLoader:
         encoding : str, default 'utf-8'
             The encoding used to open `file` if it is a file path.
 
-        get_attributes : bool, default False
-            Whether to return the panel(s) with attributes (top-level
-            configurations of the backup file) or not.
-
         Return
         ------
-        If `get_attributes` is True:
-
-        -   Return `(panels, attributes)` if `date` is not provided; and
-        -   Return `(panel, attributes)` if `date` is provided.
-
-        Else:
-
         -   Return `panels` if `date` is not provided; and
         -   Return `panel` is `date` is provided.
         """
         content = self.__handle_readable_file(file, encoding)
         data = json.loads(content, **self.get_option('json_options'))
-        return self.load_data(data, date, get_attributes=get_attributes)
+        return self.load_data(data, date)
 
     def __handle_readable_file(self, file, encoding):
         """Handle a path-like or file-like object and return the file
@@ -290,18 +266,10 @@ class JSONLoader:
         return content
 
     # TODO: CONTINUE WRITING DOCSTRINGS
-    def load_data(self, data, date=None, *, get_attributes=False):
+    def load_data(self, data, date=None):
         panels, attrs = self.__split_data(data)
         if date is None:
             obj = self.__load_all_data(panels, attrs)
-            if self.get_option('checksum'):
-                try:
-                    cksum = attrs['checksum']
-                except KeyError:
-                    self._warn("data does not have key 'checksum'",
-                               LoadWarning)
-                else:
-                    self.checksum(obj, cksum)
         else:
             if isinstance(date, str):
                 date = timeutil.parse_date(date)
@@ -309,12 +277,12 @@ class JSONLoader:
                 raise TypeError(f'date should be a str or datetime.date '
                                 f'object, not {type(date).__name__}')
             obj = self.__load_single_panel(panels, attrs, date)
-
-        if get_attributes:
-            return attrs, obj
         return obj
 
     def __split_data(self, data):
+        # The name might be a bit misleading since it doesn't actually
+        # simply "split" the data (since we're not returning the
+        # attributes and so it remains a local variable to us).
         if not isinstance(data, dict):
             raise TypeError('JSON data should be a dictionary')
         data = data.copy()
@@ -326,18 +294,22 @@ class JSONLoader:
         # The rest of 'data' are attributes.
         attrs = data
 
-        # Make a copy of 'paths' so as to not mutate the original dict,
-        # but at the same time assign it to attrs.  This function is not
-        # responsible for extending self.paths (but self.process_entry()
-        # is).
         if 'paths' in data:
+            # Make a copy of 'paths' so as to not mutate the original list,
+            # and at the same time reassign it to attrs.
             paths = attrs['paths']
             _assert_list_type(paths, str, 'paths')
-            paths = paths.copy()
-            attrs['paths'] = paths
-        # Don't add spurious 'paths' if it doesn't exist.
+            # Create a list from the lookup paths from the 'paths' option
+            # and append the ones from attrs to it.
+            combined = list(self.get_option('paths'))
+            combined.extend(paths)
+            attrs['paths'] = combined
+        else:
+            # Directly take the paths from the 'paths' option
+            paths = list(self.get_option('paths'))
+            # In case the option was empty, use ['.'].
+            attrs['paths'] = paths or ['.']
 
-        # Type checking before we pass it on
         if 'tz' in attrs:
             _assert_type(attrs['tz'], str, 'tz', 'top level')
 
@@ -345,7 +317,8 @@ class JSONLoader:
 
     def __load_all_data(self, panels, attrs):
         output = []
-        start = 0      # index to start checking duplicates with
+        check_panel_order = self.get_option('check_panel_order')
+        check_entry_order = self.get_option('check_entry_order')
         for panel_dict in panels:
             if not self.panel_filter(panel_dict):
                 continue
@@ -368,13 +341,14 @@ class JSONLoader:
             if panel is not None:
                 output.append(panel)
 
-                if self.get_option('check_panel_order'):
+                if check_panel_order:
                     self.__check_panel_order(output)
-                elif self.get_option('check_duplicate_panels'):
-                    start = self.__check_duplicate_panels(output, start)
-                if self.get_option('check_entry_order'):
+                if check_entry_order:
                     self.__check_entry_order(panel)
 
+        if not check_panel_order:
+            if self.get_option('check_panel_duplicates'):
+                self.__check_panel_duplicates(output)
         return output
 
     # Callback that can be overridden to load only certain panels
@@ -400,25 +374,6 @@ class JSONLoader:
             self.__check_entry_order(panel)
         return panel
 
-    def checksum(self, panels, cksum):
-        expected_value = (cksum['panels'], cksum['entries'],
-                          cksum['total-bytes'])
-        panel_count = entry_count = total_bytes = 0
-
-        for panel in panels:
-            panel_count += 1
-            for entry in panel.entries():
-                entry_count += 1
-                total_bytes += entry.get_raw_data_size()
-        actual_value = (panel_count, entry_count, total_bytes)
-
-        if expected_value != actual_value:
-            self._warn(
-                f'checksum failed: expected (panel count, '
-                f'entry count, total bytes) to be {expected_value} '
-                f'as specified by the checksum, but got {actual_value}',
-                LoadWarning)
-
     def process_panel(self, panel, attrs):
         """Process a JSON object of an Entry.
 
@@ -443,10 +398,6 @@ class JSONLoader:
 
         # Optional fields
         # ---------------
-        # Paths
-        if 'paths' in panel:
-            paths = panel.pop('paths')
-            _assert_list_type(paths, str, 'panels')
         # Time zone
         if 'tz' in panel:
             tz = panel.pop('tz')
@@ -459,7 +410,7 @@ class JSONLoader:
 
         # Entries
         # -------
-        ents = panel.pop('entries', [])
+        entries = panel.pop('entries', [])
 
         if panel:
             keys_str = ', '.join(sorted(map(str, panel.keys())))
@@ -467,21 +418,24 @@ class JSONLoader:
             self._warn(f'ignored panel key{plural}: {keys_str}',
                        LoadWarning)
 
-        for index, ent in enumerate(ents, start=1):
+        for index, entry_dict in enumerate(entries, start=1):
             # 'attrs' is only accessed and not mutated, so no need to copy.
             # However we do need to copy the entry... because we only assumed
             # that whoever called process_panel() only made a shallow copy
             # of the 'panel' dictionary...
+            if not self.entry_filter(entry_dict):
+                continue
             try:
-                entry = self.process_entry(obj, ent.copy(), attrs)
+                entry = self.process_entry(obj, entry_dict.copy(), attrs)
             except (TypeError, ValueError, LoadError, LoadWarning) as exc:
                 raise LoadError(
                     f'error while loading entry {index}') from exc
-            if entry is not None:
-                # Link to the panel and append the entry now
-                obj.add_entry(entry)
+            obj.add_entry(entry)
 
         return obj
+
+    def entry_filter(self, entry_dict):
+        return entry_dict
 
     def process_entry(self, panel, entry, attrs):
         """Process a JSON object of an Entry.
@@ -521,7 +475,7 @@ class JSONLoader:
             fold = entry.pop('fold')
             _assert_type_or_none(fold, int, 'fold')
         else:
-            # None for don't change the fold of the parsed datetime
+            # None for not changing the fold attribute of the parsed datetime
             fold = None
 
         if 'date-time' in entry:
@@ -565,23 +519,30 @@ class JSONLoader:
         _assert_type(insight, bool, 'insight')
         obj.insight = insight
 
+        # Title
+        if 'title' in entry:
+            title = entry.pop('title')
+            _assert_type(title, str, 'title')
+            obj.set_title(title)
+
         # Caption
         if 'caption' in entry:
             caption = entry.pop('caption')
-            caption_text = _ensure_text(caption, 'caption')
-            obj.set_attribute('caption', caption_text)
+            _assert_type(caption, str, 'caption')
+            obj.set_attribute('caption', caption)
 
         # Question
         if 'question' in entry:
             question = entry.pop('question')
-            question_text = _ensure_text(question, 'question')
-            obj.set_attribute('question', question_text)
+            _assert_type(question, str, 'question')
+            obj.set_attribute('question', question)
 
         # Transcription
         if 'transcription' in entry:
             text = entry.pop('transcription')
-            transcription = _ensure_text(text, 'transcription')
-            obj.set_attribute('transcription', transcription)
+            # Since transcriptions usually are long...
+            text = _ensure_text(text, 'transcription')
+            obj.set_attribute('transcription', text)
 
         if entry:
             keys_str = ', '.join(sorted(map(str, entry.keys())))
@@ -638,8 +599,8 @@ class JSONLoader:
                 data_enc = entry.pop('data-encoding')
                 _assert_type(data_enc, str, 'data-encoding')
                 try:
-                    func = self.get_option('data_enc_table')[data_enc]
-                except KeyError:
+                    func = self.get_data_encoder(data_enc)
+                except LookupError:
                     raise LoadError(f'invalid data encoding: '
                                     f'{data_enc!r}') from None
                 raw = func(data.encode('ascii'))
@@ -662,16 +623,7 @@ class JSONLoader:
         else:
             path = entry.pop('input')
             _assert_type(path, str, 'input')
-            # Extend the lookup paths given in attrs['paths'] just
-            # before lookup.
-            #
-            # (XXX: This is quite inefficient since we have to build
-            # a new list for every entry... but it doesn't make sense to
-            # have a path specific to a list stored somewhere in this
-            # class either... so I'm kinda lost.)
-            lookup_paths = attrs.get('paths', []).copy()
-            lookup_paths.extend(self.get_option('paths'))
-            obj.set_source(self._find_path(path, lookup_paths))
+            obj.set_source(self._find_path(path, attrs['paths']))
             if type_ is None:
                 type_ = self._infer_type_from_input_path(path)
             if type_ is None:
@@ -739,12 +691,7 @@ class JSONLoader:
             obj.set_meta_attribute(key, copy.deepcopy(value))
 
     # This is a protected method (hence the single underscore)!
-    def _find_path(self, path, paths):
-        if not paths:
-            dirpaths = ['.']
-        else:
-            dirpaths = paths
-
+    def _find_path(self, path, dirpaths):
         base = self.get_option('base_dir')
         candidates = []
         break_loop = False  # *sad goto noises*
@@ -804,6 +751,21 @@ class JSONLoader:
             is_text = False
         return 'utf-8' if is_text else 'binary'
 
+    def get_data_encoder(self, data_enc):
+        if data_enc == 'base16':
+            return base64.b16decode,
+        if data_enc == 'base32':
+            return base64.b32decode
+        if data_enc == 'base64':
+            return base64.b64decode
+        if data_enc == 'base64_url':
+            return base64.urlsafe_b64decode
+        if data_enc == 'ascii85':
+            return base64.a85decode
+        if data_enc == 'base85':
+            return base64.b85decode
+        raise LookupError(data_enc)
+
     # Options checker...
     def check_paths_option(self, paths):
         if not isinstance(paths, (list, tuple)):
@@ -823,10 +785,8 @@ class JSONLoader:
         # need to compare the last two panels :D
         panel_1, panel_2 = panels[-2:]
         length = len(panels)
-        index_1, index_2 = length - 2, length - 1
         # Hooman index!  Maybe?
-        index_1 += 1
-        index_2 += 1
+        index_1, index_2 = length - 1, length
         if panel_1.date > panel_2.date:
             self._warn('panel #{} ({}) is after panel #{} ({})'
                        .format(index_1, panel_1.date, index_2, panel_2.date),
@@ -836,18 +796,20 @@ class JSONLoader:
                        .format(index_1, index_2, panel_2.date),
                        LoadWarning)
 
-    def __check_duplicate_panels(self, panels, start_with):
-        panels = panels[start_with:]
-        if len(panels) < 2:
-            return start_with
-        *panels_before, this_panel = panels
-        for index, panel in enumerate(panels_before, start=start_with + 1):
-            if panel.date == this_panel.date:
-                self._warn('panel #{} is a duplicate of panel #{} ({})'
-                           .format(index, len(panels) - 1, panel.date),
-                           LoadWarning)
-                return index + 1
-        return start_with
+    def __check_panel_duplicates(self, panels):
+        # Make a dict with date as keys and indices as values
+        panel_dict = collections.defaultdict(list)
+        for index, panel in enumerate(panels, start=1):
+            panel_dict[panel.date].append(index)
+
+        for panel_date, indices in sorted(panel_dict.items()):
+            if len(indices) > 1:
+                if len(indices) == 2:
+                    index_str = ' and '.join(map(int, indices))
+                else:
+                    index_str = ', '.join(map(int, indices))
+                self._warn(f'panels {index_str} are share the same date '
+                           f'{panel_date}', LoadWarning)
 
     def __check_entry_order(self, panel):
         # Stolen from basicproc.py
@@ -859,15 +821,17 @@ class JSONLoader:
         last_main_entry = None
         last_insight_entry = None
         # We have plenty of space so I changed i to index
-        for index, entry in enumerate(panel.get_entries(), start=1):
+        for index, entry in enumerate(panel.entries(), start=1):
             if expected_insight_value is None:
                 expected_insight_value = entry.insight
 
             # Checking main -> insight order
             if expected_insight_value != entry.insight:
                 if has_switched:
-                    expected = self.__format_insight(expected_insight_value)
-                    got = self.__format_insight(entry.insight)
+                    expected = ('an insight entry' if expected_insight_value
+                                else 'a main entry')
+                    got = ('an insight entry' if entry.insight
+                           else 'a main entry')
                     msg = (f'expected entry {index} to be {expected}, '
                            f'got {got} (on {panel.date})')
                     self._warn(msg, LoadWarning)
@@ -877,8 +841,7 @@ class JSONLoader:
 
             # Checking main entry order
             if last_main_entry is not None and not entry.insight:
-                if (timeutil.to_utc(last_main_entry.date_time)
-                        > timeutil.to_utc(entry.date_time)):
+                if last_main_entry.date_time > entry.date_time:
                     msg = (f'inconsistent order in main entries '
                            f'on {panel.date} (entry {index} precedes '
                            f'entry {index - 1} in time)')
@@ -886,8 +849,7 @@ class JSONLoader:
 
             # Checking insight entry order
             if last_insight_entry is not None and entry.insight:
-                if (timeutil.to_utc(last_insight_entry.date_time)
-                        > timeutil.to_utc(entry.date_time)):
+                if last_insight_entry.date_time > entry.date_time:
                     msg = (f'inconsistent order in insight entries '
                            f'on {panel.date} (entry {index} precedes '
                            f'entry {index - 1} in time)')
@@ -897,10 +859,6 @@ class JSONLoader:
                 last_insight_entry = entry
             else:
                 last_main_entry = entry
-
-    @staticmethod
-    def __format_insight(insight):
-        return 'an insight entry' if insight else 'a main entry'
 
     # Method hooks
     def parse_datetime(self, s, *, tzinfo, fold):
@@ -912,21 +870,14 @@ class JSONLoader:
     def parse_date(self, s):
         return timeutil.parse_date(s)
 
-    # These are only important for the main function
-    def load_single(self, file, date):
-        return self.load(file, date)
-
-    def load_all(self, file):
-        return self.load(file, get_attributes=True)
-
 
 class JSONDumper:
     __slots__ = ('_all_options', '_options',)
 
     def __init__(self, **options):
         self._all_options = {
-            'json_options', 'backup_name', 'default_time_zone_offset',
-            'paths', 'checksum',
+            'json_options', 'backup_name',
+            'default_time_zone_offset', 'paths',
         }
         self._options = {
             'backup_name': 'backup.json',
@@ -951,7 +902,6 @@ class JSONDumper:
 
             # Description (as a fixed string)
             'desc': '',
-            'checksum': False,
         }
         self.configure(**options)
 
@@ -973,7 +923,7 @@ class JSONDumper:
     def get_option(self, name):
         return self._options[name]
 
-    def check_path_option(self, paths):
+    def check_paths_option(self, paths):
         if isinstance(paths, str):
             raise TypeError(f'paths should be an iterable of str, not str')
         return tuple(paths)
@@ -993,7 +943,7 @@ class JSONDumper:
         files_added = set()
         export_paths = []
         for panel in panels:
-            entries = self.get_sorted_entries(panel.get_entries())
+            entries = self.get_sorted_entries(panel.entries())
             entry_list.append(entries)
             for entry in entries:
                 rv = self.get_entry_filename(entry, panel, files_added.copy())
@@ -1032,7 +982,7 @@ class JSONDumper:
     def dumps(self, panels):
         panels = self.get_sorted_panels(panels)
         entry_list = [
-            self.get_sorted_entries(panel.get_entries()) for panel in panels
+            self.get_sorted_entries(panel.entries()) for panel in panels
         ]
         data = self.__basic_dump_data(panels, entry_list, (), os.devnull)
         if 'paths' in data:
@@ -1052,10 +1002,11 @@ class JSONDumper:
     # XXX: Should we allow user to dump duplicate paths or paths that
     # are the same as backup_name??
     def __basic_dump_data(self, panels, entry_list, export_paths, dirname):
+        # quick check we shouldn't really need
         assert len(panels) == len(entry_list)
         input_paths = []
-        dirname = os.path.abspath(dirname)
         paths = list(self.get_option('paths'))
+        dirname = os.path.abspath(dirname)
 
         relative_paths = []
         for i, path in enumerate(export_paths, start=1):
@@ -1074,23 +1025,14 @@ class JSONDumper:
             input_paths = relative_paths
 
         panels = list(panels)
-        default_offset = self.get_option('default_time_zone_offset')
-        data = collections.OrderedDict()
-        if self.get_option('checksum'):
-            data['checksum'] = self.__get_checksum(panels, entry_list)
-        data['desc'] = self.get_description()
-        if default_offset is not None:
-            # XXX: Lazy type checking
-            datetime.timezone(default_offset)
-            data['tz'] = timeutil.format_offset(default_offset)
-        if paths:
-            data['paths'] = paths.copy()
-        data_panels = data['data'] = []
+        data = self.prepare_backup(panels)
 
+        panel_dicts = []
         path_it = zip(export_paths, input_paths)
         for panel, entries in zip(panels, entry_list):
             panel_dict, panel_entries = self.wrap_panel(panel)
             for entry in entries:
+                assert entry.panel is panel
                 entry_dict = self.wrap_entry(entry, panel)
                 relative_path, input_path = next(path_it, (None, None))
                 if relative_path is None:
@@ -1102,8 +1044,9 @@ class JSONDumper:
                 if entry_dict is not None:
                     panel_entries.append(entry_dict)
             if panel_dict is not None:
-                data_panels.append(panel_dict)
+                panel_dicts.append(panel_dict)
 
+        data['data'] = panel_dicts
         return data
 
     def __compute_input_paths(self, relative_paths, paths):
@@ -1205,19 +1148,22 @@ class JSONDumper:
         if os.path.exists(dirname):
             shutil.rmtree(dirname, ignore_errors=True)
 
-    def __get_checksum(self, panels, entry_list):
-        panel_count = 0
-        entry_count = 0
-        size = 0
-        for entries in entry_list:
-            panel_count += 1
-            for entry in entries:
-                entry_count += 1
-                size += entry.get_raw_data_size()
-
-        return OrderedDict([
-            ('panels', panel_count), ('entries', entry_count),
-            ('total-bytes', size)])
+    def prepare_backup(self, panels):
+        data = collections.OrderedDict()
+        default_offset = self.get_option('default_time_zone_offset')
+        data['desc'] = self.get_description()
+        if default_offset is not None:
+            if not isinstance(default_offset, datetime.timedelta):
+                raise TypeError(f"'default_time_zone_offset' should be a "
+                                f"datetime.timedelta object, not "
+                                f"{default_offset!r}")
+            # XXX: Lazy time zone range checking
+            datetime.timezone(default_offset)
+            data['tz'] = timeutil.format_offset(default_offset)
+        paths = list(self.get_option('paths'))
+        if paths:
+            data['paths'] = paths
+        return data
 
     def get_description(self):
         desc = self.get_option('desc')
@@ -1230,14 +1176,14 @@ class JSONDumper:
 
     # Helper... subclass-method-ish thingy?
     def get_current_time_string(self):
-        base = timeutil.to_utc(datetime.datetime.now()).ctime()
-        timestr = f'{base} (UTC)'
         offset = self.get_option('default_time_zone_offset')
         if offset is not None and offset:
             tz = datetime.timezone(offset)
             base = datetime.datetime.now().astimezone(tz).ctime()
-            timestr = f'{base} (UTC{timeutil.format_offset(offset)})'
-        return timestr
+            return f'{base} (UTC{timeutil.format_offset(offset)})'
+        utc = datetime.timezone.utc
+        base = datetime.datetime.now().astimezone(utc).ctime()
+        return f'{base} (UTC)'
 
     # They are split up into two parts so that subclassing life can be easier!
     def get_entry_filename(self, entry, panel, added):
@@ -1283,9 +1229,9 @@ class JSONDumper:
         rpath = os.path.relpath(apath, dirname)
         return apath, rpath
 
-    # =======================================
-    # IMPORTANT FUNCTIONS!  (Heads up y'all!)
-    # =======================================
+    # ====================
+    # IMPORTANT FUNCTIONS!
+    # ====================
     def wrap_panel(self, panel):
         """(panel, offset) -> (panel_dict, panel_entries)
 
@@ -1313,31 +1259,31 @@ class JSONDumper:
         if format_ is not None:
             entry_dict['format'] = format_
 
-        self.__update_entry_attributes(entry_dict, entry)
-
         # Only write if insight is True (since it's False by default)
         if entry.insight:
             entry_dict['insight'] = entry.insight
 
-        meta = self.wrap_meta_dict(entry)
-        if meta:
-            # Sort it cuz why not????
-            entry_dict['meta'] = collections.OrderedDict(sorted(meta.items()))
-        return entry_dict
+        if entry.has_title():
+            entry_dict['title'] = entry.get_title()
 
-    def __update_entry_attributes(self, entry_dict, entry):
-        attrs = entry.get_attribute_dict()
-        question = attrs.pop('question', None)
+        # Attributes
+        question = entry.get_attribute('question', None)
         if question is not None:
             entry_dict['question'] = question
 
-        caption = attrs.pop('caption', None)
+        caption = entry.get_attribute('caption', None)
         if caption is not None:
             entry_dict['caption'] = caption
 
-        transcription = attrs.pop('transcription', None)
+        transcription = entry.get_attribute('transcription', None)
         if transcription is not None:
             entry_dict['transcription'] = transcription
+
+        meta = self.wrap_meta_dict(entry)
+        if meta:
+            # Sort it cuz why not???? :D
+            entry_dict['meta'] = collections.OrderedDict(sorted(meta.items()))
+        return entry_dict
 
     def wrap_meta_dict(self, entry):
         meta_dict = {}
@@ -1373,33 +1319,37 @@ class JSONDumper:
     def format_date(self, d):
         return d.isoformat()
 
-    def format_time(self, t):
+    # NOTE: time and datetime can both be either naive or aware
+    # As for the results, well... it depends.  In this case I simply
+    # set the time zone within the 'time' and 'date-time' key, though
+    # I figured users can override these so that they set the time zone
+    # separately in the 'tz' key or something... idk :/
+    def handle_time(self, entry_dict, t):
         timespec = 'auto' if t.second or t.microsecond else 'minutes'
-        default_offset = self.get_option('default_time_zone_offset')
-        if t.utcoffset() == default_offset:
-            t = t.replace(tzinfo=None)
-        return t.isoformat(timespec)
+        entry_dict['time'] = t.isoformat(timespec)
 
-    def format_datetime(self, dt):
+    def handle_datetime(self, entry_dict, dt):
         timespec = 'auto' if dt.second or dt.microsecond else 'minutes'
-        default_offset = self.get_option('default_time_zone_offset')
-        if dt.utcoffset() == default_offset:
-            dt = dt.replace(tzinfo=None)
-        return dt.isoformat(' ', timespec)
+        entry_dict['date-time'] = dt.isoformat(' ', timespec)
 
     def set_entry_time(self, entry_dict, entry, panel):
+        entry_time = entry.date_time
+        # XXX: Is this okay???
+        offset = self.get_option('default_time_zone_offset')
+        # Remove tzinfo if the time zone offset matches
+        if offset is not None and entry_time.utcoffset() == offset:
+            entry_time = entry_time.replace(tzinfo=None)
         # Hide date if possible
-        date_time = entry.date_time
-        if entry.date_time.date() == panel.date:
-            entry_dict['time'] = self.format_time(entry.date_time.timetz())
+        if entry_time.date() == panel.date:
+            self.handle_time(entry_dict, entry_time.time())
         else:
-            entry_dict['date-time'] = self.format_datetime(entry.date_time)
+            self.handle_datetime(entry_dict, entry_time)
 
     def get_sorted_panels(self, panels):
         return sorted(panels, key=lambda p: p.date)
 
     def get_sorted_entries(self, entries):
-        entries = sorted(entries, key=lambda e: timeutil.to_utc(e.date_time))
+        entries = sorted(entries, key=lambda e: e.date_time)
         entries.sort(key=lambda e: e.insight)
         return entries
 
@@ -1488,12 +1438,12 @@ class JSONDumper:
             entry_dict.move_to_end('meta')
 
 
-def load_json(file, date=None, *, get_attributes=False, **options):
+def load_json(file, date=None, *, encoding='utf-8', **options):
     loader = JSONLoader()
     if isinstance(file, (str, os.PathLike)):
         options.setdefault('base_dir', os.path.abspath(os.path.dirname(file)))
     loader.configure(**options)
-    return loader.load(file, date=date, get_attributes=get_attributes)
+    return loader.load(file, encoding=encoding, date=date)
 
 
 def dump_json(panels, dirname, **options):
