@@ -10,22 +10,22 @@ import shutil
 import sys
 import textwrap
 # Make sure importlib trick works
-if sys.version_info <= (3, 5):
+if sys.version_info < (3, 5):
     raise RuntimeError('Python 3.5+ is required to run psp as __main__')
 import importlib.util
 
 from .stringify import PanelFormatter
 from .processors.json_processor import JSONLoader, JSONDumper
 from .processors.json_processor import LoadError
-from .timeutil import parse_date, to_utc
+from .timeutil import parse_date
 from .types import Panel
 
 __all__ = ['main']
 
 
 def get_terminal_width():
-    # This should fall back to (columns=80, lines=24)
-    return shutil.get_terminal_size().columns
+    import shutil
+    return shutil.get_terminal_size(fallback=(80, 24)).columns
 
 
 def load_config_from_file(file):
@@ -57,7 +57,7 @@ def main():
     parser = argparse.ArgumentParser(
         prog='psp', description='psp library main program')
     parser.add_argument('--version', '-V', action='version',
-                        version='%(prog)s pre-release')
+                        version='%(prog)s 0.1.1')
     parser.add_argument('--config', '-c',
         help='path to the Python configuration script')
     parser.add_argument('--wlevel', '-w', action='count', default=0,
