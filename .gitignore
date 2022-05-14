@@ -1,1 +1,22 @@
+# Stuff that somehow appears on Mac
 .DS_Store
+
+# Compiled files
+__pycache__/
+*.py[cod]
+
+# Distribution / packaging
+build/
+*.egg-info/
+*.egg
+
+# Environment
+.env
+.venv
+
+# Sphinx documentation
+docs/_build/
+
+# Translations
+*.mo
+*.pot

@@ -2,7 +2,7 @@
 
 __all__ = [
     'parse_timezone', 'parse_datetime', 'parse_date', 'parse_time',
-    'is_naive', 'get_local_timezone', 'to_utc', 'format_offset',
+    'is_naive', 'get_local_timezone', 'format_offset',
 ]
 
 import re
@@ -210,8 +210,3 @@ def format_offset(off):
         if ss.microseconds:
             s += '.%06d' % ss.microseconds
     return s
-
-
-def to_utc(dt):
-    """Convert datetime to UTC."""
-    return dt.astimezone(datetime.timezone.utc)

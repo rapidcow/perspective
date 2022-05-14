@@ -95,10 +95,8 @@ class Panel:
                             f'not {entry!r}')
         if entry.has_panel():
             entry.panel.remove_entry(entry)
-        entry._panel = self
         # Make sure proper validation is performed given this new panel.
-        # The way we do this though is a bit tricky...
-        entry.insight = entry.insight
+        entry._set_panel(self)
         self._entries.append(entry)
 
     def add_entries(self, entries):
@@ -125,6 +123,9 @@ class Panel:
 
     def count(self):
         return len(self._entries)
+
+    def has_entries(self):
+        return bool(self._entries)
 
     # ==========
     # Attributes
@@ -199,7 +200,9 @@ class Entry:
             'modified': None,
         }
         # Question and caption are not set by default (why? idk..)
-        self._attrs = {}
+        self._attrs = {
+            'title': None,
+        }
 
         # panel is None so far so we don't need to call
         # __check_time_and_insight() for validation
@@ -234,13 +237,23 @@ class Entry:
     def panel(self):
         """Panel that the entry belongs to, None if this entry does not
         belong to a panel.  This attribute can only be changed through
-        calling either the remove_entry() method of the parent panel.
+        calling either the remove_entry() method of the parent panel
+        or the add_entry() method of a new panel.
         """
         return self._panel
 
     def has_panel(self):
         """Return self.panel is not None."""
         return self._panel is not None
+
+    def _set_panel(self, panel):
+        """USERS SHOULD NOT USE THIS METHOD!  Panel calls this method
+        internally to set self._panel and call appropriate validation
+        function.
+        """
+        # Set the panel only after we finished the validation
+        self.__check_time_and_insight(panel, self.date_time, self.insight)
+        self._panel = panel
 
     @property
     def date_time(self):
@@ -320,7 +333,7 @@ class Entry:
         return self._data['format']
 
     def has_format(self):
-        return self._data['format'] is not None
+        return self.get_format() is not None
 
     def set_raw_data(self, raw):
         _assert_type(raw, bytes, 'raw')
@@ -328,9 +341,9 @@ class Entry:
 
     def set_data(self, data, *, type='plain', encoding='utf-8'):
         _assert_type(data, str, 'data')
-        self._data['raw'] = data.encode(encoding)
-        self._data['encoding'] = encoding
-        self._data['type'] = type
+        self.set_raw_data(data.encode(encoding))
+        self.set_encoding(encoding)
+        self.set_type(type)
 
     def get_raw_data(self):
         """Return the raw binary data of this entry without loading
@@ -398,7 +411,7 @@ class Entry:
         return self._data['source']
 
     def has_source(self):
-        return self._data['source'] is not None
+        return self.get_source() is not None
 
     # ==========
     # Attributes
@@ -488,6 +501,23 @@ class Entry:
     def get_meta_dict(self):
         return self._meta.copy()
 
+    # -------------------
+    # A special attribute
+    # -------------------
+    # Who doesn't love naming their diaries?  No?
+    def get_title(self):
+        """Return the title of this entry; could be either str or None."""
+        return self._attrs['title']
+
+    def set_title(self, title):
+        """Set the title of this entry; must be either str or None."""
+        _assert_type_or_none(title, str, 'title')
+        self._attrs['title'] = title
+
+    def has_title(self):
+        """Return self.get_title() is not None."""
+        return self.get_title() is not None
+
     # --------------------------------------
     # Some attribute checking implementation
     # --------------------------------------
@@ -500,7 +530,7 @@ class Entry:
         return str(caption)
 
     def check_posted_meta_attribute(self, posted):
-        """The 'posted' meta attribute protocol.
+        """The `posted` meta attribute protocol.
         If `posted` is None, return the time of this object.
         """
         # Posting time should be equal or greater than the entry time.
@@ -518,7 +548,7 @@ class Entry:
         return posted
 
     def check_created_meta_attribute(self, created):
-        """The 'created' meta attribute protocol.
+        """The `created` meta attribute protocol.
         If `created` is None, return None.
         """
         if created is None:
@@ -554,14 +584,14 @@ class Entry:
             tolerance = datetime.timedelta(seconds=60)
         else:
             tolerance = datetime.timedelta(0)
-        if timeutil.to_utc(created) > timeutil.to_utc(posted) + tolerance:
+        if created > posted + tolerance:
             raise ValueError('creation time after time posted')
 
     def __check_created_and_modified_time(self, created, modified):
         """Check for created <= modified."""
         if created is None or modified is None:
             return
-        if timeutil.to_utc(created) > timeutil.to_utc(modified):
+        if created > modified:
             raise ValueError('creation time after modification time')
 
     def __repr__(self):
