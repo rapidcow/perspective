@@ -1,4 +1,4 @@
-"""Testing the psp.processors.json_processor module."""
+"""Test the psp.processors.json_processor module."""
 
 from datetime import date, time, timedelta
 import json
