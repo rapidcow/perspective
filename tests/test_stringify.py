@@ -1,6 +1,6 @@
 """Test the psp.stringify module."""
 from datetime import date, datetime, timedelta, timezone, tzinfo
-from textwrap import TextWrapper, dedent
+from textwrap import dedent
 import unittest
 
 from psp import stringify
