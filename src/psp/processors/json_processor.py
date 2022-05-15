@@ -938,14 +938,11 @@ class JSONDumper:
     #     this is exposed as the basic_dump() method
     def dump(self, panels, dirname):
         os.mkdir(dirname)
-        panels = self.get_sorted_panels(panels)
-        entry_list = []
+        panels = list(panels)
         files_added = set()
         export_paths = []
         for panel in panels:
-            entries = self.get_sorted_entries(panel.entries())
-            entry_list.append(entries)
-            for entry in entries:
+            for entry in panel.entries():
                 rv = self.get_entry_filename(entry, panel, files_added.copy())
                 if rv is None:
                     export_paths.append(None)
@@ -955,43 +952,30 @@ class JSONDumper:
                     export_paths.append(filename)
 
         try:
-            self.__basic_dump(panels, entry_list, export_paths, dirname)
+            self.__basic_dump(panels, export_paths, dirname)
         except:
             self.__cleanup(dirname)
             raise
 
     # Low-level interface (lower than ever!)
-    def basic_dump(self, panels, entry_list, export_paths, dirname):
+    def basic_dump(self, panels, export_paths, dirname):
         os.mkdir(dirname)
         panels = list(panels)
-        entry_list = list(entry_list)
-        if len(panels) != len(entry_list):
-            l1, l2 = len(panels), len(entry_list)
-            if l1 < l2:
-                raise ValueError('panel list is too short (expected {})'
-                                 .format(l2))
-            else:
-                raise ValueError('entry list is too short (expected {})'
-                                 .format(l1))
         try:
-            self.__basic_dump(panels, entry_list, export_paths, dirname)
+            self.__basic_dump(panels, export_paths, dirname)
         except:
             self.__cleanup(dirname)
             raise
 
     def dumps(self, panels):
-        panels = self.get_sorted_panels(panels)
-        entry_list = [
-            self.get_sorted_entries(panel.entries()) for panel in panels
-        ]
-        data = self.__basic_dump_data(panels, entry_list, (), os.devnull)
+        panels = list(panels)
+        data = self.__basic_dump_data(panels, (), os.devnull)
         if 'paths' in data:
             del data['paths']
         return json.dumps(data, **self.get_option('json_options'))
 
-    def __basic_dump(self, panels, entry_list, export_paths, dirname):
-        data = self.__basic_dump_data(panels, entry_list,
-                                      export_paths, dirname)
+    def __basic_dump(self, panels, export_paths, dirname):
+        data = self.__basic_dump_data(panels, export_paths, dirname)
         backup_name = self.get_option('backup_name')
         backup_path = os.path.normpath(os.path.join(dirname, backup_name))
         os.makedirs(os.path.dirname(backup_path), exist_ok=True)
@@ -1001,9 +985,7 @@ class JSONDumper:
 
     # XXX: Should we allow user to dump duplicate paths or paths that
     # are the same as backup_name??
-    def __basic_dump_data(self, panels, entry_list, export_paths, dirname):
-        # quick check we shouldn't really need
-        assert len(panels) == len(entry_list)
+    def __basic_dump_data(self, panels, export_paths, dirname):
         input_paths = []
         paths = list(self.get_option('paths'))
         dirname = os.path.abspath(dirname)
@@ -1029,9 +1011,9 @@ class JSONDumper:
 
         panel_dicts = []
         path_it = zip(export_paths, input_paths)
-        for panel, entries in zip(panels, entry_list):
+        for panel in panels:
             panel_dict, panel_entries = self.wrap_panel(panel)
-            for entry in entries:
+            for entry in panel.entries():
                 assert entry.panel is panel
                 entry_dict = self.wrap_entry(entry, panel)
                 relative_path, input_path = next(path_it, (None, None))
@@ -1332,6 +1314,10 @@ class JSONDumper:
         timespec = 'auto' if dt.second or dt.microsecond else 'minutes'
         entry_dict['date-time'] = dt.isoformat(' ', timespec)
 
+    def format_datetime(self, dt):
+        timespec = 'auto' if dt.second or dt.microsecond else 'minutes'
+        return dt.isoformat(' ', timespec)
+
     def set_entry_time(self, entry_dict, entry, panel):
         entry_time = entry.date_time
         # XXX: Is this okay???
@@ -1344,14 +1330,6 @@ class JSONDumper:
             self.handle_time(entry_dict, entry_time.time())
         else:
             self.handle_datetime(entry_dict, entry_time)
-
-    def get_sorted_panels(self, panels):
-        return sorted(panels, key=lambda p: p.date)
-
-    def get_sorted_entries(self, entries):
-        entries = sorted(entries, key=lambda e: e.date_time)
-        entries.sort(key=lambda e: e.insight)
-        return entries
 
     def write_entry_data(self, entry_dict, entry):
         """Write the raw data in `entry` to `entry_dict`."""
