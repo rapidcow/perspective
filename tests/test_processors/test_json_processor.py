@@ -22,7 +22,7 @@ def tearDownModule():
 
 
 # Convenience methods for creating JSON backup files
-def make_backup(panels=None, tz='UTC'):
+def make_backup(panels, tz='UTC'):
     """Make a basic backup 'dict' from the list of dates of panels.
 
     This will look something like this:
@@ -380,12 +380,19 @@ class TestLoader(unittest.TestCase):
 
 
 class TestDumper(unittest.TestCase):
-
 # dumping
 #
 # reverse-inference of type and encoding
 # time and datetime
 # loaded result == dumped objects
+    # def test_basics(self):
+    #     pass
+
+    def test_default_time_zone_offset(self):
+        # both time and datetime should properly set (with time zone
+        # appended to the end) if default time zone is unset or the
+        # offset doesn't match
+        pass
 
     def test_path_shortening(self):
 # Test 1:

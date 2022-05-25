@@ -10,7 +10,7 @@ from . import datatypes
 
 
 def _assert_type(obj, objtype, name):
-    # Used for asserting type for __init__
+    # Used for asserting types for user values
     if isinstance(obj, objtype):
         return True
     # We shouldn't need __qualname__ if subclass(objtype, type)...
@@ -115,17 +115,23 @@ class Panel:
     # `len(panel.get_entries())`... but like, really?
     # Making a copy every time?
     #
-    # (With these methods you can write instead `entry in panel`
-    # and panel.n_entries().  "Length of panel" doesn't read well
-    # to me and so that's why I didn't define __len__().)
+    # (With these methods you can write instead `if entry in panel`
+    # and `panel.count()` and `if panel.has_entries()`...)
     def __contains__(self, entry):
+        """Return True if `entry` is an entry of this panel."""
         return entry in self._entries
 
     def count(self):
+        """Return the number of entries in this panel."""
         return len(self._entries)
 
     def has_entries(self):
+        """Return True if there is at least one entry."""
         return bool(self._entries)
+
+    def sort_entries(self, *, key=None, reverse=False):
+        """Call list.sort() on internal entry list."""
+        return self._entries.sort(key=key, reverse=reverse)
 
     # ==========
     # Attributes

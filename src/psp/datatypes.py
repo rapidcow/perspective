@@ -78,7 +78,7 @@ _types = {
     'png':  dtype(False, ('.png',), ()),
     'jpeg': dtype(False, ('.jpg', '.jpeg'), ('jpg',)),
     'tiff': dtype(False, ('.tiff',), ()),
-    'heic': dtype(False, ('.heic',), ()),
+    'heif': dtype(False, ('.heif', '.heic',), ()),
     # Video
     'mp4':  dtype(False, ('.mp4',), ()),
     'mov':  dtype(False, ('.mov',), ()),

@@ -266,7 +266,7 @@ class PanelFormatter(Formatter):
     def __init__(self, width=80, wrapper=None, **options):
         super().__init__(width, wrapper)
         self._all_options.update({
-            'base_dir', 'time_zone', 'coerce_time_zone',
+            'base_dir', 'time_zone', 'infer_time_zone', 'coerce_time_zone',
             'sort_entries_by', 'reverse_entries', 'entry_indent',
             'time_format', 'date_rating_sep', 'title_entries_vsep',
             'entry_vsep', 'main_insight_entries_vsep',
@@ -278,13 +278,17 @@ class PanelFormatter(Formatter):
         self.configure(
             base_dir=None,  # none to infer
             # Formats
-            # XXX: Does this work???
             sort_entries_by=sort_func,
             reverse_entries=False,
             # Entry format
             entry_indent='',
             time_format='12 hour',
+
             time_zone=None,
+            # convenience made so that it's optional
+            # (set this to False to get all time zone
+            # explicitly displayed)
+            infer_time_zone=True,
             coerce_time_zone=False,
 
             date_rating_sep='  ',
@@ -360,9 +364,13 @@ class PanelFormatter(Formatter):
         # infer base dir
         base_dir = self.get_option('base_dir') or os.getcwd()
         time_zone = self.get_option('time_zone')
+        self.get_option('infer_time_zone')
         # For convenience, hide all entry time zones if they happen to have
-        # the same offset.
-        if panel.has_entries():
+        # the same offset (unless an explicit time zone is provided or
+        # infer_time_zone is set to False)
+        if (time_zone is None
+                and self.get_option('infer_time_zone')
+                and panel.has_entries()):
             entries = panel.entries()
             first = next(entries).date_time
             if all(e.date_time.tzinfo == first.tzinfo or
