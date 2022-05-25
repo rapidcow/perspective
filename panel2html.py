@@ -1,15 +1,26 @@
 """Export panels to HTML.  Something I wrote personally to compensate
 for the lack of images from the terminal output...
 
-This script relies on 4 external packages you should probably install
-using pip in advance:
+This script relies on 2 external packages you should install using
+pip in advance:
 
-* pandoc (used to parse Markdown entries)
-* pyheif (for reading HEIC files if you use iOS like me... >_>)
-* PIL (used along with pyheif)
-* tqdm (fancy progress bar)
+*  beautifulsoup4 (for hacky HTML; see replace_url())
+*  tqdm (fancy progress bar; it doesn't take long to install it
+   so I just put it here as a requirement XD)
+
+There are 2 packages that are OPTIONAL for converting HEIF images:
+
+*  pyheif (Python interface to libheif which can be hard to install)
+*  PIL (used along with pyheif)
 
 And of course, you should install my psp package too. ;)
+
+Also also, if you want to produce cool Markdown/LaTeX entries,
+make sure pandoc and a (La)TeX distribution are installed on your
+device.  Hopefully you'll find these links helpful:
+
+*  pandoc: https://pandoc.org/
+*  LaTeX: https://www.latex-project.org/get/
 """
 
 import datetime
@@ -21,11 +32,22 @@ import shutil
 import subprocess
 import tempfile
 
-import pandoc
-import pandoc.types
+import bs4
+
+# Optional packages
+try:
+    import pyheif
+except ImportError:
+    pyheif = None
+
+try:
+    from PIL import Image
+except ImportError:
+    Image = None
+
+import psp.timeutil
 import psp.util
 import psp.datatypes
-import psp.timeutil
 from psp.stringify import PanelFormatter, EntryFormatter
 from psp.extensions.bigentry import BigEntry, BigLoader, BigDumper
 import tqdm
@@ -33,6 +55,7 @@ import tqdm
 __all__ = ['write_panel_html', 'export_panels']
 
 time_format = '24 hour'
+default_filename = 'file'
 
 TEMPLATE = """<!DOCTYPE html>
 <html lang="en-US">
@@ -250,12 +273,12 @@ code span.wa { color: #60a0b0; font-weight: bold; font-style: italic; } \
 
 INSIGHT_CARD = """<div class="card insight"><h1>Insights</h1></div>"""
 
-def by_utc(entry):
-    return psp.timeutil.to_utc(entry.date_time)
+def by_entry_time(entry):
+    return entry.date_time
 
 
-def write_panel_html(panel, dirpath, filename='main.html',
-                     sidebar_extra=''):
+def write_panel_html(panel, dirpath, filename='main.html', *,
+                     sidebar_extra='', encoding='utf-8'):
     """Export a panel to an HTML file inside the directory 'dirpath'."""
     panel_title = panel.date.strftime('%A, %B %e, %Y')
     rating = panel.get_attribute('rating', None)
@@ -271,36 +294,51 @@ def write_panel_html(panel, dirpath, filename='main.html',
             insight_entries.append(entry)
         else:
             main_entries.append(entry)
-    main_entries.sort(key=by_utc)
-    insight_entries.sort(key=by_utc)
+    main_entries.sort(key=by_entry_time)
+    insight_entries.sort(key=by_entry_time)
+
+    # See if the panel has a common time zone
+    time_zone = None
+    if panel.has_entries():
+        entries = panel.entries()
+        first = next(entries).date_time
+        if all(e.date_time.tzinfo == first.tzinfo or
+               e.date_time.utcoffset() == first.utcoffset()
+               for e in entries):
+            time_zone = first.tzinfo
 
     entries_html_parts = []
     dircount = 0
     dircount = add_entries(entries_html_parts, main_entries, dirpath,
-                           dircount, '<div class="card">', '</div>')
+                           dircount, '<div class="card">', '</div>',
+                           time_zone)
     if insight_entries:
         entries_html_parts.append(INSIGHT_CARD)
     dircount = add_entries(entries_html_parts, insight_entries, dirpath,
-                           dircount, '<div class="insight card">', '</div>')
+                           dircount, '<div class="insight card">', '</div>',
+                           time_zone)
     no_entries_card = '<div class="card"><p>no entries...</p></div>'
     entries_html = ''.join(entries_html_parts).rstrip('\n') or no_entries_card
 
-    sidebar = get_status_html(panel) + sidebar_extra
+    sidebar = get_status_html(panel, time_zone) + sidebar_extra
     text = TEMPLATE.format(TITLE=panel_title, HEADER=title_html,
                            LEFT=entries_html, RIGHT=sidebar)
-    with open(os.path.join(dirpath, filename), 'x') as fp:
+    with open(os.path.join(dirpath, filename), 'x',
+              encoding=encoding) as fp:
         fp.write(text)
-    with open(os.path.join(dirpath, 'stylesheet.css'), 'x') as fp:
+    with open(os.path.join(dirpath, 'stylesheet.css'), 'x',
+              encoding=encoding) as fp:
         fp.write(STYLESHEET)
 
 
-def add_entries(parts, entries, parent_dir, dircount, lefttag, righttag):
+def add_entries(parts, entries, parent_dir, dircount, lefttag, righttag,
+                time_zone):
     relpath = str(dircount)
     dirpath = os.path.join(parent_dir, relpath)
     for entry in entries:
         parts.append(lefttag)
         parts.append('\n')
-        parts.append(get_entry_html(entry, dirpath, relpath))
+        parts.append(get_entry_html(entry, dirpath, relpath, time_zone))
         parts.append(righttag)
         parts.append('\n')
         # Only advance directory count if we exported something
@@ -311,7 +349,7 @@ def add_entries(parts, entries, parent_dir, dircount, lefttag, righttag):
     return dircount
 
 
-def get_entry_html(entry, dirpath, relpath):
+def get_entry_html(entry, dirpath, relpath, time_zone):
     """Get the entry 'entry' as an HTML div element, unpacking
     content to 'dirpath' when necessary.  ('relpath' is used for
     links inside the HTML file.)
@@ -325,33 +363,35 @@ def get_entry_html(entry, dirpath, relpath):
         file_type = entry.get_main_file_type()
         file_format = entry.get_main_file_format()
         if file_type == 'markdown':
-            content = markdown_to_html(entry, dirpath, relpath)
+            content = markdown_to_html(entry, dirpath, relpath, time_zone)
         elif file_type == 'tex':
-            content = tex_to_html(entry, dirpath, relpath)
+            content = tex_to_html(entry, dirpath, relpath, time_zone)
         elif file_type == 'plain':
-            content = plain_to_html(entry)
+            content = plain_to_html(entry, time_zone)
         else:
             raise ValueError(f'unsupported bigentry file type: '
                              f'{file_type!r}')
-        return content
+        if content is not None:
+            return content
     if entry.is_text():
         if entry_type == 'markdown':
-            return markdown_to_html(entry, dirpath, relpath)
+            content = markdown_to_html(entry, dirpath, relpath, time_zone)
+            if content is not None:
+                return content
         # Fallback
         parts = []
-        entry_head(parts, entry)
+        entry_head(parts, entry, time_zone)
         parts.append('<pre class="no-bg">')
         parts.append(html.escape(get_entry_text(entry)))
         parts.append('</pre>\n')
         return ''.join(parts)
-    if entry_type in {'png', 'jpeg', 'heic'}:
+    if (entry_type in {'png', 'jpeg'}
+            or entry_type == 'heif' and Image and pyheif):
         os.mkdir(dirpath)
         ext = psp.datatypes.get_extension(entry_type)
-        basename = 'image'
+        basename = get_basename(entry, default='image')
         if entry_type == 'heic':
             ext = '.jpg'
-            import pyheif
-            from PIL import Image
             filepath = os.path.join(dirpath, basename + ext)
             heif_file = pyheif.read(entry.get_data())
             im = Image.frombytes(
@@ -366,7 +406,7 @@ def get_entry_html(entry, dirpath, relpath):
             filepath = os.path.join(dirpath, basename + ext)
             entry.export(filepath)
         parts = []
-        entry_head(parts, entry)
+        entry_head(parts, entry, time_zone)
         parts.append('<img')
         caption = entry.get_attribute('caption', '')
         if caption:
@@ -377,9 +417,9 @@ def get_entry_html(entry, dirpath, relpath):
         return ''.join(parts)
     # Default scenario for a file
     parts = []
-    entry_head(parts, entry)
+    entry_head(parts, entry, time_zone)
     ext = psp.datatypes.get_extension(entry_type, default='')
-    basename = 'something'
+    basename = get_basename(entry, default='something')
     filepath = os.path.join(dirpath, basename + ext)
     os.mkdir(dirpath)
     entry.export(filepath)
@@ -391,23 +431,32 @@ def get_entry_html(entry, dirpath, relpath):
     return ''.join(parts)
 
 
-def get_status_html(panel):
+def get_status_html(panel, time_zone):
     """Get the status of the panel 'panel' as an HTML div element."""
     entry_count = sum(1 for e in panel.entries())
-    stuff = (f'<p>Entries: {entry_count}</p>\n'
-             f'<p>I don\'t know what else to put here</p>\n')
-    return '<div class="card">\n' + stuff + '</div>'
+    utcnow = datetime.datetime.utcnow().ctime()
+    return (f'<div class="card">\n'
+            f'<p>Entries: {entry_count}</p>\n'
+            f'<p>Time zone: {time_zone}\n</p>'
+            f'<p>Exported: {utcnow} (UTC)</p>\n'
+            f'</div>')
 
 
 # The real work
-def entry_head(parts, entry):
-    global time_format
-    title = (EntryFormatter(time_format=time_format)
+def entry_head(parts, entry, time_zone):
+    # global time_format    # not really needed since
+                            # we're not mutating it
+    title = (EntryFormatter(time_format=time_format, time_zone=time_zone)
              .get_title(entry.panel.date, entry.date_time))
     parts.append('<h2>')
-    parts.append(html.escape(title).replace(' ', '&nbsp;'))
+    parts.append(html.escape(title).replace('  ', ' &nbsp;'))
     parts.append('</h2>\n')
     attrs = []
+
+    if entry.has_title():
+        parts.append('<h3>')
+        parts.append(html.escape(entry.get_title()))
+        parts.append('</h3>')
 
     question = entry.get_attribute('question', '')
     if question:
@@ -454,9 +503,9 @@ def entry_head(parts, entry):
         # parts.append(term + ': ')
         # parts.append(html.escape(value))
         # parts.append('</pre>\n')
-        parts.append(replace_stuff_for_monospace(
-            pandoc.write(pandoc.read(f'{term}: {value}'), format='html',
-                         options=['--mathjax'])))
+        content = (convert_markdown(f'{term}: {value}') or
+                   html.escape(f'{term}: {value}'))
+        parts.append(replace_stuff_for_monospace(content))
         parts.append('</div>\n')
 
 
@@ -465,52 +514,60 @@ def get_entry_text(entry):
 
 
 def replace_stuff_for_monospace(text):
-    return text.replace('…', '...').replace('–', '--').replace('—', '---')
+    # U+2026: horizontal ellipsis
+    # U+2013: en dash
+    # U+2014: em dash
+    return (text.replace('\u2026', '...').replace('\u2013', '--')
+            .replace('\u2014', '---'))
 
 
-def plain_to_html(entry):
+def plain_to_html(entry, time_zone):
     parts = []
-    entry_head(parts, entry)
+    entry_head(parts, entry, time_zone)
     parts.append('<pre class="no-bg">\n')
     parts.append(html.escape(get_entry_text(entry)))
     parts.append('</pre>')
     return ''.join(parts)
 
 
-def markdown_to_html(entry, dirpath, relpath):
-    parts = []
-    entry_head(parts, entry)
+def markdown_to_html(entry, dirpath, relpath, time_zone):
     pandoc_format = entry.get_meta_attribute('pandoc-format', 'markdown')
-    doc = pandoc.read(get_entry_text(entry), format=pandoc_format)
-    for element in pandoc.iter(doc):
-        if isinstance(element, pandoc.types.Image):
-            img_path, fig_str = element[2]
-            if not img_path.startswith('https'):
-                element[2] = (os.path.join(relpath, img_path), fig_str)
+    doc = convert_markdown(get_entry_text(entry), format=pandoc_format)
+    if doc is None:
+        return None
+
+    parts = []
+    entry_head(parts, entry, time_zone)
     if isinstance(entry, BigEntry):
         entry.extractall(dirpath)
         os.unlink(os.path.join(dirpath, entry.get_main_file()))
-    parts.append(replace_stuff_for_monospace(
-        pandoc.write(doc, format='html', options=['--mathjax'])))
+    doc = replace_urls(doc, dirpath, relpath)
+    parts.append(replace_stuff_for_monospace(doc))
     return ''.join(parts)
 
 
 # ONLY bigentry should call this
-def tex_to_html(entry, dirpath, relpath):
-    parts = []
-    entry_head(parts, entry)
+def tex_to_html(entry, dirpath, relpath, time_zone):
     if isinstance(entry, BigEntry):
         tex_format = entry.get_main_file_format()
     else:
         tex_format = entry.get_format()
     if tex_format is None:
         tex_format = 'pdftex'
+
     valid_formats = {
         'tex', 'latex', 'pdftex', 'pdflatex', 'xetex', 'xelatex',
         'luatex', 'lualatex', 'context',
     }
     if tex_format not in valid_formats:
         raise ValueError(f'invalid tex format: {tex_format!r}')
+
+    if shutil.which(tex_format) is None:
+        return
+
+    parts = []
+    entry_head(parts, entry, time_zone)
+
     with tempfile.TemporaryDirectory() as tmpdir:
         if isinstance(entry, BigEntry):
             entry.extractall(tmpdir)
@@ -524,9 +581,10 @@ def tex_to_html(entry, dirpath, relpath):
             oldpwd = os.getcwd()
             try:
                 os.chdir(tmpdir)
-                retval = subprocess.call([
-                    engine, '-shell-escape', '-output-directory',
-                    outdir, filename])
+                retval = subprocess.call(
+                    [engine, '-shell-escape', '-output-directory',
+                     outdir, filename],
+                    stdout=subprocess.DEVNULL)
                 if retval:
                     raise RuntimeError('error while compiling tex file')
             finally:
@@ -552,8 +610,60 @@ def tex_to_html(entry, dirpath, relpath):
     return ''.join(parts)
 
 
+def convert_markdown(doc, *, format='markdown'):
+    """Convert markdown with pandoc"""
+    if shutil.which('pandoc') is None:
+        return None
+    # Not piping stderr I guess since it might be important stuff :/
+    proc = subprocess.Popen(['pandoc', '--from', format,
+                             '--to', 'html', '--mathjax'],
+                            stdin=subprocess.PIPE,
+                            stdout=subprocess.PIPE)
+    doc_bytes = doc.encode()
+    (stdout, _) = proc.communicate(input=doc_bytes)
+    return stdout.decode()
+
+
+def get_basename(entry, default=default_filename):
+    filename = None
+    if entry.has_meta_attribute('filename'):
+        filename = entry.get_meta_attribute('filename')
+    elif entry.has_source():
+        filename = os.path.basename(entry.get_source())
+    if not filename:
+        return default
+    for ext in psp.datatypes.list_extensions():
+        if filename.endswith(ext):
+            return filename[:-len(ext)]
+    return filename.split('.')[0]
+
+
+# There's the <base> tag in HTML that allows you to set the base
+# directory.  That would've been perfect for us, except... it only allows
+# you to set one across the whole document.
+#
+# So yeah, we kind of have to do... this instead.
+#
+def replace_urls(doc, dirpath, relpath):
+    """Append dirname to relative paths"""
+    if not os.path.exists(dirpath):
+        return doc
+    soup = bs4.BeautifulSoup(doc, 'html.parser')
+    for a_elem in soup.find_all('a'):
+        href = a_elem['href']
+        if os.path.exists(os.path.join(dirpath, href)):
+            a_elem['href'] = os.path.join(relpath, href)
+    for img_elem in soup.find_all('img'):
+        src = img_elem['src']
+        if os.path.exists(os.path.join(dirpath, src)):
+            img_elem['src'] = os.path.join(relpath, src)
+    # can't use soup.prettify() since it may add spurious space :(
+    return str(soup)
+
+
 def export_panels(panels, outdir, *, dumper=None, loader=None,
-                  panel_formatter=None, entry_formatter=None):
+                  panel_formatter=None, entry_formatter=None,
+                  encoding='utf-8'):
     if dumper is None:
         dumper = BigDumper(
             default_time_zone_offset=datetime.timedelta(hours=8))
@@ -588,10 +698,13 @@ def export_panels(panels, outdir, *, dumper=None, loader=None,
         if os.path.exists(dirpath):
             loader.configure(base_dir=os.path.join(dirpath, '_bk'))
             try:
-                orig_panel = loader.load(os.path.join(bk, 'backup.json'))[0]
-                with open(os.path.join(bk, 'nav_info.json')) as fp:
+                with open(os.path.join(bk, 'backup.json'),
+                          encoding=encoding) as fp:
+                    orig_panel = loader.load(fp)[0]
+                with open(os.path.join(bk, 'nav_info.json'),
+                          encoding=encoding) as fp:
                     orig_nav_info = json.load(fp)
-            except FileNotFoundError:
+            except (UnicodeDecodeError, FileNotFoundError):
                 pass
             else:
                 if (psp.util.panels_equal(orig_panel, panel)
@@ -611,13 +724,14 @@ def export_panels(panels, outdir, *, dumper=None, loader=None,
         else:
             extra = ''
         write_panel_html(panel, dirpath, sidebar_extra=extra)
-        dumper.dump([panel], bk)
-        with open(os.path.join(bk, 'nav_info.json'), 'w') as fp:
+        dumper.dump([panel], bk, encoding=encoding)
+        with open(os.path.join(bk, 'nav_info.json'), 'w',
+                  encoding=encoding) as fp:
             json.dump(nav_info, fp)
         loader.configure(base_dir=bk)
         panel_formatter.configure(base_dir=bk)
-        panel = loader.load(os.path.join(bk, 'backup.json'))[0]
-        with open(os.path.join(dirpath, 'main.txt'), 'w') as fp:
+        with open(os.path.join(dirpath, 'main.txt'), 'w',
+                  encoding=encoding) as fp:
             fp.write(panel_formatter.format(
                 panel, entry_formatter=entry_formatter))
             fp.write('\n')
