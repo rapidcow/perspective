@@ -135,6 +135,16 @@ def _ensure_text(obj, key, extra=''):
                     f'got {clsname!r}')
 
 
+_data_enc_table = {
+    'base16': base64.b16decode,
+    'base32': base64.b32decode,
+    'base64': base64.b64decode,
+    'base64_url': base64.urlsafe_b64decode,
+    'ascii85': base64.a85decode,
+    'base85': base64.b85decode,
+}
+
+
 class JSONLoader:
     """A JSON archive loader.
 
@@ -160,8 +170,7 @@ class JSONLoader:
             # 'load_from_file', # 'validate',
             'check_panel_duplicates', 'check_panel_order',
             'check_entry_order', 'error_on_warning', 'suppress_warnings',
-            'paths', 'base_dir', 'encoding', 'json_options',
-            'warn_ambiguous_paths',
+            'paths', 'base_dir', 'json_options', 'warn_ambiguous_paths',
         }
 
         self._options = {
@@ -679,14 +688,6 @@ class JSONLoader:
         desc = meta.pop('desc', '')
         obj.set_meta_attribute('desc', _ensure_text(desc, 'desc'))
 
-        # Filename
-        if 'filename' in meta:
-            filename = meta.pop('filename')
-            _assert_type(filename, str, 'filename')
-        else:
-            filename = None
-        obj.set_meta_attribute('filename', filename)
-
         for key, value in meta.items():
             obj.set_meta_attribute(key, copy.deepcopy(value))
 
@@ -744,7 +745,7 @@ class JSONLoader:
 
     @staticmethod
     def _infer_encoding_from_type(type_):
-        assert type_ is not None
+        # assert type_ is not None
         try:
             is_text = datatypes.is_text_type(type_)
         except LookupError:
@@ -752,19 +753,11 @@ class JSONLoader:
         return 'utf-8' if is_text else 'binary'
 
     def get_data_encoder(self, data_enc):
-        if data_enc == 'base16':
-            return base64.b16decode,
-        if data_enc == 'base32':
-            return base64.b32decode
-        if data_enc == 'base64':
-            return base64.b64decode
-        if data_enc == 'base64_url':
-            return base64.urlsafe_b64decode
-        if data_enc == 'ascii85':
-            return base64.a85decode
-        if data_enc == 'base85':
-            return base64.b85decode
-        raise LookupError(data_enc)
+        """Return data encoding given its name as a string.
+        Raise LookupError on an invalid data encoding.
+        """
+        # This raises KeyError which is a subclass of LookupError
+        return _data_enc_table[data_enc]
 
     # Options checker...
     def check_paths_option(self, paths):
@@ -936,7 +929,7 @@ class JSONDumper:
     #
     # 2.  a list of Panel() objects, joined with a list of export paths
     #     this is exposed as the basic_dump() method
-    def dump(self, panels, dirname):
+    def dump(self, panels, dirname, *, encoding='utf-8'):
         os.mkdir(dirname)
         panels = list(panels)
         files_added = set()
@@ -952,17 +945,18 @@ class JSONDumper:
                     export_paths.append(filename)
 
         try:
-            self.__basic_dump(panels, export_paths, dirname)
+            self.__basic_dump(panels, export_paths, dirname, encoding)
         except:
             self.__cleanup(dirname)
             raise
 
     # Low-level interface (lower than ever!)
-    def basic_dump(self, panels, export_paths, dirname):
+    def basic_dump(self, panels, export_paths, dirname,
+                   *, encoding='utf-8'):
         os.mkdir(dirname)
         panels = list(panels)
         try:
-            self.__basic_dump(panels, export_paths, dirname)
+            self.__basic_dump(panels, export_paths, dirname, encoding)
         except:
             self.__cleanup(dirname)
             raise
@@ -974,12 +968,12 @@ class JSONDumper:
             del data['paths']
         return json.dumps(data, **self.get_option('json_options'))
 
-    def __basic_dump(self, panels, export_paths, dirname):
+    def __basic_dump(self, panels, export_paths, dirname, encoding):
         data = self.__basic_dump_data(panels, export_paths, dirname)
         backup_name = self.get_option('backup_name')
         backup_path = os.path.normpath(os.path.join(dirname, backup_name))
         os.makedirs(os.path.dirname(backup_path), exist_ok=True)
-        with io.open(backup_path, 'x') as fp:
+        with io.open(backup_path, 'x', encoding=encoding) as fp:
             json.dump(data, fp, **self.get_option('json_options'))
             fp.write('\n')
 
@@ -1014,7 +1008,6 @@ class JSONDumper:
         for panel in panels:
             panel_dict, panel_entries = self.wrap_panel(panel)
             for entry in panel.entries():
-                assert entry.panel is panel
                 entry_dict = self.wrap_entry(entry, panel)
                 relative_path, input_path = next(path_it, (None, None))
                 if relative_path is None:
@@ -1327,7 +1320,7 @@ class JSONDumper:
             entry_time = entry_time.replace(tzinfo=None)
         # Hide date if possible
         if entry_time.date() == panel.date:
-            self.handle_time(entry_dict, entry_time.time())
+            self.handle_time(entry_dict, entry_time.timetz())
         else:
             self.handle_datetime(entry_dict, entry_time)
 
@@ -1419,12 +1412,12 @@ class JSONDumper:
 def load_json(file, date=None, *, encoding='utf-8', **options):
     loader = JSONLoader()
     if isinstance(file, (str, os.PathLike)):
-        options.setdefault('base_dir', os.path.abspath(os.path.dirname(file)))
+        loader.configure(base_dir=os.path.abspath(os.path.dirname(file)))
     loader.configure(**options)
-    return loader.load(file, encoding=encoding, date=date)
+    return loader.load(file, date=date, encoding=encoding)
 
 
-def dump_json(panels, dirname, **options):
+def dump_json(panels, dirname, *, encoding='utf-8', **options):
     dumper = JSONDumper()
     dumper.configure(**options)
-    return dumper.dump(panels, dirname)
+    return dumper.dump(panels, dirname, encoding=encoding)
