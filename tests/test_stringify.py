@@ -285,6 +285,9 @@ class TestStringifyEntry(unittest.TestCase):
         formatter.configure(coerce_time_zone=False)
         self.assertEqual(formatter.format(entry), fmt('4:40 PM'))
 
+    def test_infer_time_zone(self):
+        pass
+
     def test_title(self):
         # Long title, short title and stuff
         pass

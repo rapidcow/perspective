@@ -9,9 +9,9 @@ import tarfile
 import tempfile
 import zipfile
 
-from .. import Entry
-from .. import datatypes
-from ..processors import JSONLoader, JSONDumper
+from psp import Entry
+from psp import datatypes
+from psp.processors import JSONLoader, JSONDumper
 
 __all__ = [
     'BigEntry', 'BigLoader', 'BigDumper', 'load', 'dump',
@@ -336,11 +336,15 @@ class BigDumper(JSONDumper):
             data_dict['encoding'] = enc
 
 
-def load(file, **kwargs):
-    loader = BigLoader(**kwargs)
-    return loader.load(file)
+def load(file, date=None, *, encoding='utf-8', **options):
+    loader = BigLoader()
+    if isinstance(file, (str, os.PathLike)):
+        loader.configure(base_dir=os.path.abspath(os.path.dirname(file)))
+    loader.configure(**options)
+    return loader.load(file, date=date, encoding=encoding)
 
 
-def dump(panels, dirname, **kwargs):
-    dumper = BigDumper(**kwargs)
-    return dumper.dump(panels, dirname)
+def dump(panels, dirname, *, encoding='utf-8', **options):
+    dumper = BigDumper()
+    dumper.configure(**options)
+    return dumper.dump(panels, dirname, encoding=encoding)
