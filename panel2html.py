@@ -278,7 +278,7 @@ def by_entry_time(entry):
 
 
 def write_panel_html(panel, dirpath, filename='main.html', *,
-                     sidebar_extra='', encoding='utf-8'):
+                     time_zone=None, sidebar_extra='', encoding='utf-8'):
     """Export a panel to an HTML file inside the directory 'dirpath'."""
     panel_title = panel.date.strftime('%A, %B %e, %Y')
     rating = panel.get_attribute('rating', None)
@@ -298,7 +298,6 @@ def write_panel_html(panel, dirpath, filename='main.html', *,
     insight_entries.sort(key=by_entry_time)
 
     # See if the panel has a common time zone
-    time_zone = None
     if panel.has_entries():
         entries = panel.entries()
         first = next(entries).date_time
@@ -390,9 +389,9 @@ def get_entry_html(entry, dirpath, relpath, time_zone):
         os.mkdir(dirpath)
         ext = psp.datatypes.get_extension(entry_type)
         basename = get_basename(entry, default='image')
-        if entry_type == 'heic':
+        if entry_type == 'heif':
             ext = '.jpg'
-            filepath = os.path.join(dirpath, basename + ext)
+            filename = basename + ext
             heif_file = pyheif.read(entry.get_data())
             im = Image.frombytes(
                 heif_file.mode,
@@ -401,32 +400,32 @@ def get_entry_html(entry, dirpath, relpath, time_zone):
                 'raw',
                 heif_file.mode,
                 heif_file.stride)
-            im.save(filepath, format='jpeg')
+            im.save(os.path.join(dirpath, filename), format='jpeg')
         else:
-            filepath = os.path.join(dirpath, basename + ext)
-            entry.export(filepath)
+            filename = basename + ext
+            entry.export(os.path.join(dirpath, filename))
         parts = []
         entry_head(parts, entry, time_zone)
         parts.append('<img')
         caption = entry.get_attribute('caption', '')
         if caption:
             parts.append(f' alt="{html.escape(caption)}"')
-        parts.append(f' src="'
-                     f'{html.escape(os.path.join(relpath, basename + ext))}"')
-        parts.append(' />\n')
+        srcpath = html.escape(os.path.join(relpath, filename))
+        parts.append(f' src="{srcpath}" />\n')
         return ''.join(parts)
     # Default scenario for a file
     parts = []
     entry_head(parts, entry, time_zone)
     ext = psp.datatypes.get_extension(entry_type, default='')
     basename = get_basename(entry, default='something')
-    filepath = os.path.join(dirpath, basename + ext)
+    filename = basename + ext
+    filepath = os.path.join(dirpath, filename)
     os.mkdir(dirpath)
     entry.export(filepath)
-    parts.append(f'<a href="'
-                 f'{html.escape(os.path.join(relpath, basename + ext))}">'
+    src = html.escape(os.path.join(relpath, filename))
+    parts.append(f'<a href="{src}">'
                  f'<pre class="no-bg">'
-                 f'{html.escape(basename + ext, quote=False)}'
+                 f'{html.escape(filename, quote=False)}'
                  f'</pre></a>\n')
     return ''.join(parts)
 
@@ -437,8 +436,8 @@ def get_status_html(panel, time_zone):
     utcnow = datetime.datetime.utcnow().ctime()
     return (f'<div class="card">\n'
             f'<p>Entries: {entry_count}</p>\n'
-            f'<p>Time zone: {time_zone}\n</p>'
-            f'<p>Exported: {utcnow} (UTC)</p>\n'
+            f'<p>Time zone: {time_zone}</p>\n'
+            f'<p>Exported at: {utcnow} (UTC)</p>\n'
             f'</div>')
 
 
@@ -625,12 +624,11 @@ def convert_markdown(doc, *, format='markdown'):
 
 
 def get_basename(entry, default=default_filename):
-    filename = None
     if entry.has_meta_attribute('filename'):
         filename = entry.get_meta_attribute('filename')
     elif entry.has_source():
         filename = os.path.basename(entry.get_source())
-    if not filename:
+    else:
         return default
     for ext in psp.datatypes.list_extensions():
         if filename.endswith(ext):
@@ -653,10 +651,11 @@ def replace_urls(doc, dirpath, relpath):
         href = a_elem['href']
         if os.path.exists(os.path.join(dirpath, href)):
             a_elem['href'] = os.path.join(relpath, href)
-    for img_elem in soup.find_all('img'):
-        src = img_elem['src']
+    # only occasionally does the <video> tag contain source I guess?
+    for src_elem in soup.find_all(['img', 'audio', 'source', 'video']):
+        src = src_elem['src']
         if os.path.exists(os.path.join(dirpath, src)):
-            img_elem['src'] = os.path.join(relpath, src)
+            src_elem['src'] = os.path.join(relpath, src)
     # can't use soup.prettify() since it may add spurious space :(
     return str(soup)
 
@@ -665,12 +664,11 @@ def export_panels(panels, outdir, *, dumper=None, loader=None,
                   panel_formatter=None, entry_formatter=None,
                   encoding='utf-8'):
     if dumper is None:
-        dumper = BigDumper(
-            default_time_zone_offset=datetime.timedelta(hours=8))
+        dumper = BigDumper()
     if loader is None:
         loader = BigLoader(error_on_warning=True)
     if panel_formatter is None:
-        panel_formatter = PanelFormatter()
+        panel_formatter = PanelFormatter(infer_time_zone=False)
     panel_formatter.width = 120
     panel_formatter.configure(time_format=time_format)
     if entry_formatter is None:
@@ -680,7 +678,8 @@ def export_panels(panels, outdir, *, dumper=None, loader=None,
     progress_bar = tqdm.tqdm(panels)
     for index, panel in enumerate(progress_bar):
         dirpath = os.path.join(outdir, *str(panel.date).split('-'))
-        bk = os.path.join(dirpath, '_bk')
+        bk_name = '.bk'
+        bk = os.path.join(dirpath, bk_name)
         nav_elements = []
         nav_info = {}
         if index > 0:
@@ -696,7 +695,7 @@ def export_panels(panels, outdir, *, dumper=None, loader=None,
             nav_elements.append(f'<a href="{next_path}">Next</a>')
             nav_info['next'] = str(next_date)
         if os.path.exists(dirpath):
-            loader.configure(base_dir=os.path.join(dirpath, '_bk'))
+            loader.configure(base_dir=bk)
             try:
                 with open(os.path.join(bk, 'backup.json'),
                           encoding=encoding) as fp:
@@ -718,17 +717,19 @@ def export_panels(panels, outdir, *, dumper=None, loader=None,
         progress_bar.set_description(f'{action} {panel.date}')
         os.makedirs(dirpath)
         nav_elements.append('<a href="main.txt">Plain</a>')
-        if nav_elements:
-            content = '&nbsp;&nbsp;'.join(nav_elements)
-            extra = f'<div class="card">{content}</div>'
-        else:
-            extra = ''
+        nav_elements.append(f'<a href="{bk_name}/backup.json">JSON</a>')
+        content = '&nbsp;&nbsp;'.join(nav_elements)
+        extra = f'<div class="card">{content}</div>'
         write_panel_html(panel, dirpath, sidebar_extra=extra)
         dumper.dump([panel], bk, encoding=encoding)
         with open(os.path.join(bk, 'nav_info.json'), 'w',
                   encoding=encoding) as fp:
             json.dump(nav_info, fp)
+        # Reload the panel so relative path names are correct
         loader.configure(base_dir=bk)
+        with open(os.path.join(bk, 'backup.json'),
+                  encoding=encoding) as fp:
+            panel = loader.load(fp)[0]
         panel_formatter.configure(base_dir=bk)
         with open(os.path.join(dirpath, 'main.txt'), 'w',
                   encoding=encoding) as fp:
