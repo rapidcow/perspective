@@ -613,14 +613,9 @@ def convert_markdown(doc, *, format='markdown'):
     """Convert markdown with pandoc"""
     if shutil.which('pandoc') is None:
         return None
-    # Not piping stderr I guess since it might be important stuff :/
-    proc = subprocess.Popen(['pandoc', '--from', format,
-                             '--to', 'html', '--mathjax'],
-                            stdin=subprocess.PIPE,
-                            stdout=subprocess.PIPE)
-    doc_bytes = doc.encode()
-    (stdout, _) = proc.communicate(input=doc_bytes)
-    return stdout.decode()
+    return subprocess.check_output(
+        ['pandoc', '--from', format, '--to', 'html', '--mathjax'],
+        input=doc, text=True)
 
 
 def get_basename(entry, default=default_filename):
