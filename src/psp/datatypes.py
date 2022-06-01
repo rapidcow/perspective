@@ -246,7 +246,6 @@ def register_data_type(name, type_tuple):
     if name in _types:
         raise ValueError(f'{name!r} has already been registered')
     t = dtype(type_tuple)
-    exts = tuple(exts)
     for ext in t.exts:
         if '.' not in ext:
             raise ValueError(f"extension {ext!r} does not contain "
@@ -265,8 +264,8 @@ def register_data_type(name, type_tuple):
             _ext2type[ext] = name
         else:
             ambiguous_ext.add(ext)
-        for ext in ambiguous_ext:
-            del _ext2type[ext]
+    for ext in ambiguous_ext:
+        del _ext2type[ext]
     for alias in t.aliases:
         _alias2name[alias] = name
     clear_cache()
