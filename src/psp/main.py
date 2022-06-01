@@ -1,6 +1,7 @@
 """Main program implementation"""
 
 import argparse
+from collections import defaultdict
 import calendar
 import datetime
 import io
@@ -18,7 +19,6 @@ from .stringify import PanelFormatter
 from .processors.json_processor import JSONLoader, JSONDumper
 from .processors.json_processor import LoadError
 from .timeutil import parse_date
-from .types import Panel
 from . import util
 
 __all__ = ['main']
@@ -158,10 +158,13 @@ def main():
             def print(self, panel, file):
                 print(self.formatter.format(panel), file=file)
 
+    # First weekday
+    firstweekday = getattr(config, 'firstweekday', calendar.MONDAY)
+
     if args.subname in {'print', 'synopsis'}:
-        files = get_source_files(args.source, args.files)
+        files = get_source_files(args.source, args.files, args.encoding)
     elif args.subname == 'merge':
-        files = get_source_files(args.source, args.files)
+        files = get_source_files(args.source, args.files, args.encoding)
 
     if args.subname == 'print':
         loader = Loader()
@@ -182,7 +185,8 @@ def main():
                 f"specified, so let me know what panel you would like to "
                 f"display..."))
             print()
-            date = request_date_from_user(loader, args.encoding, files)
+            date = request_date_from_user(loader, args.encoding, files,
+                                          firstweekday)
             print()
         else:
             date = args.date
@@ -196,7 +200,6 @@ def main():
                 printer.print(panel, fp)
 
     elif args.subname == 'synopsis':
-        from collections import defaultdict
         loader = Loader()
         set_warning_level(loader, args.wlevel)
         wrapper = textwrap.TextWrapper(
@@ -231,7 +234,6 @@ def main():
             sum(1 for panel in merged for entry in panel.get_entries())))
 
     elif args.subname == 'merge':
-        from collections import defaultdict
         loader = Loader()
         dumper = Dumper()
         set_warning_level(loader, args.wlevel)
@@ -262,12 +264,12 @@ def main():
         raise RuntimeError('unreachable')
 
 
-def get_source_files(source, files):
+def get_source_files(source, files, encoding):
     result = []
     if source is not None:
         srcpath = os.path.abspath(source)
         dirpath = os.path.dirname(srcpath)
-        with io.open(srcpath) as fp:
+        with io.open(srcpath, encoding=encoding) as fp:
             for line in fp:
                 # Skip empty lines
                 if not line.strip():
@@ -284,7 +286,7 @@ def set_warning_level(loader, level):
                      error_on_warning=level >= 2)
 
 
-def request_date_from_user(loader, encoding, files):
+def request_date_from_user(loader, encoding, files, firstweekday):
     """Input from sys.stdin"""
     panels = {}
     for file in files:
@@ -297,20 +299,20 @@ def request_date_from_user(loader, encoding, files):
         panels.update((p.date, p) for p in panel_objects)
 
     dates = set(panels.keys())
-    return _get_year_from_user(dates, panels)
+    return _get_year_from_user(dates, panels, firstweekday)
 
 
-def _get_year_from_user(dates, panels, skip_one=True):
+def _get_year_from_user(dates, panels, firstweekday, skip_single=True):
     width = get_terminal_width()
     wrapper = textwrap.TextWrapper(width)
     years = sorted({d.year for d in dates})
-    if len(years) == 1 and skip_one:
-        need_space = False
+    if len(years) == 1 and skip_single:
+        add_space = False
         year = years.pop()
         print(wrapper.fill(
             f'Only one year found: {year}, automatically selecting it...'))
     else:
-        need_space = True
+        add_space = True
         print(wrapper.fill('Select one year from the years below:'))
         _print_list((str(y).zfill(4) for y in years), min(49, width), 4, 3)
         while True:
@@ -330,9 +332,9 @@ def _get_year_from_user(dates, panels, skip_one=True):
                 else:
                     break
 
-    if need_space:
+    if add_space:
         print()
-    return _get_month_from_user(dates, panels, year)
+    return _get_month_from_user(dates, panels, year, firstweekday)
 
 
 def month_name(m):
@@ -346,19 +348,19 @@ def month_abbr(m):
     return name[:3 if len(name) > 4 else 4]
 
 
-def _get_month_from_user(dates, panels, year, skip_one=True):
+def _get_month_from_user(dates, panels, year, firstweekday, skip_single=True):
     width = get_terminal_width()
     wrapper = textwrap.TextWrapper(width)
     year_dates = [d for d in dates if d.year == year]
     months = sorted({d.month for d in year_dates})
-    if len(months) == 1 and skip_one:
-        need_space = False
+    if len(months) == 1 and skip_single:
+        add_space = False
         month = months.pop()
         print(wrapper.fill(
             f'Only one month in {year} found: {month_name(month)}, '
             f'automatically selecting it...'))
     else:
-        need_space = True
+        add_space = True
         print(wrapper.fill(
             f'Select one month from the months of {year} below:'))
         # Fit all months if we can, otherwise six at most.
@@ -371,10 +373,10 @@ def _get_month_from_user(dates, panels, year, skip_one=True):
                 continue
             if m.lower() in ('b', 'back', 'prev'):
                 print()
-                return _get_year_from_user(dates, panels, False)
+                return _get_year_from_user(dates, panels, firstweekday, False)
             month = 0
             if m.lower() in ('c', 'cal', 'calendar'):
-                _print_calendar_for_year(year, panels)
+                _print_calendar_for_year(year, panels, firstweekday)
                 print()
                 continue
             if m.lower() in ('p', 'print'):
@@ -408,12 +410,14 @@ def _get_month_from_user(dates, panels, year, skip_one=True):
             else:
                 print(f'Error: cannot parse month {m!r}...', file=sys.stderr)
 
-    if need_space:
+    if add_space:
         print()
-    return _get_day_from_user(dates, panels, year, year_dates, month)
+    return _get_day_from_user(dates, panels, year, year_dates, month,
+                              firstweekday)
 
 
-def _get_day_from_user(dates, panels, year, year_dates, month):
+def _get_day_from_user(dates, panels, year, year_dates, month,
+                       firstweekday):
     width = get_terminal_width()
     wrapper = textwrap.TextWrapper(width)
     month_dates = [d for d in year_dates if d.month == month]
@@ -434,9 +438,10 @@ def _get_day_from_user(dates, panels, year, year_dates, month):
                 continue
             if d.lower() in ('b', 'back', 'prev'):
                 print()
-                return _get_month_from_user(dates, panels, year, False)
+                return _get_month_from_user(dates, panels, year, firstweekday,
+                                            False)
             if d.lower() in ('c', 'cal', 'calendar'):
-                _print_calendar(year, month, days, panels)
+                _print_calendar(year, month, days, panels, firstweekday)
                 print()
                 continue
             if d.lower() in ('p', 'print'):
@@ -474,8 +479,8 @@ def _print_list(items, total_width, width, gap):
         print()
 
 
-def _format_calendar(year, month, days, panels):
-    text = calendar.TextCalendar().formatmonth(year, month)
+def _format_calendar(year, month, days, panels, firstweekday):
+    text = calendar.TextCalendar(firstweekday).formatmonth(year, month)
     lines = text.splitlines()
     # Make it so that every line is 20 characters long
     # (Also note that separating title from the body is necessary because
@@ -512,13 +517,13 @@ def _format_calendar(year, month, days, panels):
     return title + '\n' + ''.join(buf)
 
 
-def _print_calendar(year, month, days, panels):
-    text_lines = _format_calendar(year, month, days, panels)
+def _print_calendar(year, month, days, panels, firstweekday):
+    text_lines = _format_calendar(year, month, days, panels, firstweekday)
     for line in text_lines.splitlines():
         print(line.rstrip())
 
 
-def _print_calendar_for_year(year, panels):
+def _print_calendar_for_year(year, panels, firstweekday):
     #
     # Print calendars for each month like this:
     #
@@ -537,7 +542,8 @@ def _print_calendar_for_year(year, panels):
         for month in range(start_month, start_month + 3):
             days = {pdate.day for pdate in panels.keys()
                     if pdate.year == year and pdate.month == month}
-            calendars.append(_format_calendar(year, month, days, panels))
+            calendars.append(_format_calendar(year, month, days, panels,
+                                              firstweekday))
         # Traverse each line of every calendar and print them out
         for lines in itertools.zip_longest(
                 *[c.splitlines() for c in calendars],
@@ -599,7 +605,7 @@ def check_panels_equal(date, panels, sources, wlevel):
                           f'attributes: {msg}')
                 if wlevel >= 2:
                     raise RuntimeError(errmsg)
-                elif wlevel >= 1:
+                if wlevel >= 1:
                     import warnings
                     warnings.warn(errmsg, RuntimeWarning)
                     break

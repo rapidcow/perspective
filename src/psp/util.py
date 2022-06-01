@@ -17,7 +17,7 @@ def merge_panels(panels):
     try:
         zeroth_panel = next(piter)
     except StopIteration:
-        raise ValueError('panels has no elements')
+        raise ValueError('panels has no elements') from None
     # We only permit instances of Panel or any subclass of Panel, so the
     # following checks for that.
     if not isinstance(zeroth_panel, Panel):
@@ -29,10 +29,10 @@ def merge_panels(panels):
     except StopIteration:
         return zeroth_panel
     merged_panel = type(zeroth_panel).from_panel(zeroth_panel)
-    for p in itertools.chain((zeroth_panel, first_panel), piter):
+    for panel in itertools.chain((zeroth_panel, first_panel), piter):
         # Need to make a copy of the entry list!
-        for e in p.get_entries():
-            merged_panel.add_entry(e)
+        for entry in panel.get_entries():
+            merged_panel.add_entry(entry)
     return merged_panel
 
 
@@ -78,9 +78,10 @@ def checksum(panels):
     panel_count = 0
     entry_count = 0
     size = 0
-    for entries in entry_list:
-        panel_count += 1
-        for entry in entries:
-            entry_count += 1
-            size += entry.get_raw_data_size()
+    for panel in panels:
+        for entries in panel.entries():
+            panel_count += 1
+            for entry in entries:
+                entry_count += 1
+                size += entry.get_raw_data_size()
     return (panel_count, entry_count, size)

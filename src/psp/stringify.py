@@ -2,7 +2,6 @@
 
 import abc
 import contextlib
-import re
 import os
 
 from . import Entry, Panel
@@ -475,7 +474,7 @@ class EntryFormatter(Formatter):
                 buf.append(self.get_option('question_content_vsep'))
 
             # Content
-            content_lines = self.wrap_content(entry)
+            content_lines = self.wrap_content(entry, base_dir)
             _extend_lines(buf, content_lines)
             buf.pop()
 
@@ -613,28 +612,10 @@ class EntryFormatter(Formatter):
     def wrap_header(self, header):
         return self._wrap_paragraph(header)
 
-    # TODO: For files like .py and .c (basically SOURCE code) we don't really
-    # wanna display them...
-    #
-    # Or, in general, entries that are too long should be omitted (or at least
-    # should have the OPTION to be omitted, like over 3000 words or something)
-    #
-    # In addition, for files like Markdown indentation should be consistent
-    # throughout the entire text... so I was thinking maybe we'd add
-    # wrap_* where * is a type of text, and when this class is subclassed
-    # you can implement those functions... like that :D
-    def wrap_content(self, entry):
-        try:
-            func = getattr(self, f'wrap_{entry.get_type()}_entry')
-        except AttributeError:
-            pass
-        else:
-            return func(entry)
-
+    def wrap_content(self, entry, base_dir):
         if entry.is_text():
             return self.wrap_text_content(entry)
-        else:
-            return self.wrap_binary_content(entry)
+        return self.wrap_binary_content(entry, base_dir)
 
     def wrap_text_content(self, entry):
         """Default implementation for wrapping text entries."""
@@ -648,20 +629,17 @@ class EntryFormatter(Formatter):
     def get_content(self, entry):
         return entry.get_data()
 
-    def wrap_binary_content(self, entry):
+    def wrap_binary_content(self, entry, base_dir):
         """Default implementation for wrapping binary entries."""
         file_size = entry.get_raw_data_size()
         size_str = format_bytes(file_size)
-        if entry.get_source() is not None:
-            path = self.__get_path(entry.get_source())
+        if entry.has_source():
+            path = os.path.relpath(entry.get_source(), base_dir)
             text = (f'{entry.get_type()} file sized {size_str} '
                     f'at {path!r}>')
         else:
             text = f'{entry.get_type()} data sized {size_str}>'
         return self._wrap_paragraph(text, prefix='<')
-
-    def __get_path(self, path):
-        return os.path.relpath(path, start=self.get_option('base_dir'))
 
     def get_entry_title(self, entry):
         return entry.get_title()
@@ -753,7 +731,7 @@ def format_bytes(
         # No need to worry about 'suffix' being undefined since 'unit' has
         # at least one item.
         return formatter(size / mult) + sep + suffix
-    elif unit == 'twos':
+    if unit == 'twos':
         units.extend(BYTES_TWOS_UNITS)
         # Increase by powers of 2**10 and see if it falls in the range
         # [mult, mult * 2**10).  Bit shifting is used because... computers.
@@ -762,8 +740,7 @@ def format_bytes(
                 break
             mult <<= 10
         return formatter(size / mult) + sep + suffix
-    else:
-        raise ValueError("unit must be either 'tens' or 'twos'")
+    raise ValueError("unit must be either 'tens' or 'twos'")
 
 
 BYTES_TENS_UNITS = [
