@@ -230,12 +230,21 @@ def main():
                 panel_map[panel.date].append((panel, rpath))
 
         merged = merge_panel_map(panel_map, 0)
+        # Technically 'panels' is a list of (panel, source) tuples, but
+        # either way the count calculated this way is accurate.
+        panel_count = sum(len(panels) for panels in panel_map.values())
+        merged_count = len(merged)
+        # Entries in 'panel_map' may be transferred to panels in 'merged',
+        # after merge_panel_map() is called, so to retrieve entry count
+        # we should only use 'merged'.
+        entry_count = sum(panel.count() for panel in merged)
+
         print('total:')
-        print('  panels: {} ({} after merging)'.format(
-            sum(len(panels) for panels in panel_map.values()),
-            len(merged)))
-        print('  entries: {}'.format(
-            sum(1 for panel in merged for entry in panel.get_entries())))
+        print('  panels:', panel_count, end='')
+        if merged_count != panel_count:
+            print(f' ({merged_count} after merging)', end='')
+        print()
+        print('  entries:', entry_count)
 
     elif args.subname == 'merge':
         loader = Loader()

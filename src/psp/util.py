@@ -11,7 +11,10 @@ __all__ = [
 def merge_panels(panels):
     """Merge an iterable of panels and return one panel.
 
-    NOTE: Every panel object will lose all of their entries!
+    If the iterable only has one panel, return that panel unchanged.
+    If the iterable has more than one panel, create a new panel and add
+    each entry to the new panel.  THIS WILL REMOVE EVERY ENTRY IN ALL
+    PANELS FROM THE ITERABLE.
     """
     piter = iter(panels)
     try:
@@ -42,7 +45,8 @@ def _entry_time(entry):
 
 def panels_equal(panel1, panel2):
     """Determine if two panels are equal."""
-    assert panel1.date == panel2.date
+    if panel1.date != panel2.date:
+        return False
     if panel1.get_attribute_dict() != panel2.get_attribute_dict():
         return False
     if panel1.count() != panel2.count():
