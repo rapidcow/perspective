@@ -222,6 +222,10 @@ def main():
                         print(('    ' + line).rstrip())
             print('  panels:', len(panels))
             print('  entries:', sum(1 for p in panels for e in p.entries()))
+            if panels:
+                mindate = min(p.date for p in panels)
+                maxdate = max(p.date for p in panels)
+                print('  span:', mindate, 'to', maxdate)
             for panel in panels:
                 panel_map[panel.date].append((panel, rpath))
 
