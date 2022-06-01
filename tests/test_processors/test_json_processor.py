@@ -1,24 +1,35 @@
 """Test the psp.processors.json_processor module."""
 
-from datetime import date, time, timedelta
+from datetime import date, time, datetime, timedelta, timezone
+import io
 import json
 import os
-from os.path import join
+from pathlib import Path
 import shutil
 import sys
 import tempfile
 import unittest
+from psp import Panel, Entry
 from psp.processors import json_processor as processor
+from psp.util import panels_equal
 
 
 def setUpModule():
-    global _dir_td, _dir
-    _dir_td = tempfile.TemporaryDirectory()
-    _dir = _dir_td.name
+    global TDIR, ROOT
+    TDIR = tempfile.TemporaryDirectory()
+    ROOT = Path(TDIR.name)
 
 
 def tearDownModule():
-    _dir_td.cleanup()
+    TDIR.cleanup()
+
+
+def open(*args, **kwargs):
+    if 'encoding' in kwargs:
+        raise ValueError("encoding should not be passed "
+                         "(will be overridden with 'utf-8')")
+    kwargs['encoding'] = 'utf-8'
+    return io.open(*args, **kwargs)
 
 
 # Convenience methods for creating JSON backup files
@@ -44,6 +55,7 @@ def make_backup(panels, tz='UTC'):
             panel_list.append({'date': str(date_obj)})
     return obj
 
+
 def add_entries(obj, entries):
     """Add a list of list of entry dictionaries 'entries' to 'obj'.
     The key 'entries' is automatically created and assigned an empty list
@@ -54,6 +66,15 @@ def add_entries(obj, entries):
         for entry in ents:
             entry_list.append(entry)
 
+
+# JSONDumper.dump_data() always creates the archive with
+# the 'data' field, so it's safe to just pop it.
+def split_data(data):
+    panels = data.pop('data')
+    return panels, data
+
+
+# I/O
 def write_json(file, obj):
     with open(file, 'w') as fp:
         json.dump(obj, fp)
@@ -64,41 +85,60 @@ def write_file(file, s):
         with open(file, 'w') as fp:
             fp.write(s)
     else:
-        with open(file, 'wb') as fp:
+        with io.open(file, 'wb') as fp:
             fp.write(s)
 
 
+def read_json(file):
+    with open(file) as fp:
+        return json.load(fp)
+
+
+def read_file(file, binary=False):
+    if binary:
+        with io.open(file, 'rb') as fp:
+            return fp.read()
+    with open(file) as fp:
+        return fp.read()
+
+
 # Attributes from panels and entries
+# (for compactness I'm breaking PEP 8 temporarily)
 def get_rating(panel):
     return panel.get_attribute('rating')
-
 
 def has_rating(panel):
     return panel.has_attribute(panel)
 
+def set_rating(panel, rating):
+    panel.set_attribute('rating', rating)
 
 def get_question(entry):
     return entry.get_attribute('question')
 
-
 def has_question(entry):
     return entry.has_attribute('question')
 
+def set_question(entry, question):
+    entry.set_attribute('question', question)
 
 def get_caption(entry):
     return entry.get_attribute('caption')
 
-
 def has_caption(entry):
     return entry.has_attribute('caption')
 
+def set_caption(entry, caption):
+    entry.set_attribute('caption', question)
 
 def get_transcription(entry):
     return entry.get_attribute('transcription')
 
-
 def has_transcription(entry):
     return entry.has_attribute('transcription')
+
+def set_transcription(entry, text):
+    entry.set_attribute('transcription', text)
 
 
 class TestLoader(unittest.TestCase):
@@ -158,8 +198,8 @@ class TestLoader(unittest.TestCase):
                     'data': 'Vaporeons are great'
                 }
             ]])
-        f = join(_dir, '0.json')
-        flareon = join(_dir, 'flareon.txt')
+        f = ROOT / '0.json'
+        flareon = ROOT / 'flareon.txt'
         write_json(f, obj)
         write_file(flareon, 'Flareons are like too fluffy IMO')
 
@@ -235,16 +275,16 @@ class TestLoader(unittest.TestCase):
                     'input': 'fig2.jpg'
                 }
             ]])
-        f = join(_dir, '0.json')
-        figs = os.path.join(_dir, 'fig')
-        fig1 = join(figs, 'fig1.jpg')
-        fig2 = join(figs, 'fig2.jpg')
+        f = ROOT / '0.json'
+        figs = ROOT / 'fig'
+        fig1 = figs / 'fig1.jpg'
+        fig2 = figs / 'fig2.jpg'
         write_json(f, obj)
         os.mkdir(figs)
         write_file(fig1, b'not really jpeg hehe')
         write_file(fig2, b'again not jpeg')
 
-        (p1,) = processor.load_json(f, base_dir=_dir)
+        (p1,) = processor.load_json(f, base_dir=ROOT)
         e1, e2, e3, e4 = p1.entries()
 
         # Question (unset by default)
@@ -277,7 +317,7 @@ class TestLoader(unittest.TestCase):
 
     def test_lookup_paths(self):
         #
-        # _dir
+        # ROOT
         # +-- a/
         # |   \-- 1.txt
         # |
@@ -291,15 +331,15 @@ class TestLoader(unittest.TestCase):
         #     \-- nGram/
         #         \-- 4.txt
         #
-        a = os.path.join(_dir, 'a')
-        a1 = os.path.join(a, '1.txt')
-        b = os.path.join(_dir, 'b')
-        b1 = os.path.join(b, '1.txt')
-        b2 = os.path.join(b, '2.txt')
-        n1 = os.path.join(b, 'n1')
-        n2 = os.path.join(b, 'nGram')
-        b3 = os.path.join(n1, '3.txt')
-        b4 = os.path.join(n1, '4.txt')
+        a = ROOT / 'a'
+        a1 = a / '1.txt'
+        b = ROOT / 'b'
+        b1 = b / '1.txt'
+        b2 = b / '2.txt'
+        n1 = b / 'n1'
+        n2 = b / 'nGram'
+        b3 = n1 / '3.txt'
+        b4 = n1 / '4.txt'
 
         d1 = date(2018, 9, 4)
         d2 = date(2018, 9, 6)
@@ -310,7 +350,7 @@ class TestLoader(unittest.TestCase):
             'input': '1.txt',
         }
         add_entries(obj, [[edict]])
-        f = join(_dir, '0.json')
+        f = ROOT / '0.json'
         write_json(f, obj)
         os.mkdir(a)
         write_file(a1, 'a1')
@@ -322,9 +362,9 @@ class TestLoader(unittest.TestCase):
         write_file(b3, 'b3')
         write_file(b4, 'b4')
 
-        (panel,) = processor.load_json(f, base_dir=_dir)
+        (panel,) = processor.load_json(f, base_dir=ROOT)
         (entry,) = panel.entries()
-        self.assertEqual(entry.get_source(), a1)
+        self.assertEqual(entry.get_source(), str(a1))
         self.assertEqual(entry.get_data(), 'a1')
 
         paths.append('b')
@@ -332,12 +372,12 @@ class TestLoader(unittest.TestCase):
         msg = r"found more than one path for {!r}.*"
         with self.assertWarnsRegex(
                 processor.LoadWarning, msg.format('1.txt')):
-            processor.load_json(f, base_dir=_dir)
+            processor.load_json(f, base_dir=ROOT)
         edict['input'] = '2.txt'
         write_json(f, obj)
-        (panel,) = processor.load_json(f, base_dir=_dir)
+        (panel,) = processor.load_json(f, base_dir=ROOT)
         (entry,) = panel.entries()
-        self.assertEqual(entry.get_source(), b2)
+        self.assertEqual(entry.get_source(), str(b2))
         self.assertEqual(entry.get_data(), 'b2')
 
         other_paths = [paths.pop(), 'b/n*']
@@ -359,24 +399,31 @@ class TestLoader(unittest.TestCase):
                 }
             ]])
         write_json(f, obj)
-        p1, _ = processor.load_json(f, base_dir=_dir, paths=other_paths)
+        p1, _ = processor.load_json(f, base_dir=ROOT, paths=other_paths)
         for entry, filepath, content in zip(
                 p1.entries(),
                 (b2, b3, b4),
                 ('b2', 'b3', 'b4')):
-            self.assertEqual(entry.get_source(), filepath)
+            self.assertEqual(entry.get_source(), str(filepath))
             self.assertEqual(entry.get_data(), content)
 
         obj['data'][0]['entries'][0]['input'] = 'b/2.txt'
         write_json(f, obj)
         with self.assertRaises(processor.LoadError):
-            processor.load_json(f, base_dir=_dir, paths=other_paths)
+            processor.load_json(f, base_dir=ROOT, paths=other_paths)
         other_paths.append('.')
-        processor.load_json(f, base_dir=_dir, paths=other_paths)
+        processor.load_json(f, base_dir=ROOT, paths=other_paths)
 
         os.unlink(f)
         shutil.rmtree(a)
         shutil.rmtree(b)
+
+    def test_path_searching(self):
+        pass
+
+    def test_meta_attributes(self):
+        # Test whether time modified can be inferred from created time
+        pass
 
 
 class TestDumper(unittest.TestCase):
@@ -384,9 +431,80 @@ class TestDumper(unittest.TestCase):
 #
 # reverse-inference of type and encoding
 # time and datetime
-# loaded result == dumped objects
-    # def test_basics(self):
-    #     pass
+    def test_basics(self):
+        outdir = ROOT / '1'
+        e1_file = ROOT / 'a.png'
+        write_file(e1_file, b'a.png')
+        e3_file = ROOT / 'doc' / 'rd.txt'
+        e3_file.parent.mkdir()
+        write_file(e3_file, 'na\u00efve'.encode('latin-1'))
+
+        tz = timezone(timedelta(hours=8))
+        p1 = Panel(date(2021, 12, 16))
+        p2 = Panel(date(2021, 12, 17))
+        set_rating(p2, 'QAQ')
+        e1 = Entry(datetime(2021, 12, 16, 16, 42, tzinfo=tz))
+        e1.set_type('png')
+        e1.set_source(e1_file)
+        e2 = Entry(datetime(2022, 5, 27, 15, 43, tzinfo=tz), insight=True)
+        e2.set_data("i wish i weren't here")
+        e3 = Entry(datetime(2021, 12, 17, 13, 24, tzinfo=tz))
+        e3.set_type('markdown')
+        e3.set_encoding('latin-1')
+        e3.set_source(e3_file)
+        p1.add_entry(e1)
+        p1.add_entry(e2)
+        p2.add_entry(e3)
+
+        processor.dump_json([p1, p2], outdir)
+        data = read_json(outdir / 'backup.json')
+        (p1_json, p2_json), attrs = split_data(data)
+        self.assertRegex(attrs['desc'],
+                         r'\AThis is a backup file exported at .*\.\Z')
+        attrs.pop('desc')
+        self.assertEqual(attrs, {'paths': ['assets']})
+
+        e1_json, e2_json = p1_json.pop('entries')
+        e1_path = Path('assets', '2021-12-16_16-42-00_1.png')
+        self.assertEqual(b'a.png', read_file(outdir / e1_path, True))
+        self.assertEqual(p1_json, {'date': '2021-12-16'})
+        self.assertEqual(
+            e1_json, {
+                'time': '16:42+08:00',
+                'input': str(e1_path.name),
+            })
+        self.assertEqual(
+            e2_json, {
+                'date-time': '2022-05-27 15:43+08:00',
+                'insight': True,
+                'data': "i wish i weren't here",
+            })
+
+        (e3_json,) = p2_json.pop('entries')
+        self.assertEqual(
+            p2_json,
+            {
+                'date': '2021-12-17',
+                'rating': 'QAQ',
+            })
+        # Although the entry is encoded with latin-1, it is a text entry
+        # so JSONDumper.write_entry_data() should ignore the encoding.
+        self.assertEqual(
+            e3_json,
+            {
+                'time': '13:24+08:00',
+                'type': 'markdown',
+                'data': 'na\u00efve',
+            })
+
+        loaded = processor.load_json(outdir / 'backup.json',
+                                     base_dir=outdir)
+        self.assertTrue(panels_equal(p1, loaded[0]))
+        self.assertTrue(panels_equal(p2, loaded[1]))
+        e3_file.unlink()
+        e3_file.parent.rmdir()
+        e1_file.unlink()
+        shutil.rmtree(outdir)
 
     def test_default_time_zone_offset(self):
         # both time and datetime should properly set (with time zone
@@ -440,4 +558,9 @@ class TestDumper(unittest.TestCase):
 #
 #     (check for alike cases for ? and []??  Or is it unnecessary...?)
 #
+        pass
+
+    def test_meta_attributes(self):
+        # Test whether the inferred modified attribute is ignored
+        # when exporting
         pass

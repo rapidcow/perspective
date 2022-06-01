@@ -282,13 +282,13 @@ class BigDumper(JSONDumper):
         self.configure(paths=self.get_option('paths') + ('doc',))
         self.configure(**options)
 
-    def get_entry_filename(self, entry, panel, added):
-        # Always export big entries
+    def get_entry_filename(self, entry, added):
+        # Always export big entries to the 'doc' directory
         if isinstance(entry, BigEntry):
             root, filename = super().basic_get_entry_filename(
-                entry, panel, added, 'doc')
+                entry, added, 'doc')
             return root, os.path.join('doc', filename)
-        return super().get_entry_filename(entry, panel, added)
+        return super().get_entry_filename(entry, added)
 
     def write_entry_data(self, entry_dict, entry):
         if not isinstance(entry, BigEntry):
