@@ -275,7 +275,7 @@ class PanelFormatter(Formatter):
             return entry.date_time
 
         self.configure(
-            base_dir=None,  # none to infer
+            base_dir=os.getcwd(),
             # Formats
             sort_entries_by=sort_func,
             reverse_entries=False,
@@ -361,7 +361,6 @@ class PanelFormatter(Formatter):
 
     def get_entry_formatter_options(self, panel):
         # infer base dir
-        base_dir = self.get_option('base_dir') or os.getcwd()
         time_zone = self.get_option('time_zone')
         self.get_option('infer_time_zone')
         # For convenience, hide all entry time zones if they happen to have
@@ -378,7 +377,7 @@ class PanelFormatter(Formatter):
                 time_zone = first.tzinfo
         return dict(
             indent=self.get_option('entry_indent'),
-            base_dir=base_dir,
+            base_dir=self.get_option('base_dir'),
             time_format=self.get_option('time_format'),
             label_insight=False,
             time_zone=time_zone,
@@ -453,9 +452,6 @@ class EntryFormatter(Formatter):
 
         buf = []
 
-        # infer base dir
-        base_dir = self.get_option('base_dir') or os.getcwd()
-
         header = self.get_header(entry)
         lines = self.wrap_header(header)
         _extend_lines(buf, lines)
@@ -474,7 +470,7 @@ class EntryFormatter(Formatter):
                 buf.append(self.get_option('question_content_vsep'))
 
             # Content
-            content_lines = self.wrap_content(entry, base_dir)
+            content_lines = self.wrap_content(entry)
             _extend_lines(buf, content_lines)
             buf.pop()
 
@@ -612,10 +608,10 @@ class EntryFormatter(Formatter):
     def wrap_header(self, header):
         return self._wrap_paragraph(header)
 
-    def wrap_content(self, entry, base_dir):
+    def wrap_content(self, entry):
         if entry.is_text():
             return self.wrap_text_content(entry)
-        return self.wrap_binary_content(entry, base_dir)
+        return self.wrap_binary_content(entry)
 
     def wrap_text_content(self, entry):
         """Default implementation for wrapping text entries."""
@@ -629,12 +625,13 @@ class EntryFormatter(Formatter):
     def get_content(self, entry):
         return entry.get_data()
 
-    def wrap_binary_content(self, entry, base_dir):
+    def wrap_binary_content(self, entry):
         """Default implementation for wrapping binary entries."""
         file_size = entry.get_raw_data_size()
         size_str = format_bytes(file_size)
         if entry.has_source():
-            path = os.path.relpath(entry.get_source(), base_dir)
+            path = os.path.relpath(
+                entry.get_source(), self.get_option('base_dir'))
             text = (f'{entry.get_type()} file sized {size_str} '
                     f'at {path!r}>')
         else:
