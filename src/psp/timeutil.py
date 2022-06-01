@@ -25,7 +25,7 @@ _RE_OFFSET = re.compile(r"""
     (                       # group 2: time component
       \d{2} : \d{2}         #   hours and minutes
       (?:
-        \d{2}               #   seconds
+        : \d{2}             #   seconds
         (?: \. \d{1,6} )?   #   microseconds
       )?
     )\Z
@@ -133,8 +133,8 @@ def parse_datetime(s, tzinfo=None, fold=None):
 
     if tzinfo is not None and parsed_dt.tzinfo is None:
         parsed_dt = parsed_dt.replace(tzinfo=tzinfo)
-    if fold is not None:
-        parsed_dt = parsed_dt.replace(fold=fold)
+        if fold is not None:
+            parsed_dt = parsed_dt.replace(fold=fold)
     return parsed_dt
 
 
@@ -167,8 +167,8 @@ def parse_time(s, tzinfo=None, fold=None):
             raise ValueError(f'invalid time string: {s!r}') from None
     if tzinfo is not None and parsed_time.tzinfo is None:
         parsed_time = parsed_time.replace(tzinfo=tzinfo)
-    if fold is not None:
-        parsed_time = parsed_time.replace(fold=fold)
+        if fold is not None:
+            parsed_time = parsed_time.replace(fold=fold)
     return parsed_time
 
 
