@@ -1,0 +1,118 @@
+# SOME DESCRIPTIVE TITLE.
+# Copyright (C) 2022, rapidcow
+# This file is distributed under the same license as the The Perspective
+# Library package.
+# FIRST AUTHOR <EMAIL@ADDRESS>, 2022.
+#
+#, fuzzy
+msgid ""
+msgstr ""
+"Project-Id-Version: The Perspective Library \n"
+"Report-Msgid-Bugs-To: \n"
+"POT-Creation-Date: 2022-06-01 10:45+0800\n"
+"PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
+"Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
+"Language-Team: LANGUAGE <LL@li.org>\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=utf-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+"Generated-By: Babel 2.10.1\n"
+
+#: ../../tutorial/backup.rst:3
+msgid "How to back up entries from Perspective"
+msgstr ""
+
+#: ../../tutorial/backup.rst
+msgid "Author"
+msgstr ""
+
+#: ../../tutorial/backup.rst:5
+msgid "rapidcow <thegentlecow@gmail.com>"
+msgstr ""
+
+#: ../../tutorial/backup.rst
+msgid "Date"
+msgstr ""
+
+#: ../../tutorial/backup.rst:6
+msgid "May something, 2022"
+msgstr ""
+
+#: ../../tutorial/backup.rst
+msgid "Video"
+msgstr ""
+
+#: ../../tutorial/backup.rst:7
+msgid "I haven't recorded it lol"
+msgstr ""
+
+#: ../../tutorial/backup.rst:16
+msgid "Setting up"
+msgstr ""
+
+#: ../../tutorial/backup.rst:19
+msgid "Backup process"
+msgstr ""
+
+#: ../../tutorial/backup.rst:22
+msgid "Using the main program"
+msgstr ""
+
+#: ../../tutorial/backup.rst:25
+msgid "Checking for errors"
+msgstr ""
+
+#: ../../tutorial/backup.rst:28
+msgid "Basic configuration"
+msgstr ""
+
+#: ../../tutorial/backup.rst:30
+msgid "Some configurations you might find helpful..."
+msgstr ""
+
+#: ../../tutorial/backup.rst:32
+msgid "A basic template to work with (this is used the default)::"
+msgstr ""
+
+#: ../../tutorial/backup.rst:60
+msgid ""
+"In the configuration file you only have to define classes that you want "
+"to override.  Run"
+msgstr ""
+
+#: ../../tutorial/backup.rst:67
+msgid ""
+"to run the *psp print* command with your configuration file. (Replace "
+"``config.py`` with the path to your file.)"
+msgstr ""
+
+#: ../../tutorial/backup.rst:70
+msgid "24-hour format::"
+msgstr ""
+
+#: ../../tutorial/backup.rst:82
+msgid ""
+"Loading with ``BigLoader``... just replace ``JSONLoader`` in the above "
+"code with ``BigLoader`` after importing using ::"
+msgstr ""
+
+#: ../../tutorial/backup.rst:89
+msgid "Helpful tools I use"
+msgstr ""
+
+#: ../../tutorial/backup.rst:92
+msgid "``plainconv.py``"
+msgstr ""
+
+#: ../../tutorial/backup.rst:95
+msgid "``panel2html.py``"
+msgstr ""
+
+#: ../../tutorial/index.rst:5
+msgid "Tutorials"
+msgstr "教程"
+
+#: ../../tutorial/index.rst:7
+msgid "A friendly tutorial (hopefully)"
+msgstr ""
+
