@@ -19,6 +19,7 @@ from .processors.json_processor import JSONLoader, JSONDumper
 from .processors.json_processor import LoadError
 from .timeutil import parse_date
 from .types import Panel
+from . import util
 
 __all__ = ['main']
 
@@ -29,19 +30,19 @@ def get_terminal_width():
 
 
 def load_config_from_file(file):
-    with open(file):    # Test for file existence
-        pass
+    # Resolve the file path otherwise the __file__ attribute is relative
+    file = os.path.realpath(file)
     # Code from https://stackoverflow.com/a/67692
     spec = importlib.util.spec_from_file_location('config', file)
     if spec is None:
         raise RuntimeError(f'failed to load configuration file {file!r}')
     config = importlib.util.module_from_spec(spec)
-    # XXX: Why do we need this???
-    sys.path.insert(1, os.path.dirname(file))
+    # Put the module in search path I guess
+    sys.path.insert(0, os.path.dirname(file))
     try:
         spec.loader.exec_module(config)
     finally:
-        sys.path.pop(1)
+        sys.path.pop(0)
     return config
 
 
@@ -64,6 +65,9 @@ def main():
         help=('warning level. 0 (default) for suppressing all warnings, '
               '1 for emitting warnings, 2 and above for raising warnings '
               'as exceptions'))
+    parser.add_argument('--encoding', '-e', default='utf-8',
+        help=("encoding used to read and write JSON backup files "
+              "(default 'utf-8')"))
 
     subparsers = parser.add_subparsers(required=True, dest='subname')
 
@@ -71,7 +75,7 @@ def main():
     # (See: https://stackoverflow.com/q/7498595)
     parser_file = argparse.ArgumentParser(add_help=False)
     file_group = parser_file.add_mutually_exclusive_group()
-    file_group.add_argument('files', nargs='*', default=['backup.json'],
+    file_group.add_argument('files', nargs='*', default=('backup.json',),
         help=("backup files to load (default 'backup.json' if --source is "
               "not provided); cannot be provided if the --source option "
               "is present"))
@@ -97,18 +101,10 @@ def main():
     parser_synop = subparsers.add_parser(
         'synopsis', help='print a brief summary', parents=[parser_file])
 
-    # The 'checksum' subcommand
-    parser_cksum = subparsers.add_parser(
-        'checksum', help='generate a checksum')
-    parser_cksum.add_argument(
-        'cfile', nargs='?', default='backup.json',
-        help='backup file to generate checksum from')
-
     # The 'merge' subcommand
     parser_merge = subparsers.add_parser(
-        'merge', help='merge two or more backup files')
-    parser_merge.add_argument('outfile')
-    parser_merge.add_argument('infile', nargs='+')
+        'merge', help='merge two or more backup files', parents=[parser_file])
+    parser_merge.add_argument('out', help='output directory')
 
     args = parser.parse_args()
 
@@ -127,8 +123,8 @@ def main():
             def configure(self, **kwargs):
                 super().configure(**kwargs)
 
-            def load_json(self, file):
-                with open(file, encoding='utf-8') as fp:
+            def load_json(self, file, encoding):
+                with open(file, encoding=encoding) as fp:
                     return json.load(fp)
 
             def load_all(self, data):
@@ -141,9 +137,13 @@ def main():
     try:
         Dumper = config.BackupDumper
     except AttributeError:
-        # XXX: Not needed yet
         class Dumper(JSONDumper):
             __slots__ = ()
+
+            # The configure() method is not needed (I think)
+
+            def dump(self, panels, dirname, encoding):
+                super().dump(panels, dirname, encoding=encoding)
 
     # Get panel printer class
     try:
@@ -159,19 +159,9 @@ def main():
                 print(self.formatter.format(panel), file=file)
 
     if args.subname in {'print', 'synopsis'}:
-        files = []
-        if args.source is not None:
-            srcpath = os.path.abspath(args.source)
-            dirpath = os.path.dirname(srcpath)
-            with io.open(srcpath) as fp:
-                for line in fp:
-                    # Skip empty lines
-                    if not line.strip():
-                        continue
-                    filepath = os.path.join(dirpath, line.rstrip('\n'))
-                    files.append(os.path.normpath(filepath))
-        else:
-            files.extend(args.files)
+        files = get_source_files(args.source, args.files)
+    elif args.subname == 'merge':
+        files = get_source_files(args.source, args.files)
 
     if args.subname == 'print':
         loader = Loader()
@@ -192,31 +182,33 @@ def main():
                 f"specified, so let me know what panel you would like to "
                 f"display..."))
             print()
-            date = request_date_from_user(loader, files)
+            date = request_date_from_user(loader, args.encoding, files)
             print()
         else:
             date = args.date
-        panel = load_panel_with_date(loader, files, date)
+        panel = load_panel_with_date(loader, args.encoding, files, date,
+                                     args.wlevel)
         printer = Printer(args.width)
         if args.out is None:
             printer.print(panel, sys.stdout)
         else:
-            with open(args.out, 'w') as fp:
+            with open(args.out, 'w', encoding=args.encoding) as fp:
                 printer.print(panel, fp)
+
     elif args.subname == 'synopsis':
-        big_p_count = 0
-        big_e_count = 0
-        wrapper = textwrap.TextWrapper(
-            width=max(5, get_terminal_width() - 4))
+        from collections import defaultdict
         loader = Loader()
         set_warning_level(loader, args.wlevel)
+        wrapper = textwrap.TextWrapper(
+            width=max(5, get_terminal_width() - 4))
         cwd = os.getcwd()
+        panel_map = defaultdict(list)
         for file in files:
-            print(f'info {os.path.relpath(file, cwd)!r}:')
+            rpath = os.path.relpath(file, cwd)
+            print(f'info {rpath!r}:')
             loader.configure(base_dir=os.path.dirname(file))
-            with open(file) as fp:
-                data = loader.load_json(file)
-                panels = loader.load_all(data)
+            data = loader.load_json(file, args.encoding)
+            panels = loader.load_all(data)
             if any(data.get('desc', '')):
                 print('  description:')
                 desc = (data['desc'] if isinstance(data['desc'], str)
@@ -225,46 +217,66 @@ def main():
                     lines = wrapper.wrap(par) or ['']
                     for line in lines:
                         print(('    ' + line).rstrip())
-            p_count = len(panels)
-            e_count = sum(1 for p in panels for e in p.entries())
-            print('  panels:', p_count)
-            print('  entries:', e_count)
-            big_p_count += p_count
-            big_e_count += e_count
+            print('  panels:', len(panels))
+            print('  entries:', sum(1 for p in panels for e in p.entries()))
+            for panel in panels:
+                panel_map[panel.date].append((panel, rpath))
+
+        merged = merge_panel_map(panel_map, 0)
         print('total:')
-        print('  panels:', big_p_count)
-        print('  entries:', big_e_count)
+        print('  panels: {} ({} after merging)'.format(
+            sum(len(panels) for panels in panel_map.values()),
+            len(merged)))
+        print('  entries: {}'.format(
+            sum(1 for panel in merged for entry in panel.get_entries())))
+
     elif args.subname == 'merge':
-        raise RuntimeError('psp-merge coming soon!')
-    elif args.subname == 'checksum':
-        from collections import OrderedDict
+        from collections import defaultdict
         loader = Loader()
-        loader.configure(base_dir=os.path.dirname(args.cfile))
+        dumper = Dumper()
         set_warning_level(loader, args.wlevel)
-        data = loader.load_json(args.cfile)
-        panels = loader.load_all(data)
-        p_count, e_count, size = util.checksum(panels)
-        cksum_dict = OrderedDict([
-            ('panel', p_count),
-            ('entries', e_count),
-            ('total-bytes', size)])
-        json.dump(cksum_dict, sys.stdout, indent=2, sort_keys=False)
-        print('\n', flush=True)  # i don't know why
-        while True:
-            inp = input('Add this to backup? (y/[n]) ')
-            if not inp or inp == 'n':
-                break
-            elif inp == 'y':
-                with open(args.cfile) as fp:
-                    data = json.load(fp, object_pairs_hook=OrderedDict)
-                new_data = OrderedDict()
-                new_data['checksum'] = cksum_dict
-                new_data.update(data)
-                with open(args.cfile, 'w') as fp:
-                    json.dump(new_data, fp, indent=2, sort_keys=False)
-                break
+        panel_map = defaultdict(list)
+        cwd = os.getcwd()
+        plural = '' if len(files) == 1 else 's'
+        print(f'loading files from {len(files)} file{plural}... ', end='',
+              flush=True)
+        for file in files:
+            loader.configure(base_dir=os.path.dirname(file))
+            data = loader.load_json(file, args.encoding)
+            panels = loader.load_all(data)
+            rpath = os.path.relpath(file, cwd)
+            for panel in panels:
+                panel_map[panel.date].append((panel, rpath))
+        print('done')
+
+        panel_num = sum(len(panels) for panels in panel_map.values())
+        plural = '' if panel_num == 1 else 's'
+        print(f'merging {panel_num} panel{plural}... ', end='', flush=True)
+        merged = merge_panel_map(panel_map, args.wlevel)
+        print(f'done ({len(merged)} after merging)')
+        merged.sort(key=lambda p: p.date)
+        print(f'exporting to {args.out!r}... ', end='', flush=True)
+        dumper.dump(merged, args.out, args.encoding)
+        print('done')
     else:
-        assert False, 'unreachable'
+        raise RuntimeError('unreachable')
+
+
+def get_source_files(source, files):
+    result = []
+    if source is not None:
+        srcpath = os.path.abspath(source)
+        dirpath = os.path.dirname(srcpath)
+        with io.open(srcpath) as fp:
+            for line in fp:
+                # Skip empty lines
+                if not line.strip():
+                    continue
+                filepath = os.path.join(dirpath, line.rstrip('\n'))
+                result.append(os.path.normpath(filepath))
+    else:
+        result.extend(files)
+    return result
 
 
 def set_warning_level(loader, level):
@@ -272,15 +284,13 @@ def set_warning_level(loader, level):
                      error_on_warning=level >= 2)
 
 
-def request_date_from_user(loader, files):
+def request_date_from_user(loader, encoding, files):
     """Input from sys.stdin"""
-    width = get_terminal_width()
-    need_space = True
     panels = {}
     for file in files:
         loader.configure(base_dir=os.path.dirname(file))
         try:
-            data = loader.load_json(file)
+            data = loader.load_json(file, encoding)
             panel_objects = loader.load_all(data)
         except (ValueError, LoadError) as exc:
             raise RuntimeError(f'failed to load {file!r}') from exc
@@ -332,7 +342,8 @@ def month_name(m):
 
 
 def month_abbr(m):
-    return month_name(m)[:3]
+    name = month_name(m)
+    return name[:3 if len(name) > 4 else 4]
 
 
 def _get_month_from_user(dates, panels, year, skip_one=True):
@@ -519,7 +530,7 @@ def _print_calendar_for_year(year, panels):
     not_first_row = False
     calendar_sep = ' ' * 4
     empty_row = ' ' * 20
-    for start_month in [1, 4, 7, 10]:
+    for start_month in (1, 4, 7, 10):
         if not_first_row:
             print()
         calendars = []
@@ -535,35 +546,69 @@ def _print_calendar_for_year(year, panels):
         not_first_row = True
 
 
-def load_panel_with_date(loader, files, date):
+def load_panel_with_date(loader, encoding, files, date, wlevel):
     panels = []
+    sources = []
+    cwd = os.getcwd()
     for file in files:
+        loader.configure(base_dir=os.path.dirname(file))
+        data = loader.load_json(file, encoding)
         try:
-            loader.configure(base_dir=os.path.dirname(file))
-            data = loader.load_json(file)
             panel = loader.load_single(data, date)
-        except (ValueError, LookupError):
+        except LookupError:
             continue
+        except Exception as exc:
+            raise RuntimeError(f'failed to load {file!r}') from exc
         if panel is not None:
             panels.append(panel)
+            sources.append(os.path.relpath(file, cwd))
     if not panels:
         raise ValueError(f'cannot find panel {date} in the given list of '
-                         f'source files, or a fatal error occured while '
-                         f'loading some of the backup files')
+                         f'source files')
+    check_panels_equal(date, panels, sources, wlevel)
+    merged_panel = util.merge_panels(panels)
+    merged_panel.sort_entries(key=lambda e: e.date_time)
+    merged_panel.sort_entries(key=lambda e: e.insight)
+    return merged_panel
+
+
+def check_panels_equal(date, panels, sources, wlevel):
+    """Warn if any pair of panels have unequal attributes."""
     # Pick any combination of two panels and check if they have the
     # exact same attributes; if not then throw a warning
-    for p1, p2 in itertools.combinations(panels, 2):
-        if p1.get_attribute_dict() != p2.get_attribute_dict():
-            import warnings
-            warnings.warn(f'{len(panels)} panels found for {date} have '
-                          f'different attributes; the printed information '
-                          f'might be inconsistent', RuntimeWarning)
-            break
-    # Create a new panel
-    merged_panel = Panel.from_panel(panels[0])
-    # Set the panel of each entry to the new panel
-    for panel in panels:
-        # Iterating over a copy of the entries list is necessary!
-        for entry in panel.get_entries():
-            merged_panel.add_entry(entry)
-    return merged_panel
+    for (p1, s1), (p2, s2) in itertools.combinations(zip(panels, sources), 2):
+        d1 = p1.get_attribute_dict()
+        d2 = p2.get_attribute_dict()
+        for key in d1.keys() | d2.keys():
+            msg = None
+            if not p2.has_attribute(key):
+                msg = (f'attribute {key!r} is found in {s1!r} but '
+                       f'not in {s2!r}')
+            elif not p1.has_attribute(key):
+                msg = (f'attribute {key!r} is found in {s2!r} but '
+                       f'not in {s1!r}')
+            else:
+                value_1 = p1.get_attribute(key)
+                value_2 = p2.get_attribute(key)
+                if value_1 != value_2:
+                    msg = (f'attribute {key!r} from {s1!r} differs from '
+                           f'attribute from {s2!r} '
+                           f'({value_1!r} != {value_2!r})')
+            if msg is not None:
+                errmsg = (f'panels on {date} have differing '
+                          f'attributes: {msg}')
+                if wlevel >= 2:
+                    raise RuntimeError(errmsg)
+                elif wlevel >= 1:
+                    import warnings
+                    warnings.warn(errmsg, RuntimeWarning)
+                    break
+
+
+def merge_panel_map(panel_map, wlevel):
+    merged = []
+    for date, panels_and_sources in panel_map.items():
+        panels, sources = zip(*panels_and_sources)
+        check_panels_equal(date, panels, sources, wlevel)
+        merged.append(util.merge_panels(panels))
+    return merged

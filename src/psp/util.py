@@ -9,14 +9,27 @@ __all__ = [
 
 
 def merge_panels(panels):
-    """Merge a list of panels and return one panel."""
-    if len(panels) == 1:
-        return panels[0]
-    sample_panel = panels[0]
-    merged_panel = Panel(sample_panel.date)
-    for attr, value in sample_panel.get_attribute_dict().items():
-        merged_panel.set_attribute(attr, value)
-    for p in panels:
+    """Merge an iterable of panels and return one panel.
+
+    NOTE: Every panel object will lose all of their entries!
+    """
+    piter = iter(panels)
+    try:
+        zeroth_panel = next(piter)
+    except StopIteration:
+        raise ValueError('panels has no elements')
+    # We only permit instances of Panel or any subclass of Panel, so the
+    # following checks for that.
+    if not isinstance(zeroth_panel, Panel):
+        raise TypeError(f'first panel {zeroth_panel!r} is not a '
+                        f'Panel instance')
+    # If there is only one panel, simply return the panel.
+    try:
+        first_panel = next(piter)
+    except StopIteration:
+        return zeroth_panel
+    merged_panel = type(zeroth_panel).from_panel(zeroth_panel)
+    for p in itertools.chain((zeroth_panel, first_panel), piter):
         # Need to make a copy of the entry list!
         for e in p.get_entries():
             merged_panel.add_entry(e)
@@ -48,6 +61,8 @@ def entries_equal(entry1, entry2):
     if entry1.get_attribute_dict() != entry2.get_attribute_dict():
         return False
     # Compare data (but not the encoding or source path)
+    # Also binary and text entries are an immediate false since
+    # bytes and str are never equal in Python
     if (entry1.get_type() != entry2.get_type()
             or entry1.get_format() != entry2.get_format()
             or entry1.get_data() != entry2.get_data()):

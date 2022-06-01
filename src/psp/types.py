@@ -5,8 +5,8 @@ __all__ = ['Panel', 'Entry']
 import datetime
 import os
 import io
-from . import timeutil
 from . import datatypes
+from . import timeutil
 
 
 def _assert_type(obj, objtype, name):
@@ -56,7 +56,8 @@ class Panel:
     # Create a new panel, copying everything except for the entries
     @classmethod
     def from_panel(cls, panel):
-        assert isinstance(panel, Panel)
+        if not isinstance(panel, Panel):
+            raise TypeError('panel must be a Panel object')
         obj = cls(panel.date)
         for key, value in panel.get_attribute_dict().items():
             obj.set_attribute(key, value)
@@ -90,6 +91,9 @@ class Panel:
 
         The panel attribute of the entry will be changed to self on success.
         """
+        # Already added!
+        if entry in self:
+            return
         if not isinstance(entry, Entry):
             raise TypeError(f'entry should be an Entry object, '
                             f'not {entry!r}')
@@ -98,11 +102,6 @@ class Panel:
         # Make sure proper validation is performed given this new panel.
         entry._set_panel(self)
         self._entries.append(entry)
-
-    def add_entries(self, entries):
-        """Call self.add_entry(entry) for each entry in entries."""
-        for entry in entries:
-            self.add_entry(entry)
 
     def remove_entry(self, entry):
         """Remove an entry from the current panel.  A ValueError will be
@@ -130,7 +129,7 @@ class Panel:
         return bool(self._entries)
 
     def sort_entries(self, *, key=None, reverse=False):
-        """Call list.sort() on internal entry list."""
+        """Call list.sort() on the internal entry list."""
         return self._entries.sort(key=key, reverse=reverse)
 
     # ==========
@@ -223,7 +222,8 @@ class Entry:
     # has to be constructed again)
     @classmethod
     def from_entry(cls, entry):
-        assert isinstance(entry, Entry)
+        if not isinstance(entry, Entry):
+            raise TypeError('entry must be an Entry object')
         # Panel linking will NOT implicitly happen
         obj = cls(entry.date_time)
         obj.insight = entry.insight
@@ -344,6 +344,7 @@ class Entry:
     def set_raw_data(self, raw):
         _assert_type(raw, bytes, 'raw')
         self._data['raw'] = raw
+        self._data['source'] = None
 
     def set_data(self, data, *, type='plain', encoding='utf-8'):
         _assert_type(data, str, 'data')

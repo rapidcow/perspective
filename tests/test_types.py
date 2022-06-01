@@ -20,7 +20,8 @@ class TestPanel(unittest.TestCase):
 
         entry2 = Entry(datetime(2021, 12, 17, 15, 20, tzinfo=tz))
         entry2.set_data('second entry')
-        panel.add_entries([entry1, entry2])
+        panel.add_entry(entry1)
+        panel.add_entry(entry2)
 
         entries = panel.get_entries()
         self.assertEqual(entries, [entry1, entry2])

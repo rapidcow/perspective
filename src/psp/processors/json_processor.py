@@ -96,7 +96,7 @@ def _assert_list_type(obj, item_type, key, extra=''):
         This will be appended after `key`.
     """
     _assert_type(obj, list, key, extra)
-    for i, item in enumerate(obj):
+    for i, item in enumerate(obj, start=1):  # hooman index
         if isinstance(item, item_type):
             continue
         header = repr(key) if extra is None else f'{key!r}{extra}'
@@ -148,13 +148,8 @@ _data_enc_table = {
 class JSONLoader:
     """A JSON archive loader.
 
-    The constructor takes no positional arguments.  The keyword arguments
-    are passed to the `configure` method.
-
-    NOTE: Don't rely on tweaking the attributes of this class!
-    Use the `configure` method when you need to change something, and in
-    case you want to access an option... well don't.  They're not supposed
-    to be public anyways.  :/
+    The constructor takes no positional arguments; all keyword
+    arguments are passed to the `configure()` method.
     """
     __slots__ = ('_all_options', '_options')
 
@@ -194,11 +189,7 @@ class JSONLoader:
         self.configure(**options)
 
     def configure(self, **options):
-        """Configure options.  This method should be called instead of
-        directly accessing the underlying attributes.
-
-        (i will write the options in a document one day, just you wait...)
-        """
+        """Configure options."""
         invalid = options.keys() - self._all_options
         if invalid:
             invalid_str = ', '.join(sorted(invalid))
@@ -214,6 +205,7 @@ class JSONLoader:
             self._options[k] = v
 
     def get_option(self, name):
+        """Get option by the name `name`."""
         return self._options[name]
 
     def _warn(self, msg, w):
@@ -253,8 +245,8 @@ class JSONLoader:
 
         Return
         ------
-        -   Return `panels` if `date` is not provided; and
-        -   Return `panel` is `date` is provided.
+        A list of panels if `date` is not provided, and a single panel
+        if `date` is provided.
         """
         content = self.__handle_readable_file(file, encoding)
         data = json.loads(content, **self.get_option('json_options'))
@@ -274,8 +266,19 @@ class JSONLoader:
                             f'readable file-like object, not {file!r}')
         return content
 
-    # TODO: CONTINUE WRITING DOCSTRINGS
     def load_data(self, data, date=None):
+        """Load an archive from a Python dict.
+
+        Parameters
+        ----------
+        data : dict
+            The JSON archive.
+
+        date : datetime.date or str, optional
+            The date of the panel to load.  If this is provided as a str,
+            it must be a valid date string for `timeutil.parse_date()`.
+            LookupError is issued if JSONLoader fails to find the panel.
+        """
         panels, attrs = self.__split_data(data)
         if date is None:
             obj = self.__load_all_data(panels, attrs)
@@ -289,6 +292,7 @@ class JSONLoader:
         return obj
 
     def __split_data(self, data):
+        """data -> (panels, attrs)"""
         # The name might be a bit misleading since it doesn't actually
         # simply "split" the data (since we're not returning the
         # attributes and so it remains a local variable to us).
@@ -325,12 +329,13 @@ class JSONLoader:
         return panels, attrs
 
     def __load_all_data(self, panels, attrs):
+        """Internal implementation of load_data() when date is
+        not provided.
+        """
         output = []
         check_panel_order = self.get_option('check_panel_order')
         check_entry_order = self.get_option('check_entry_order')
         for panel_dict in panels:
-            if not self.panel_filter(panel_dict):
-                continue
             try:
                 # Copy panel because we want the exception below to
                 # be raised properly.
@@ -360,18 +365,20 @@ class JSONLoader:
                 self.__check_panel_duplicates(output)
         return output
 
-    # Callback that can be overridden to load only certain panels
-    # (this one skips empty JSON objects, so [ {}, null, '' ] are skipped)
-    def panel_filter(self, panel_dict):
-        return panel_dict
-
     def __load_single_panel(self, panels, attrs, date):
-        # TODO: Implement check duplicate panels/panel order
+        """Internal implementation of load_data() when date is
+        provided.
+        """
         for panel_dict in panels:
+            # In any of these cases we just ignore the panel_dict:
+            #
+            #  *  KeyError: `date` is not in panel_dict (invalid panel)
+            #  *  TypeError: `panel_dict['date']` is not a str or
+            #     `panel_dict` is not a dict
+            #  *  ValueError: `date` is an invalid date string
             try:
                 panel_date = self.parse_date(panel_dict['date'])
             except (KeyError, TypeError, ValueError):
-                # XXX: Should errors be passed silently?
                 continue
             if panel_date == date:
                 break
@@ -393,7 +400,17 @@ class JSONLoader:
 
         attrs : dict
             Attributes such as the time zone and lookup paths.
+
+        Return
+        ------
+        A Panel object.  This may return None, in which case
+        load_data() will skip the panel (and return None if date
+        is explicitly passed to it).
         """
+        # Skip this panel is it is None.
+        if not panel:
+            return None
+
         # Required field
         # --------------
         # Date
@@ -432,19 +449,15 @@ class JSONLoader:
             # However we do need to copy the entry... because we only assumed
             # that whoever called process_panel() only made a shallow copy
             # of the 'panel' dictionary...
-            if not self.entry_filter(entry_dict):
-                continue
             try:
                 entry = self.process_entry(obj, entry_dict.copy(), attrs)
             except (TypeError, ValueError, LoadError, LoadWarning) as exc:
                 raise LoadError(
                     f'error while loading entry {index}') from exc
-            obj.add_entry(entry)
+            if entry is not None:
+                obj.add_entry(entry)
 
         return obj
-
-    def entry_filter(self, entry_dict):
-        return entry_dict
 
     def process_entry(self, panel, entry, attrs):
         """Process a JSON object of an Entry.
@@ -456,11 +469,18 @@ class JSONLoader:
             inferences from.
 
         entry : dict
-            The JSON object (dict) to be processed.  This can be mutated.
+            The JSON object (dict) to be processed.  This is a shallow
+            copy and can be mutated.
 
         attrs : dict
             Attributes such as the time zone and lookup paths.  This
-            should NOT be mutated.
+            should NOT be mutated (otherwise subsequent calls to
+            process_entry() may behave weirdly).
+
+        Return
+        ------
+        An Entry object.  This may return None, in which case
+        process_panel() will skip the entry.
         """
         # Required fields
         # ---------------
@@ -478,7 +498,7 @@ class JSONLoader:
             # raise later when checking for the tzinfo of date_time.
             tz = None
         if tz is not None:
-            tz = timeutil.parse_timezone(tz)
+            tz = self.parse_timezone(tz)
 
         if 'fold' in entry:
             fold = entry.pop('fold')
@@ -685,8 +705,9 @@ class JSONLoader:
         obj.set_meta_attribute('modified', time_modified)
 
         # Description
-        desc = meta.pop('desc', '')
-        obj.set_meta_attribute('desc', _ensure_text(desc, 'desc'))
+        if 'desc' in meta:
+            desc = meta.pop('desc')
+            obj.set_meta_attribute('desc', _ensure_text(desc, 'desc'))
 
         for key, value in meta.items():
             obj.set_meta_attribute(key, copy.deepcopy(value))
@@ -795,12 +816,11 @@ class JSONLoader:
         for index, panel in enumerate(panels, start=1):
             panel_dict[panel.date].append(index)
 
+        # We know there are duplicates if any list has more than one index
         for panel_date, indices in sorted(panel_dict.items()):
             if len(indices) > 1:
-                if len(indices) == 2:
-                    index_str = ' and '.join(map(int, indices))
-                else:
-                    index_str = ', '.join(map(int, indices))
+                index_str = (', '.join(map(str, indices[:-1]))
+                             + f' and {indices[-1]}')
                 self._warn(f'panels {index_str} are share the same date '
                            f'{panel_date}', LoadWarning)
 
@@ -854,17 +874,32 @@ class JSONLoader:
                 last_main_entry = entry
 
     # Method hooks
+    def parse_timezone(self, s):
+        """Parse the 'tz' field."""
+        return timeutil.parse_timezone(s)
+
     def parse_datetime(self, s, *, tzinfo, fold):
+        """Parse the 'date-time' field and time meta attributes
+        ('posted', 'created', 'modified').  The keyword arguments
+        are None unless they are known.
+        """
         return timeutil.parse_datetime(s, tzinfo=tzinfo, fold=fold)
 
     def parse_time(self, s, *, tzinfo, fold):
+        """Parse the 'time' field, similar to parse_datetime()."""
         return timeutil.parse_time(s, tzinfo=tzinfo, fold=fold)
 
     def parse_date(self, s):
+        """Parse the 'date' field."""
         return timeutil.parse_date(s)
 
 
 class JSONDumper:
+    """A JSON archive dumper.
+
+    The constructor takes no positional arguments; all keyword
+    arguments are passed to the `configure()` method.
+    """
     __slots__ = ('_all_options', '_options',)
 
     def __init__(self, **options):
@@ -891,7 +926,10 @@ class JSONDumper:
             # written out in each entry.
             #
             'default_time_zone_offset': None,
+            # Paths to add to the archive (should be set before anything
+            # happens)
             'paths': ('assets',),
+            'shorten_paths': True,
 
             # Description (as a fixed string)
             'desc': '',
@@ -899,6 +937,7 @@ class JSONDumper:
         self.configure(**options)
 
     def configure(self, **options):
+        """Configure options."""
         invalid = options.keys() - self._all_options
         if invalid:
             invalid_str = ', '.join(sorted(invalid))
@@ -914,6 +953,7 @@ class JSONDumper:
             self._options[k] = v
 
     def get_option(self, name):
+        """Get option by the name `name`."""
         return self._options[name]
 
     def check_paths_option(self, paths):
@@ -930,13 +970,12 @@ class JSONDumper:
     # 2.  a list of Panel() objects, joined with a list of export paths
     #     this is exposed as the basic_dump() method
     def dump(self, panels, dirname, *, encoding='utf-8'):
-        os.mkdir(dirname)
         panels = list(panels)
         files_added = set()
         export_paths = []
         for panel in panels:
             for entry in panel.entries():
-                rv = self.get_entry_filename(entry, panel, files_added.copy())
+                rv = self.get_entry_filename(entry, files_added.copy())
                 if rv is None:
                     export_paths.append(None)
                 else:
@@ -944,6 +983,7 @@ class JSONDumper:
                     files_added.add(root)
                     export_paths.append(filename)
 
+        os.mkdir(dirname)
         try:
             self.__basic_dump(panels, export_paths, dirname, encoding)
         except:
@@ -953,8 +993,8 @@ class JSONDumper:
     # Low-level interface (lower than ever!)
     def basic_dump(self, panels, export_paths, dirname,
                    *, encoding='utf-8'):
-        os.mkdir(dirname)
         panels = list(panels)
+        os.mkdir(dirname)
         try:
             self.__basic_dump(panels, export_paths, dirname, encoding)
         except:
@@ -963,13 +1003,14 @@ class JSONDumper:
 
     def dumps(self, panels):
         panels = list(panels)
-        data = self.__basic_dump_data(panels, (), os.devnull)
+        data = self.dump_data(panels, (), os.devnull)
         if 'paths' in data:
             del data['paths']
         return json.dumps(data, **self.get_option('json_options'))
 
+    # basic_dump() but without checking
     def __basic_dump(self, panels, export_paths, dirname, encoding):
-        data = self.__basic_dump_data(panels, export_paths, dirname)
+        data = self.dump_data(panels, export_paths, dirname)
         backup_name = self.get_option('backup_name')
         backup_path = os.path.normpath(os.path.join(dirname, backup_name))
         os.makedirs(os.path.dirname(backup_path), exist_ok=True)
@@ -979,7 +1020,9 @@ class JSONDumper:
 
     # XXX: Should we allow user to dump duplicate paths or paths that
     # are the same as backup_name??
-    def __basic_dump_data(self, panels, export_paths, dirname):
+    #
+    # XXX: This is PUBLIC now????
+    def dump_data(self, panels, export_paths, dirname):
         input_paths = []
         paths = list(self.get_option('paths'))
         dirname = os.path.abspath(dirname)
@@ -993,15 +1036,14 @@ class JSONDumper:
                 apath, rpath = self.__check_path(dirname, path, name)
                 relative_paths.append(rpath)
 
-        # TODO: Make this an option
-        shorten_paths = True
+        shorten_paths = self.get_option('shorten_paths')
         if shorten_paths:
             input_paths = self.__compute_input_paths(relative_paths, paths)
         else:
             input_paths = relative_paths
 
         panels = list(panels)
-        data = self.prepare_backup(panels)
+        data = self.prepare_backup(panels, export_paths, dirname)
 
         panel_dicts = []
         path_it = zip(export_paths, input_paths)
@@ -1024,6 +1066,7 @@ class JSONDumper:
         data['data'] = panel_dicts
         return data
 
+    # TODO: Write tests for this algorithm
     def __compute_input_paths(self, relative_paths, paths):
         # Take the shortcut if every file were unique
         basenames = [os.path.basename(p) for p in relative_paths
@@ -1034,13 +1077,15 @@ class JSONDumper:
             unique_names = False
 
         input_paths = []
-        for rpath in relative_paths:
-            if rpath is None:
+        for relative_path in relative_paths:
+            if relative_path is None:
                 # Just add a placeholder
                 input_paths.append(None)
                 continue
+            # Break the relative path into parts.
+            # (This is like the 'parts' property of pathlib.Path objects...)
             parts = []
-            path = rpath
+            path = relative_path
             while path:
                 path, name = os.path.split(path)
                 parts.append(name)
@@ -1056,8 +1101,8 @@ class JSONDumper:
             # The only way we may specify this is by specifying
             # ['a/1.txt', 'b/1.txt'].
             #
-            # Now suppose this time we have relative_paths
-            # = ['a/1.txt', 'a/b/1.txt'] and paths = ['a'].  In this case we
+            # Now suppose this time we have relative_paths =
+            # ['a/1.txt', 'a/b/1.txt'] and paths = ['a'].  In this case we
             # would actually be safe to specify 'a/1.txt' as '1.txt' since it
             # would never be matched against 'a/b/1.txt'.  Then we find
             # 'b/1.txt' to be the only way to specify 'a/b/1.txt' since, when
@@ -1067,9 +1112,9 @@ class JSONDumper:
             # What happens below is the precisely the process of finding the
             # "right" path I said here...
             for i in reversed(range(len(parts))):
-                # Start by checking all the possible sub-paths that are NOT
-                # the path itself.  For example, for 'a/b/c/1.txt' we check
-                # '1.txt', 'c/1.txt', then 'b/c/1.txt' and finally
+                # Start by checking all the possible sub-paths from the
+                # shortest to the path itself.  For example, for 'a/b/c/1.txt'
+                # we check '1.txt', 'c/1.txt', then 'b/c/1.txt' and finally
                 # 'a/b/c/1.txt'.
                 test_path = os.path.join(*parts[i:])
                 test_dir = os.path.join(*parts[:i] or ['.'])
@@ -1105,7 +1150,7 @@ class JSONDumper:
                         for dir_pattern in paths:
                             pattern = os.path.join(dir_pattern, test_path_esc)
                             for other in relative_paths:
-                                if (other != rpath and
+                                if (other != relative_path and
                                         fnmatch.fnmatch(other, pattern)):
                                     no_match = False
                                     break
@@ -1114,8 +1159,9 @@ class JSONDumper:
                         break
             else:
                 raise DumpError(
-                    f"{rpath!r} cannot be resolved, likely due to being "
-                    f"unreachable with the current 'path' option {paths!r}")
+                    f"{relative_path!r} cannot be resolved, likely due to "
+                    f"being unreachable with the current 'paths' option "
+                    f"{paths!r}")
         return input_paths
 
     @staticmethod
@@ -1123,7 +1169,8 @@ class JSONDumper:
         if os.path.exists(dirname):
             shutil.rmtree(dirname, ignore_errors=True)
 
-    def prepare_backup(self, panels):
+    def prepare_backup(self, panels, export_paths, dirname):
+        """Prepare backup for dump() / basic_dump()."""
         data = collections.OrderedDict()
         default_offset = self.get_option('default_time_zone_offset')
         data['desc'] = self.get_description()
@@ -1143,7 +1190,7 @@ class JSONDumper:
     def get_description(self):
         desc = self.get_option('desc')
         if desc:
-            optional = f'  Description: {desc}'
+            optional = f'\nDescription: {desc}'
         else:
             optional = ''
         timestr = self.get_current_time_string()
@@ -1161,23 +1208,22 @@ class JSONDumper:
         return f'{base} (UTC)'
 
     # They are split up into two parts so that subclassing life can be easier!
-    def get_entry_filename(self, entry, panel, added):
+    # (Only dump() calls these btw; basic_dump() doesn't)
+    def get_entry_filename(self, entry, added):
         # Keep text entries by default
         if entry.is_text():
             return
-        root, filename = self.basic_get_entry_filename(
-            entry, panel, added, 'assets')
+        root, filename = self.basic_get_entry_filename(entry, added, 'assets')
         return root, os.path.join('assets', filename)
 
-    def basic_get_entry_filename(
-            self, entry, panel, added, dirname, extension=None):
+    def basic_get_entry_filename(self, entry, added, dirname, ext=None):
         base_name = (entry.date_time.replace(tzinfo=None)
                      .isoformat(sep='_').replace(':', '-'))
-        if entry.date_time.date() != panel.date:
-            base_name = panel.date.isoformat() + '_' + base_name
+        if entry.date_time.date() != entry.panel.date:
+            base_name = entry.panel.date.isoformat() + '_' + base_name
         file_count = 1
-        if extension is None:
-            extension = datatypes.get_extension(entry.get_type(), default='')
+        if ext is None:
+            ext = datatypes.get_extension(entry.get_type(), default='')
         # No infinte loops!
         # (Worst case scenario, '1 <= file_count <= len(added)' all
         # coincide with the 'added' set, and the one above it coincides with
@@ -1186,9 +1232,9 @@ class JSONDumper:
         while file_count < len(added) + 3:
             root = f'{base_name}_{file_count}'
             if root not in added:
-                filename = os.path.join(dirname, root + extension)
+                filename = os.path.join(dirname, root + ext)
                 if filename != self.get_option('backup_name'):
-                    return root, root + extension
+                    return root, root + ext
             file_count += 1
         raise RuntimeError('failed to generate a file name')
 
@@ -1208,11 +1254,12 @@ class JSONDumper:
     # IMPORTANT FUNCTIONS!
     # ====================
     def wrap_panel(self, panel):
-        """(panel, offset) -> (panel_dict, panel_entries)
+        """(panel,) -> (panel_dict, panel_entries)
 
         `panel_dict` is a dictionary (JSON object) of the exported panel,
-        and `panel_entries` is a list that corresponds to
-        `panel_dict['entries']`.
+        and `panel_entries` is a list that points to `panel_dict['entries']`.
+        (The entries are returned so the append() method can be directly
+        called to add entries.)
         """
         panel_dict = collections.OrderedDict()
         panel_dict['date'] = self.format_date(panel.date)
@@ -1223,7 +1270,7 @@ class JSONDumper:
         return panel_dict, entries
 
     def wrap_entry(self, entry, panel):
-        """(entry, panel, offset) -> (entry_dict)"""
+        """(entry, panel) -> (entry_dict)"""
         entry_dict = collections.OrderedDict()
         self.set_entry_time(entry_dict, entry, panel)
 
@@ -1360,7 +1407,7 @@ class JSONDumper:
         os.makedirs(os.path.dirname(export_path), exist_ok=True)
 
         # Exporting is dangerous, so we have to make sure we're doing the
-        # right thing here.  __basic_dump_data() should have joined the
+        # right thing here.  dump_data() should have joined the
         # path with dirname's absolute path, so we should get an absolute
         # path (otherwise there's something seriously wrong with this program
         # XD)
@@ -1410,6 +1457,11 @@ class JSONDumper:
 
 
 def load_json(file, date=None, *, encoding='utf-8', **options):
+    """Simple interface for loading a JSON archive.
+
+    For method signature, see JSONLoader.load().  Extra keyword
+    arguments are passed on to the configure() method.
+    """
     loader = JSONLoader()
     if isinstance(file, (str, os.PathLike)):
         loader.configure(base_dir=os.path.abspath(os.path.dirname(file)))
@@ -1418,6 +1470,11 @@ def load_json(file, date=None, *, encoding='utf-8', **options):
 
 
 def dump_json(panels, dirname, *, encoding='utf-8', **options):
+    """Simple interface for dumping a JSON archive.
+
+    For method signature, see JSONDumper.dump().  Extra keyword
+    arguments are passed on to the configure() method.
+    """
     dumper = JSONDumper()
     dumper.configure(**options)
     return dumper.dump(panels, dirname, encoding=encoding)

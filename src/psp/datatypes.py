@@ -78,7 +78,7 @@ _types = {
     'png':  dtype(False, ('.png',), ()),
     'jpeg': dtype(False, ('.jpg', '.jpeg'), ('jpg',)),
     'tiff': dtype(False, ('.tiff',), ()),
-    'heif': dtype(False, ('.heif', '.heic',), ()),
+    'heif': dtype(False, ('.heif', '.heic'), ()),
     # Video
     'mp4':  dtype(False, ('.mp4',), ()),
     'mov':  dtype(False, ('.mov',), ()),
@@ -101,10 +101,11 @@ _types = {
     'ppt':  dtype(False, ('.ppt',),  ('powerpoint_binary',)),
     'xlsx': dtype(False, ('.xlsx',), ('excel', 'excel_open_xml')),
     'xls':  dtype(False, ('.xls',),  ('excel_binary',)),
+    # I'm a big fan of music y'know
     'musescore': dtype(False, ('.mscz',), ('musescore_compressed',)),
     'musescore_uncompressed': dtype(True, ('.mscx',), ()),
     'lilypond': dtype(True, ('.ly',), ()),
-    'lilypond-tex': dtype(True, ('.lytex',), ()),
+    'lilypond_tex': dtype(True, ('.lytex',), ()),
 }
 
 # Extension to name (multiple names may have the same name, in which case
@@ -120,6 +121,8 @@ def _make_conv():
     """Make conversion tables"""
     _ext2type.clear()
     _alias2name.clear()
+    # If we see an extension more than once, then we'd just put them in
+    # this set and remove them.
     ambiguous_ext = set()
     for name, (is_text, exts, aliases) in _types.items():
         for ext in exts:
@@ -244,20 +247,27 @@ def register_data_type(name, type_tuple):
         raise ValueError(f'{name!r} has already been registered')
     t = dtype(type_tuple)
     exts = tuple(exts)
-    for ext in exts:
+    for ext in t.exts:
         if '.' not in ext:
-            raise ValueError(f'extension {ext!r} has no dot')
-    for alias in aliases:
+            raise ValueError(f"extension {ext!r} does not contain "
+                             f"the character '.'")
+    for alias in t.aliases:
         if alias in _alias2name:
             raise ValueError(f'alias {alias!r} is already an alias of '
-                             f'{alias_check(alias)}')
+                             f'{_alias2name[alias]!r}')
         if alias in _types:
             raise ValueError(f'alias {alias!r} is a registered type name')
 
     _types[name] = t
-    for ext in exts:
-        _ext2type[ext] = name
-    for alias in aliases:
+    ambiguous_ext = set()
+    for ext in t.exts:
+        if ext not in _ext2type:
+            _ext2type[ext] = name
+        else:
+            ambiguous_ext.add(ext)
+        for ext in ambiguous_ext:
+            del _ext2type[ext]
+    for alias in t.aliases:
         _alias2name[alias] = name
     clear_cache()
 
@@ -267,13 +277,8 @@ def delete_data_type(name):
         t = _types.pop(name)
     except KeyError:
         raise ValueError(f'{name!r} is not registered') from None
-    try:
-        _make_conv()
-        clear_cache()
-    except:
-        # XXXXX: Is this really good???
-        _types[name] = t
-        raise
+    _make_conv()
+    clear_cache()
     return t
 
 
