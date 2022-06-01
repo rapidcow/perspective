@@ -1,0 +1,67 @@
+# SOME DESCRIPTIVE TITLE.
+# Copyright (C) 2022, rapidcow
+# This file is distributed under the same license as the The Perspective
+# Library package.
+# FIRST AUTHOR <EMAIL@ADDRESS>, 2022.
+#
+#, fuzzy
+msgid ""
+msgstr ""
+"Project-Id-Version: The Perspective Library \n"
+"Report-Msgid-Bugs-To: \n"
+"POT-Creation-Date: 2022-06-01 10:45+0800\n"
+"PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
+"Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
+"Language-Team: LANGUAGE <LL@li.org>\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=utf-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+"Generated-By: Babel 2.10.1\n"
+
+# 翻译好难 QAQ
+#: ../../index.rst:16
+msgid "Contents:"
+msgstr "目录："
+
+#: ../../index.rst:5
+msgid "The Perspective Library 0.1.1"
+msgstr "Perspective 库 0.1.1"
+
+#: ../../index.rst:7
+msgid ""
+"Documentation for ``basicproc.py`` (archived) and the ``psp`` library (in"
+" development)!"
+msgstr ""
+"这里是 ``basicproc.py``\\ （已存档）和 ``psp`` 库（开发中）的"
+"文档！"
+
+#: ../../index.rst:10
+msgid ""
+"Read \":ref:`What is this?`\" for a brief explanation of what this "
+"library is all about, \":ref:`Installation`\" for instructions, and "
+"\":ref:`Tutorials`\" for a series of tutorials on practical uses of this "
+"library.  The rest is technical documentation concerning the code and "
+"JSON backup files."
+msgstr ""
+"你可以阅读\\ :ref:`这是什么？ <What is this?>`\\ 来了解这个库是用来"
+"干什么的，阅读\\ :ref:`安装 <Installation>`\\ 来了解如何安装，或者"
+"阅读\\ :ref:`教程 <Tutorials>`\\ 里面讲的一些关于这个库的实际用途的"
+"教程。剩下的就是关于代码还有 JSON 备份文件的比较 technical 的一些"
+"说明了。"
+
+#: ../../index.rst:29
+msgid "Indices and tables"
+msgstr "索引和表格"
+
+#: ../../index.rst:31
+msgid ":ref:`genindex`"
+msgstr ""
+
+#: ../../index.rst:32
+msgid ":ref:`modindex`"
+msgstr ""
+
+#: ../../index.rst:33
+msgid ":ref:`search`"
+msgstr ""
+
