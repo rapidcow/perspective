@@ -49,7 +49,7 @@ The `psp synopsis` subcommand prints out a summary of the input file:
       entries: 2
       span: 2020-02-02 to 2020-02-02
     total:
-      panels: 1 (1 after merging)
+      panels: 1
       entries: 2
 
 (The "total" might seem weird, but you will find it handy when you provide
