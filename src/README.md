@@ -48,7 +48,7 @@ The `psp synopsis` subcommand prints out a summary of the input file:
       panels: 1
       entries: 2
     total:
-      panels: 1
+      panels: 1 (1 after merging)
       entries: 2
 
 (The "total" might seem weird, but you will find it handy when you provide
@@ -76,8 +76,9 @@ underlying `PanelFormatter` like so:
 print_panel(panel, time_format='24 hour')
 ```
 
-Things are highly customizable too!  Say for example you want the formatted
-panel to meet the following requirements:
+But if that wasn't enough, then you can write subclasses and override the
+appropriate methods!  Say for example you want the formatted panel to meet
+the following requirements:
 
 *   do not center the panel title
 *   exclude the weekday in the panel title and make it entirely UPPERCASE
@@ -129,7 +130,7 @@ formatted_str = panel_formatter.format(
 print(formatted_str)
 ```
 
-which should print out this as a result:
+which should print this out as a result:
 
 ```
 FEBRUARY 2, 2020
