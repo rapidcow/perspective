@@ -6,7 +6,6 @@ import collections
 import datetime
 import fnmatch
 import io
-import itertools
 import glob
 import json
 import os
@@ -417,7 +416,7 @@ class JSONLoader:
         try:
             date_str = panel.pop('date')
         except KeyError:
-            raise LoadError('panel must provide date')
+            raise LoadError('panel must provide date') from None
         _assert_type(date_str, str, 'date')
         date = self.parse_date(date_str)
         obj = Panel(date)
@@ -668,7 +667,6 @@ class JSONLoader:
         # --------
         # Creation time
         meta = entry.pop('meta', {})
-        obj_meta = {}
 
         # Posted time (specific to the Perspective app)
         # The default value of obj.date_time is already set by types.Entry,
@@ -826,9 +824,6 @@ class JSONLoader:
 
     def __check_entry_order(self, panel):
         # Stolen from basicproc.py
-        main_entries = []
-        insight_entries = []
-
         has_switched = False
         expected_insight_value = None
         last_main_entry = None
@@ -958,7 +953,7 @@ class JSONDumper:
 
     def check_paths_option(self, paths):
         if isinstance(paths, str):
-            raise TypeError(f'paths should be an iterable of str, not str')
+            raise TypeError('paths should be an iterable of str, not str')
         return tuple(paths)
 
     # INTERFACES FOR DUMPING:
@@ -1071,10 +1066,7 @@ class JSONDumper:
         # Take the shortcut if every file were unique
         basenames = [os.path.basename(p) for p in relative_paths
                      if p is not None]
-        if len(basenames) == len(set(basenames)):
-            unique_names = True
-        else:
-            unique_names = False
+        unique_names = len(basenames) == len(set(basenames))
 
         input_paths = []
         for relative_path in relative_paths:

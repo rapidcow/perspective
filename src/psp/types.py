@@ -5,7 +5,6 @@ __all__ = ['Panel', 'Entry']
 import datetime
 import os
 import io
-from . import datatypes
 from . import timeutil
 
 
@@ -397,7 +396,7 @@ class Entry:
             raise TypeError(f'source path should be str or os.PathLike, '
                             f'not {path!r}')
         try:
-            with io.open(path, 'rb') as fp:
+            with io.open(path, 'rb'):
                 pass
         except OSError as exc:
             if not os.path.exists(path):
@@ -408,7 +407,6 @@ class Entry:
                                  f'is not a file') from exc
             # We don't know what caused it... err.....
             raise ValueError(f'invalid source path {path!r}') from exc
-        original_path = self._data['source']
         self._data['source'] = path
         # An important thing to note here: users can't set the raw data to
         # None, but we can here.
@@ -492,7 +490,7 @@ class Entry:
 
     def get_meta_attribute(self, key, default=_NoValue):
         if default is _NoValue:
-            self._meta[key]
+            return self._meta[key]
         return self._meta.get(key, default)
 
     def delete_meta_attribute(self, key):
@@ -548,7 +546,7 @@ class Entry:
         # initialization would be way too complicated), although it would
         # always be set when loaded by json_processor.JSONLoader.
         if posted is None:
-            return time
+            return self.date_time
         self.__check_aware_datetime(posted, 'posted')
         created = self.get_meta_attribute('created')
         self.__check_created_and_posted_time(created, posted)

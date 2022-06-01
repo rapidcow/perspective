@@ -148,6 +148,7 @@ def parse_date(s):
                 return datetime.datetime.strptime(s, fmt).date()
             except ValueError:
                 continue
+            break
         else:
             raise ValueError(f'invalid date string: {s!r}') from None
 

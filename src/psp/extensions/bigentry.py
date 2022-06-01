@@ -3,7 +3,6 @@
 
 import base64
 import collections
-import io
 import os
 import tarfile
 import tempfile

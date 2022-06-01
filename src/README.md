@@ -47,6 +47,8 @@ The `psp synopsis` subcommand prints out a summary of the input file:
     info 'backup.json':
       panels: 1
       entries: 2
+      start: 2020-02-02
+      end: 2020-02-02
     total:
       panels: 1 (1 after merging)
       entries: 2
