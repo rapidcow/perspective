@@ -1,0 +1,24 @@
+/*
+ * There's this annoying thing when it comes to `make html'...
+ * With numfig the captions will display as
+ *
+ *    Figure 1 Caption text
+ *
+ * with no punctuation whatsoever!  The same doesn't happen to
+ * `make latex' so I can't just simply change `numfig_format' in
+ * `conf.py' to something like
+ *
+ *    numfig_format = {'figure': 'Figure %s. '}
+ *
+ * Anyways here's a workaround from
+ * https://github.com/sphinx-doc/sphinx/issues/4086#issuecomment-383127173...
+ */
+
+span.caption-number + span.caption-text:before {
+    content: ". ";
+}
+
+/* Ugh and why do they have to put a space INSIDE caption number??? DX */
+span.caption-number {
+    margin-right: -0.5ex;
+}

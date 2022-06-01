@@ -1,0 +1,264 @@
+# SOME DESCRIPTIVE TITLE.
+# Copyright (C) 2022, rapidcow
+# This file is distributed under the same license as the The Perspective
+# Library package.
+# FIRST AUTHOR <EMAIL@ADDRESS>, 2022.
+#
+#, fuzzy
+msgid ""
+msgstr ""
+"Project-Id-Version: The Perspective Library \n"
+"Report-Msgid-Bugs-To: \n"
+"POT-Creation-Date: 2022-06-01 10:45+0800\n"
+"PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
+"Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
+"Language-Team: LANGUAGE <LL@li.org>\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=utf-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+"Generated-By: Babel 2.10.1\n"
+
+#: ../../struct/backup-spec.rst:3
+msgid "``backup.json`` Specification"
+msgstr ""
+
+#: ../../struct/backup-spec.rst
+msgid "Author"
+msgstr ""
+
+#: ../../struct/backup-spec.rst:4
+msgid "rapidcow"
+msgstr ""
+
+#: ../../struct/backup-spec.rst
+msgid "Date"
+msgstr ""
+
+#: ../../struct/backup-spec.rst:5
+msgid "Nov 29, 2021?"
+msgstr ""
+
+#: ../../struct/backup-spec.rst:13
+msgid "Abstract"
+msgstr ""
+
+#: ../../struct/backup-spec.rst:15
+msgid ""
+"This is meant to provide a technical specification for the minimal syntax"
+" of ``backup.json``, as read and written by "
+":mod:`psp.processors.json_processor`."
+msgstr ""
+
+#: ../../struct/backup-spec.rst:21
+msgid "Terminology"
+msgstr ""
+
+#: ../../struct/backup-spec.rst:23
+msgid "Here are some terms that will be used."
+msgstr ""
+
+#: ../../struct/backup-spec.rst:32
+msgid "attribute"
+msgstr ""
+
+#: ../../struct/backup-spec.rst:26
+msgid ""
+"An attribute is a pair of name and value, similar to key and value of a "
+"Python *dict*.  For example the ``tz`` attribute (or more verbosely, the "
+"value of the attribute with the name ``tz``) is a string and the ``data``"
+" attribute of entries may be a *str* or *bool*.  To make it consistent I "
+"will use code literals for attribute names (like ``tz`` and ``data``) and"
+" italic for variables types (like *dict* and *str*) and names (like "
+"*panels* and *entries*)."
+msgstr ""
+
+#: ../../struct/backup-spec.rst:35
+msgid "field"
+msgstr ""
+
+#: ../../struct/backup-spec.rst:35
+msgid "Another name for attribute.  Sometimes."
+msgstr ""
+
+#: ../../struct/backup-spec.rst:40
+msgid "*dict*, *list*, *str*, *bool*, null"
+msgstr ""
+
+#: ../../struct/backup-spec.rst:38
+msgid ""
+"These will be convenient Pythonic terms to refer to JSON objects, arrays,"
+" strings, and booleans.  (They are used mainly because object means "
+"something different in Python; the use of null is preserved however.)"
+msgstr ""
+
+#: ../../struct/backup-spec.rst:44
+msgid "*text*"
+msgstr ""
+
+#: ../../struct/backup-spec.rst:43
+msgid ""
+"When an attribute is a *text* attribute, it must be either a *str* or a "
+"*list* of *str* (such that ``''.join()`` can create a string from it)."
+msgstr ""
+
+#: ../../struct/backup-spec.rst:46
+msgid ""
+"Other terms such as \"panel\" and \"entry\" will be explained "
+"progressively in the following text."
+msgstr ""
+
+#: ../../struct/backup-spec.rst:52
+msgid "Top-Level Attributes"
+msgstr ""
+
+#: ../../struct/backup-spec.rst:54
+msgid ""
+"A backup file is always a *dict*, inside which are what we will call the "
+"*top-level attributes* and a *list* of *panels* stored under the key "
+"``data``.  Here we will enumerate several keys (all surprisingly "
+"optional) that you may use."
+msgstr ""
+
+#: ../../struct/backup-spec.rst:63
+msgid "tz (optional)"
+msgstr ""
+
+#: ../../struct/backup-spec.rst:60
+msgid ""
+"A *str* representing the time zone for everything in this backup. Must be"
+" valid when passed to :meth:`JSONLoader.parse_timezone`. This is optional"
+" but a time zone must be eventually provided as :class:`JSONLoader` "
+"parses some time/date time string."
+msgstr ""
+
+#: ../../struct/backup-spec.rst:73
+msgid "paths (optional)"
+msgstr ""
+
+#: ../../struct/backup-spec.rst:66
+msgid ""
+"A *list* of *str* for the lookup paths.  Each time the ``input`` "
+"attribute of an *entry* is parsed, its value is prepended with the "
+"``base_dir`` option of :class:`JSONLoader` and a path in this attribute."
+msgstr ""
+
+#: ../../struct/backup-spec.rst:70
+msgid ""
+"By default this evaluates to simply ``['.']``---that is, the same "
+"directory as ``base_dir``.  If this is not omitted, however, be noted "
+"that ``\".\"`` will not be automatically added and you have to explicitly"
+" add it if you want :class:`JSONLoader` to look in the same directory as "
+"``base_dir``."
+msgstr ""
+
+#: ../../struct/backup-spec.rst:78
+msgid "data (optional)"
+msgstr ""
+
+#: ../../struct/backup-spec.rst:76
+msgid ""
+"A *list* of *dict*, each *dict* being what is called a *panel*.  The "
+"content of each *dict* is elaborated in the following section. An empty "
+"list is assumed if this is omitted."
+msgstr ""
+
+#: ../../struct/backup-spec.rst:80
+msgid ""
+"Any other key is ignored by :class:`JSONLoader`, though there is one key "
+"that is recommended for you to use.  It is also addressed because "
+":class:`JSONDumper` exports it and the ``psp synopsis`` command "
+"recognizes it."
+msgstr ""
+
+#: ../../struct/backup-spec.rst:87
+msgid "desc"
+msgstr ""
+
+#: ../../struct/backup-spec.rst:86
+msgid "A *text* attribute giving a brief description of this backup file."
+msgstr ""
+
+#: ../../struct/backup-spec.rst:91
+msgid "Panels"
+msgstr ""
+
+#: ../../struct/backup-spec.rst:93
+msgid ""
+"Now for the panels!  A *panel* is a container of *entries*, loosely "
+"speaking. It does cooler stuff than that though, but first let's talk "
+"about the one and only **required** attribute:"
+msgstr ""
+
+#: ../../struct/backup-spec.rst:99
+msgid "date"
+msgstr ""
+
+#: ../../struct/backup-spec.rst:98
+msgid ""
+"A *str* representing the date of the panel.  Must be valid when passed to"
+" :meth:`JSONLoader.parse_date`."
+msgstr ""
+
+#: ../../struct/backup-spec.rst:101
+msgid "For providing entries:"
+msgstr ""
+
+#: ../../struct/backup-spec.rst:106
+msgid "entries (optional)"
+msgstr ""
+
+#: ../../struct/backup-spec.rst:104
+msgid ""
+"A *list* of *dict*, each *dict* being what is called an *entry*. The "
+"content of each *dict* is elaborated in the following section. An empty "
+"list is assumed if this is omitted."
+msgstr ""
+
+#: ../../struct/backup-spec.rst:108
+msgid "There is only one valid optional attribute:"
+msgstr ""
+
+#: ../../struct/backup-spec.rst:116
+msgid "rating (optional)"
+msgstr ""
+
+#: ../../struct/backup-spec.rst:111
+msgid ""
+"A *str* representing the rating of the panel (can be null).  The three "
+"ratings from Perspective from bad to good are represented with the "
+"strings ``\":(\"``, ``\":|\"``, and ``\":)\"``. (I did not use numbers "
+"because I'm not a nerd >_>)"
+msgstr ""
+
+#: ../../struct/backup-spec.rst:116
+msgid "Rating is set to null when omitted."
+msgstr ""
+
+#: ../../struct/backup-spec.rst:149
+msgid "Entries"
+msgstr ""
+
+#: ../../struct/backup-spec.rst:151
+msgid ""
+"Now for the entries... this can get tricky since this is where most of "
+"the things take place."
+msgstr ""
+
+#: ../../struct/backup-spec.rst:159
+msgid "Inference"
+msgstr ""
+
+#: ../../struct/backup-spec.rst:163
+msgid ""
+"This will be a reorganized version of the algorithm from :ref:`basicproc "
+"<basicproc_inference>`."
+msgstr ""
+
+#: ../../struct/index.rst:3
+msgid "Data Structure"
+msgstr "数据结构"
+
+#: ../../struct/index.rst:5
+msgid "Ooh fancy specification"
+msgstr ""
+

@@ -1,0 +1,619 @@
+# SOME DESCRIPTIVE TITLE.
+# Copyright (C) 2022, rapidcow
+# This file is distributed under the same license as the The Perspective
+# Library package.
+# FIRST AUTHOR <EMAIL@ADDRESS>, 2022.
+#
+#, fuzzy
+msgid ""
+msgstr ""
+"Project-Id-Version: The Perspective Library \n"
+"Report-Msgid-Bugs-To: \n"
+"POT-Creation-Date: 2022-06-01 10:45+0800\n"
+"PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
+"Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
+"Language-Team: LANGUAGE <LL@li.org>\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=utf-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+"Generated-By: Babel 2.10.1\n"
+
+#: ../../psp/bigentry.rst:5
+msgid ":mod:`extensions.bigentry` --- Blog-style entries"
+msgstr ""
+
+#: ../../psp/bigentry.rst:10
+msgid ""
+"This module provides support for writing entries that include multiple "
+"files!"
+msgstr ""
+
+#: ../../psp/bigentry.rst:15
+msgid ":class:`Entry <psp.types.Entry>` subclass that uses an archive format."
+msgstr ""
+
+#: ../../psp/bigentry.rst:19
+msgid ""
+":class:`JSONLoader <psp.processors.json_processor.JSONLoader>` subclass "
+"that reads big entries."
+msgstr ""
+
+#: ../../psp/bigentry.rst:24
+msgid ""
+":class:`JSONDumper <psp.processors.json_processor.JSONDumper>` subclass "
+"that writes big entries."
+msgstr ""
+
+#: ../../psp/dtypes.rst:5
+msgid ":mod:`datatypes` --- File type and extension inference"
+msgstr ""
+
+#: ../../psp/dtypes.rst:11
+msgid ""
+"The main purpose of this module is to handle type inferences.  For "
+"example, if you write"
+msgstr ""
+
+#: ../../psp/dtypes.rst:22
+msgid ""
+"in your entry of a backup file, you would want the loader to know that "
+"this is text and not pure binary data is stored, whereas if you write"
+msgstr ""
+
+#: ../../psp/dtypes.rst:32
+msgid ""
+"you would want the loader to know that this is pure binary data and is "
+"also a JPEG file.  This module helps to do exactly that, but the exact "
+"implementation inference rules are written in the "
+":mod:`psp.processors.json_processor` module.  Here I will only describe "
+"the functionalities of this module."
+msgstr ""
+
+#: ../../psp/dtypes.rst:46
+msgid "Registration"
+msgstr ""
+
+#: ../../psp/dtypes.rst:48
+msgid ""
+"Lots and lots of names, common or whatnot, and you can check them by "
+"running the :func:`has_type()` function."
+msgstr ""
+
+#: ../../psp/dtypes.rst:53
+msgid ""
+"Register a data type of with *name*, a string that has underscore-"
+"separated names (like ``stuff_xml`` and ``big_cow``)."
+msgstr ""
+
+#: ../../psp/dtypes.rst:59
+msgid ""
+"Delete the data type with *name*.  ``ValueError`` is raised if the name "
+"was not registered."
+msgstr ""
+
+#: ../../psp/dtypes.rst:65
+msgid "Lookup Functions"
+msgstr ""
+
+#: ../../psp/dtypes.rst:67
+msgid ""
+"On a technical note, most of the lookup functions here are cached with "
+"``functools.lru_cache()``."
+msgstr ""
+
+#: ../../psp/dtypes.rst:72
+msgid "Return whether the given type ``name`` has been registered."
+msgstr ""
+
+#: ../../psp/dtypes.rst:74
+msgid "Example:"
+msgstr ""
+
+#: ../../psp/index.rst:3
+msgid "The :mod:`psp` Library"
+msgstr ":mod:`psp` 库"
+
+#: ../../psp/index.rst:5
+msgid "Modules!"
+msgstr ""
+
+#: ../../psp/json_proc.rst:5
+msgid ":mod:`processors.json_processor` --- JSON backup file processors"
+msgstr ""
+
+#: ../../psp/json_proc.rst:10
+msgid ""
+"Most of these classes and functions are imported into ``processors``, so "
+"practically you can just write::"
+msgstr ""
+
+#: ../../psp/json_proc.rst:17
+msgid "instead of the whole long name..."
+msgstr ""
+
+#: ../../psp/json_proc.rst:26
+msgid "Loading"
+msgstr ""
+
+#: ../../psp/json_proc.rst:30
+msgid "Exception raised by :class:`JSONLoader`."
+msgstr ""
+
+#: ../../psp/json_proc.rst:34
+msgid "Warning warned or raised by :class:`JSONLoader`."
+msgstr ""
+
+#: ../../psp/json_proc.rst:38
+msgid "The JSON backup file loader class."
+msgstr ""
+
+#: ../../psp/json_proc.rst:40
+msgid ""
+"The constructor takes no positional arguments, and all keyword arguments "
+"are passed to the :meth:`configure()` method."
+msgstr ""
+
+#: ../../psp/json_proc.rst:45
+msgid "Configure options.  The following are a list of all possible options."
+msgstr ""
+
+#: ../../psp/json_proc.rst:48
+msgid "Option"
+msgstr ""
+
+#: ../../psp/json_proc.rst:48
+msgid "Description"
+msgstr ""
+
+#: ../../psp/json_proc.rst:48
+msgid "Type"
+msgstr ""
+
+#: ../../psp/json_proc.rst:48
+msgid "Default"
+msgstr ""
+
+#: ../../psp/json_proc.rst:50
+msgid "``check_panel_order``"
+msgstr ""
+
+#: ../../psp/json_proc.rst:50
+msgid "If true, warn on panel dates that are not strictly increasing. (1)"
+msgstr ""
+
+#: ../../psp/json_proc.rst:50 ../../psp/json_proc.rst:55
+#: ../../psp/json_proc.rst:60 ../../psp/json_proc.rst:64
+#: ../../psp/json_proc.rst:68 ../../psp/json_proc.rst:77
+msgid "*bool*"
+msgstr ""
+
+#: ../../psp/json_proc.rst:50 ../../psp/json_proc.rst:55
+#: ../../psp/json_proc.rst:77
+msgid "``True``"
+msgstr ""
+
+#: ../../psp/json_proc.rst:55
+msgid "``check_entry_order``"
+msgstr ""
+
+#: ../../psp/json_proc.rst:55
+msgid "If true, warn on entry times that are not consistently increasing. (2)"
+msgstr ""
+
+#: ../../psp/json_proc.rst:60
+msgid "``check_panel_duplicates``"
+msgstr ""
+
+#: ../../psp/json_proc.rst:60
+msgid "If true, warn on panels that have repeated dates. (3)"
+msgstr ""
+
+#: ../../psp/json_proc.rst:60 ../../psp/json_proc.rst:64
+#: ../../psp/json_proc.rst:68
+msgid "``False``"
+msgstr ""
+
+#: ../../psp/json_proc.rst:64
+msgid "``suppress_warnings``"
+msgstr ""
+
+#: ../../psp/json_proc.rst:64
+msgid "If true, all :exc:`LoadWarning` is suppressed."
+msgstr ""
+
+#: ../../psp/json_proc.rst:68
+msgid "``error_on_warning``"
+msgstr ""
+
+#: ../../psp/json_proc.rst:68
+msgid "If true, all :exc:`LoadWarning` is raised as exceptions. (4)"
+msgstr ""
+
+#: ../../psp/json_proc.rst:73
+msgid "``paths``"
+msgstr ""
+
+#: ../../psp/json_proc.rst:73
+msgid "Extra lookup paths for parsing the *input* field for entries."
+msgstr ""
+
+#: ../../psp/json_proc.rst:73
+msgid "iter\\ able"
+msgstr ""
+
+#: ../../psp/json_proc.rst:73
+msgid "``()``"
+msgstr ""
+
+#: ../../psp/json_proc.rst:77
+msgid "``warn_ambiguous_paths``"
+msgstr ""
+
+#: ../../psp/json_proc.rst:77
+msgid "If true, warn for paths are found more than once."
+msgstr ""
+
+#: ../../psp/json_proc.rst:81
+msgid "``base_dir``"
+msgstr ""
+
+#: ../../psp/json_proc.rst:81
+msgid "Base directory for relative *input* paths"
+msgstr ""
+
+#: ../../psp/json_proc.rst:81
+msgid "*str* or ``os.PathLike``"
+msgstr ""
+
+#: ../../psp/json_proc.rst:81
+msgid "``os.getcwd()``"
+msgstr ""
+
+#: ../../psp/json_proc.rst:84
+msgid "``json_options``"
+msgstr ""
+
+#: ../../psp/json_proc.rst:84
+msgid "Keyword arguments to pass to ``json.loads()``"
+msgstr ""
+
+#: ../../psp/json_proc.rst:84
+msgid "*dict*"
+msgstr ""
+
+#: ../../psp/json_proc.rst:84
+msgid "``{}``"
+msgstr ""
+
+#: ../../psp/json_proc.rst:88
+msgid "Notes:"
+msgstr ""
+
+#: ../../psp/json_proc.rst:91
+msgid ""
+"A warning is issued if ``d1 >= d2`` for any two consecutive panels of "
+"dates ``d1`` and ``d2``."
+msgstr ""
+
+#: ../../psp/json_proc.rst:95
+msgid ""
+"A warning is issued if ``t1 > t2`` for any two consecutive panels of "
+"aware date time ``t1`` and ``t2``.  Note that two entries may have the "
+"same aware date time, but the latter must not be earlier than the former."
+msgstr ""
+
+#: ../../psp/json_proc.rst:101
+msgid "This has no effect if ``check_panel_order`` is true."
+msgstr ""
+
+#: ../../psp/json_proc.rst:104
+msgid "This has no effect if ``suppress_warnings`` is true."
+msgstr ""
+
+#: ../../psp/json_proc.rst:109
+msgid "Load an archive from *file*."
+msgstr ""
+
+#: ../../psp/json_proc.rst:115
+msgid "Protected Methods"
+msgstr ""
+
+#: ../../psp/json_proc.rst:119
+msgid "This is the lookup algorithm used on the *input* field of entries."
+msgstr ""
+
+#: ../../psp/json_proc.rst:125
+msgid "Dumping"
+msgstr ""
+
+#: ../../psp/json_proc.rst:129
+msgid "Error raised by :class:`JSONDumper`."
+msgstr ""
+
+#: ../../psp/json_proc.rst:133
+msgid "The JSON backup file dumper class."
+msgstr ""
+
+#: ../../psp/json_proc.rst:137
+msgid "Configure options."
+msgstr ""
+
+#: ../../psp/json_proc.rst:141
+msgid ""
+"Dump panels to a directory.  *dirname* should be a path-like object to "
+"the path of the directory.  If the directory already exists, a "
+"``FileExistsError`` will be raised by |mkdir|_."
+msgstr ""
+
+#: ../../psp/json_proc.rst:151
+msgid "Convenience Interface"
+msgstr ""
+
+#: ../../psp/json_proc.rst:155
+msgid "Convenience interface to loading JSON archives."
+msgstr ""
+
+#: ../../psp/json_proc.rst:159
+msgid "Convenience interface to dumping JSON archives."
+msgstr ""
+
+#: ../../psp/main.rst:5
+msgid ":mod:`main` --- Main Program"
+msgstr ""
+
+#: ../../psp/main.rst:15
+msgid "Configuration"
+msgstr ""
+
+#: ../../psp/main.rst:16
+msgid "Date"
+msgstr ""
+
+#: ../../psp/stringify.rst:5
+msgid ":mod:`stringify` --- Format panels and entries"
+msgstr ""
+
+#: ../../psp/stringify.rst:10
+msgid ""
+"This module defines classes :class:`PanelFormatter` and "
+":class:`EntryFormatter` for printing panels that mimics the Perspective "
+"app."
+msgstr ""
+
+#: ../../psp/stringify.rst:15
+msgid "Formatter"
+msgstr ""
+
+#: ../../psp/stringify.rst:19
+msgid "An `abstract base class`_ for formatter classes."
+msgstr ""
+
+#: ../../psp/stringify.rst:26
+msgid ""
+"Takes an object as an argument and returns a formatted string "
+"representation of that object."
+msgstr ""
+
+#: ../../psp/stringify.rst:31
+msgid ""
+"A wrapper object that implements a ``wrap()`` method and has a writable "
+"attribute ``width``.  The ``wrap()`` method takes a string and returns a "
+"list of lines.  Set this to ``None`` to disable line wrapping."
+msgstr ""
+
+#: ../../psp/stringify.rst:37
+msgid ""
+"An *int* representing the maximum width of each line.  Must be no less "
+"than 0."
+msgstr ""
+
+#: ../../psp/stringify.rst:43
+msgid "Implementations"
+msgstr ""
+
+#: ../../psp/stringify.rst:47
+msgid "Formatter for :class:`Panel <psp.types.Panel>` objects."
+msgstr ""
+
+#: ../../psp/stringify.rst:51
+msgid "Format a panel."
+msgstr ""
+
+#: ../../psp/stringify.rst:55
+msgid "Formatter for :class:`Entry <psp.types.Entry>` objects."
+msgstr ""
+
+#: ../../psp/stringify.rst:59
+msgid "Format an entry."
+msgstr ""
+
+#: ../../psp/timeutil.rst:5
+msgid ":mod:`timeutil` --- Time utility functions"
+msgstr ""
+
+#: ../../psp/timeutil.rst:20
+msgid "Parse a time zone string such as ``+08:00`` and ``-07:00``."
+msgstr ""
+
+#: ../../psp/timeutil.rst:22
+msgid ""
+"Strings that match against the following regex that are guaranteed to "
+"work:"
+msgstr ""
+
+#: ../../psp/timeutil.rst:37
+msgid ""
+"In addition, for Python 3.9 and above, if ``tzdata`` is installed, the "
+"string will be passed to ``zoneinfo.ZoneInfo()`` to create a ``ZoneInfo``"
+" object."
+msgstr ""
+
+#: ../../psp/timeutil.rst:44
+msgid "Examples:"
+msgstr ""
+
+#: ../../psp/timeutil.rst:55
+msgid ""
+"Parse a date string.  ISO strings of the form ``YYYY-MM-DD`` are always "
+"valid as they are passed to |fromisoformat|_.  If that fails, a list of "
+"formats :attr:`DATE_FORMATS` are tried before a ``ValueError`` is raised."
+msgstr ""
+
+#: ../../psp/timeutil.rst:68
+msgid "Global Attributes"
+msgstr ""
+
+#: ../../psp/timeutil.rst:70
+msgid ""
+"Don't punch me for doing this okay...?  I know I'm not supposed to do "
+"this... but hey, you are probably not supposed to change this either?  I "
+"made it so that you can subclass :class:`JSONLoader` and override the "
+"methods, y'know..."
+msgstr ""
+
+#: ../../psp/timeutil.rst:76
+msgid "The constant that defines the list of date formats to try::"
+msgstr ""
+
+#: ../../psp/types.rst:5
+msgid ":mod:`types` --- Important objects"
+msgstr ""
+
+#: ../../psp/types.rst:10
+msgid ""
+"This module defines the :class:`Panel` and :class:`Entry` classes. They "
+"are automatically imported into the ``psp`` package:"
+msgstr ""
+
+#: ../../psp/types.rst:23
+msgid "The :class:`Panel` Class"
+msgstr ""
+
+#: ../../psp/types.rst:25
+msgid ""
+"A panel is a pretty much just a list of entries, with the exception that "
+"it has a date and can hold attributes."
+msgstr ""
+
+#: ../../psp/types.rst:30
+msgid "The ``Panel`` class."
+msgstr ""
+
+#: ../../psp/types.rst:34
+msgid "Date of the panel.  This is an immutable property."
+msgstr ""
+
+#: ../../psp/types.rst:38
+msgid ""
+"Create a new ``Panel`` object from attributes of ``panel``. Note that the"
+" new panel will hold no entries from ``panel``."
+msgstr ""
+
+#: ../../psp/types.rst:44
+msgid "Return an iterator of entries."
+msgstr ""
+
+#: ../../psp/types.rst:48
+msgid "Return a *list* copy of the entries."
+msgstr ""
+
+#: ../../psp/types.rst:52
+msgid ""
+"Add an entry to the current panel.  The ``panel`` attribute of ``entry`` "
+"will also be set to the current panel (``self``).  If the entry belongs "
+"to a different entry, :meth:`Panel.remove_entry()` is called to remove "
+"that entry from it."
+msgstr ""
+
+#: ../../psp/types.rst:57
+msgid "This is a no-op if ``entry`` is already added."
+msgstr ""
+
+#: ../../psp/types.rst:61
+msgid ""
+"Remove an entry from this panel.  A ``ValueError`` is raised if the entry"
+" is not in this panel."
+msgstr ""
+
+#: ../../psp/types.rst:66
+msgid "Return whether ``entry`` is an entry of this panel."
+msgstr ""
+
+#: ../../psp/types.rst:70
+msgid "Return the number of entries in this panel."
+msgstr ""
+
+#: ../../psp/types.rst:74
+msgid "Return whether this panel has at least one entry."
+msgstr ""
+
+#: ../../psp/types.rst:78
+msgid "Sort the entries using ``list.sort()``."
+msgstr ""
+
+#: ../../psp/types.rst:82
+msgid "Attributes"
+msgstr ""
+
+#: ../../psp/types.rst:86
+msgid "Set panel attribute to ``value`` under the name ``key``."
+msgstr ""
+
+#: ../../psp/types.rst:91
+msgid "The :class:`Entry` Class"
+msgstr ""
+
+#: ../../psp/types.rst:93
+msgid "An entry... can do a lot of things."
+msgstr ""
+
+#: ../../psp/types.rst:95
+msgid "There are two types of entries: text and binary."
+msgstr ""
+
+#: ../../psp/types.rst:97
+msgid ""
+"And there are two ways data for an entry is stored: in memory or as a "
+"file."
+msgstr ""
+
+#: ../../psp/types.rst:101
+msgid "The ``Entry`` class."
+msgstr ""
+
+#: ../../psp/types.rst:103
+msgid ""
+"In addition to that the :class:`Entry` class also comes with some useful "
+"methods."
+msgstr ""
+
+#: ../../psp/types.rst:108
+msgid "Return ``True`` if this entry can be decoded into ``str``, else ``False``."
+msgstr ""
+
+#: ../../psp/types.rst:111
+msgid ""
+"There are two ways to get the underlying raw binary data, though the "
+"method :meth:`Entry.load_data()` does it one step further by loading the "
+"data into the object, which might be useful if you want to access the "
+"data without reading a file every time."
+msgstr ""
+
+#: ../../psp/types.rst:118
+msgid ""
+"Load the source file into memory if it isn't loaded. Return the raw "
+"binary data of this entry."
+msgstr ""
+
+#: ../../psp/types.rst:123
+msgid "Return the raw binary data of this entry without loading the source."
+msgstr ""
+
+#: ../../psp/util.rst:5
+msgid ":mod:`util` --- Miscellaneous functions"
+msgstr ""
+
+#: ../../psp/util.rst:7
+msgid "These are completely random or not that random but just convenient stuff"
+msgstr ""
+
