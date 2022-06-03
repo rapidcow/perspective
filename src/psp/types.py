@@ -77,9 +77,13 @@ class Panel:
         """Get an iterator of the list of entries."""
         return iter(self._entries)
 
+    def get_entry(self, index):
+        """Get an entry with index."""
+        return self._entries[index]
+
     def get_entries(self):
         """Get a copy of the list of entries."""
-        return list(self._entries)
+        return self._entries.copy()
 
     def add_entry(self, entry):
         """Add an entry to the current panel.
