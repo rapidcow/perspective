@@ -277,6 +277,11 @@ class JSONLoader:
             The date of the panel to load.  If this is provided as a str,
             it must be a valid date string for `timeutil.parse_date()`.
             LookupError is issued if JSONLoader fails to find the panel.
+
+        Return
+        ------
+        A list of panels if `date` is not provided, and a single panel
+        if `date` is provided.
         """
         panels, attrs = self.__split_data(data)
         if date is None:
@@ -719,9 +724,9 @@ class JSONLoader:
             # Append `os.sep` to ensure glob looks for directories only
             pattern = os.path.abspath(os.path.join(base, pattern)) + os.sep
             for dirpath in glob.iglob(pattern):
-                filepath = os.path.normpath(os.path.join(dirpath, path))
+                filepath = os.path.join(dirpath, path)
                 if os.path.isfile(filepath):
-                    candidates.append(filepath)
+                    candidates.append(os.path.normpath(filepath))
                     if not self.get_option('warn_ambiguous_paths'):
                         break_loop = True
                         break
@@ -1003,7 +1008,7 @@ class JSONDumper:
             del data['paths']
         return json.dumps(data, **self.get_option('json_options'))
 
-    # basic_dump() but without checking
+    # basic_dump() but without creating directory
     def __basic_dump(self, panels, export_paths, dirname, encoding):
         data = self.dump_data(panels, export_paths, dirname)
         backup_name = self.get_option('backup_name')
@@ -1017,6 +1022,9 @@ class JSONDumper:
     # are the same as backup_name??
     #
     # XXX: This is PUBLIC now????
+    #
+    # TODO: Make sure to document that panels is always a list, not just any
+    # iterable/iterator
     def dump_data(self, panels, export_paths, dirname):
         input_paths = []
         paths = list(self.get_option('paths'))
@@ -1037,9 +1045,7 @@ class JSONDumper:
         else:
             input_paths = relative_paths
 
-        panels = list(panels)
         data = self.prepare_backup(panels, export_paths, dirname)
-
         panel_dicts = []
         path_it = zip(export_paths, input_paths)
         for panel in panels:
@@ -1204,7 +1210,7 @@ class JSONDumper:
     def get_entry_filename(self, entry, added):
         # Keep text entries by default
         if entry.is_text():
-            return
+            return None
         root, filename = self.basic_get_entry_filename(entry, added, 'assets')
         return root, os.path.join('assets', filename)
 
@@ -1221,11 +1227,13 @@ class JSONDumper:
         # coincide with the 'added' set, and the one above it coincides with
         # 'self.backup_name'. This SHOULD however terminate at
         # 'len(added) + 2'...)
+        backup_name = os.path.normpath(self.get_option('backup_name'))
         while file_count < len(added) + 3:
             root = f'{base_name}_{file_count}'
             if root not in added:
-                filename = os.path.join(dirname, root + ext)
-                if filename != self.get_option('backup_name'):
+                filename = os.path.normpath(
+                    os.path.join(dirname, root + ext))
+                if filename != backup_name:
                     return root, root + ext
             file_count += 1
         raise RuntimeError('failed to generate a file name')

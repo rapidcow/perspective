@@ -10,6 +10,7 @@ from psp.types import Entry, Panel
 # XXX: Do we test wide characters now?
 
 class FormatterSubclass(stringify.Formatter):
+    # Concrete implementation which we aren't really using
     def format(self, obj):
         return str(obj)
 
@@ -202,20 +203,31 @@ class TestStringifyPanel(unittest.TestCase):
         # Test if the entry_formatter keyword argument works
         pass
 
+    def test_options(self):
+        # Test these
+        # *  entry indent
+        # *  base directory
+        #
+        # make sure the order of entries in a panel is preserved!
+        pass
+
 
 class TestStringifyEntry(unittest.TestCase):
     def test_time_zone_fold(self):
         entries = []
+        panel = Panel(date(2021, 11, 7))
         dt = datetime(2021, 11, 7, 7, 30, tzinfo=timezone.utc)
         for mm in range(0, 180, 30):
             # Make it so that tz = -3, -2, -1, 0, 1, 2
             tz = timezone(timedelta(hours=-3 + mm//30))
             entry = Entry((dt + timedelta(minutes=mm)).astimezone(tz))
             entry.set_data('Text')
+            panel.add_entry(entry)
             entries.append(entry)
         entry = Entry(datetime(2021, 11, 7, 9, 30, tzinfo=timezone.utc)
                       .astimezone(TzWithFold()))
         entry.set_data('Text')
+        panel.add_entry(entry)
         entries.append(entry)
         formatter = stringify.EntryFormatter()
         formatter.configure(time_zone=TzWithFold(), coerce_time_zone=True)
@@ -242,6 +254,7 @@ class TestStringifyEntry(unittest.TestCase):
             entry = Entry((dt + timedelta(minutes=mm))
                           .astimezone(TzWithFold()))
             entry.set_data('Text')
+            panel.add_entry(entry)
             entries.append(entry)
         expected = map(
             fmt,
@@ -266,6 +279,7 @@ class TestStringifyEntry(unittest.TestCase):
         est = timezone(timedelta(hours=-5), 'EST')
         some_tz = timezone(timedelta(hours=1))
         entry = Entry(datetime(2021, 12, 25, 16, 40, tzinfo=some_tz))
+        Panel(date(2021, 12, 25)).add_entry(entry)
         entry.set_data('Text')
         formatter = stringify.EntryFormatter()
 
@@ -309,6 +323,7 @@ class TestStringifyEntry(unittest.TestCase):
         # Test these:
         # *  time format
         # *  label insight
+        # *  base directory
         pass
 
     def test_horizontal_sep(self):
@@ -323,3 +338,31 @@ class TestStringifyEntry(unittest.TestCase):
         # *  question_content_vsep
         # *  below_content_vsep
         pass
+
+
+class TestFormatSize(unittest.TestCase):
+    def test_a_bunch_of_random_cases(self):
+        for unit in ('tens', 'twos'):
+            self.t('0 B', 0, unit=unit)
+            self.t('0xB', 0, unit=unit, sep='x')
+            self.t('17 B', 17, unit=unit)
+            self.t('999 B', 999, unit=unit)
+        self.t('1023 B', 1023, unit='twos')
+        self.t('1.02 kB', 1023)
+        self.t('1 kB', 1000, unit='tens')
+        self.t('1.01 kB', 1006, unit='tens')
+        self.t('1 KiB', 1024, unit='twos')
+        self.t('1.12 GB', 1119106721)
+        self.t('1.04 GiB', 1119106721, unit='twos')
+        self.t('35.9MB', 35898538, sep='')
+        self.t('359.0 MB', 358985380)
+        # just to be certain that this function only knows English
+        msg = "unit must be either 'tens' or 'twos'"
+        for unit in ('deux', 'diez', '\u4e8c', 'ten', 'two'):
+            with self.assertRaises(ValueError, msg=msg):
+                stringify.format_size(123456, unit=unit)
+            with self.assertRaises(ValueError, msg=msg):
+                stringify.format_size(123456, unit=unit)
+
+    def t(self, name, *args, **kwargs):
+        self.assertEqual(stringify.format_size(*args, **kwargs), name)

@@ -23,8 +23,9 @@ class TestPanel(unittest.TestCase):
         panel.add_entry(entry1)
         panel.add_entry(entry2)
 
-        entries = panel.get_entries()
-        self.assertEqual(entries, [entry1, entry2])
+        self.assertEqual(panel.get_entries(), [entry1, entry2])
+        self.assertIs(panel.get_entry(0), entry1)
+        self.assertIs(panel.get_entry(1), entry2)
         self.assertIs(entry1.panel, panel)
         self.assertIs(entry2.panel, panel)
 
@@ -36,6 +37,10 @@ class TestPanel(unittest.TestCase):
             entry1 = Entry(datetime(2022, 2, 2, i, 0, tzinfo=tz))
             panel.add_entry(entry1)
         self.assertEqual(panel.count(), 24)
+
+    def test_subclassing(self):
+        # Test if from_panel() properly sets the attributes
+        pass
 
 
 class TestEntry(unittest.TestCase):
@@ -125,4 +130,8 @@ class TestEntry(unittest.TestCase):
 
     def test_metadata(self):
         # metadata validation (created, posted, filename, ...)
+        pass
+
+    def test_subclassing(self):
+        # Test if from_entry() properly sets the attributes
         pass
