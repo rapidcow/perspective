@@ -6,7 +6,6 @@ import json
 import os
 from pathlib import Path
 import shutil
-import sys
 import tempfile
 import unittest
 from psp import Panel, Entry
@@ -129,7 +128,7 @@ def has_caption(entry):
     return entry.has_attribute('caption')
 
 def set_caption(entry, caption):
-    entry.set_attribute('caption', question)
+    entry.set_attribute('caption', caption)
 
 def get_transcription(entry):
     return entry.get_attribute('transcription')
