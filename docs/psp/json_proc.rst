@@ -42,7 +42,7 @@ Loading
 
    .. method:: configure(**options)
 
-      Configure options.  The following are a list of all possible options.
+      Configure options.  The following are a table of all options.
 
       +----------------------------+--------------------------+-----------------+-----------------+
       | Option                     | Description              | Type            | Default         |
@@ -109,6 +109,26 @@ Loading
       Load an archive from *file*.
 
    .. method:: load_json(file, date=None)
+
+   These methods are responsible for parsing time-related and can be
+   overridden.  Default implementation calls their corresponding
+   functions in :mod:`psp.timeutil`.
+
+   .. method:: parse_timezone(s)
+
+      Parses the ``tz`` field, both at top-level and inside an entry.
+      This calls :func:`psp.timeutil.parse_timezone`.
+
+   .. method:: parse_datetime(s, *, tzinfo, fold)
+
+      Parses the ``date-time`` field in entry and time fields in meta
+      attributes.  The keyword arguments are ``None`` unless they are
+      known.  This calls :func:`psp.timeutil.parse_datetime`.
+
+   .. method:: parse_date(s)
+
+      Parses the ``date`` field, both in panel and in entry.
+      This calls :func:`psp.timeutil.parse_date`.
 
 
 Protected Methods

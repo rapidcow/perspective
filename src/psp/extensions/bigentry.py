@@ -204,7 +204,7 @@ class BigLoader(JSONLoader):
         if not ('data' in entry and isinstance(entry['data'], dict)):
             return super().process_entry(panel, entry, attrs)
 
-        arch_data = entry.pop('data')
+        arch_data = entry.pop('data').copy()
         # Raise exception for extraneous keys
         for k in {'input', 'type', 'encoding'}:
             if k in entry:

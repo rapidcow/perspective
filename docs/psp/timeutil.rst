@@ -50,6 +50,13 @@
       >>> parse_timezone('America/Los_Angeles')
       zoneinfo.ZoneInfo(key='America/Los_Angeles')
 
+.. function:: parse_datetime(s, tzinfo=None, fold=None)
+
+   Parse a date time string.  If the parsed date time has no ``tzinfo``
+   and ``tzinfo`` is provided (not ``None``), the provided ``tzinfo`` will
+   be used.  In addition, if ``fold`` is not ``None``, the ``fold`` will be
+   used too.
+
 .. function:: parse_date(s)
 
    Parse a date string.  ISO strings of the form ``YYYY-MM-DD`` are always
