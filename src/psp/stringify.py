@@ -22,6 +22,12 @@ def _extend_lines(buf, lines):
         buf.append('\n')
 
 
+def _add_vsep(buf, vsep, line):
+    for _ in range(vsep):
+        buf.append(line)
+        buf.append('\n')
+
+
 class Formatter(abc.ABC):
     """String formatter using a text wrapper supporting a constant width.
 
@@ -179,7 +185,7 @@ class Formatter(abc.ABC):
     # Protected methods
     # =================
     def _is_wrapping_disabled(self):
-        """Return whether text wrapping will happen."""
+        """Return whether text wrapping will be used."""
         return self.wrapper is None or self.width is None
 
     # Low-level wrapper of the wrapper.wrap function (does not strip)
@@ -200,11 +206,14 @@ class Formatter(abc.ABC):
         if strlen(fillchar) != 1:
             raise ValueError('fillchar should precisely have length 1')
 
-        if not (prefix or self.get_indent()):
-            if return_empty:
-                return self._wrap(text)
-            return self._wrap(text) or ['']
         indent = self.get_indent()
+        if not (prefix or indent):
+            self.wrapper.width = self.width
+            if return_empty:
+                wrapped = self._wrap(text)
+            else:
+                wrapped = self._wrap(text) or ['']
+            return [callback(line) for line in wrapped]
 
         prefix_len = strlen(prefix)
         prefix_fill = prefix_len * fillchar
@@ -288,9 +297,9 @@ class PanelFormatter(Formatter):
             coerce_time_zone=False,
 
             date_rating_sep='  ',
-            title_entries_vsep='\n\n',
-            entry_vsep='\n',
-            main_insight_entries_vsep='\n\n',
+            title_entries_vsep=2,
+            entry_vsep=1,
+            main_insight_entries_vsep=2,
         )
         self.configure(**options)
 
@@ -314,6 +323,7 @@ class PanelFormatter(Formatter):
                             .format(panel))
 
         buf = []
+        empty_line = self.get_option('line_callback')(self.get_indent())
         entry_formatter = self.get_entry_formatter()
         self.configure_entry_formatter(entry_formatter, panel)
 
@@ -331,31 +341,35 @@ class PanelFormatter(Formatter):
         _extend_lines(buf, lines)
 
         if main_entries or insight_entries:
-            buf.append(self.get_option('title_entries_vsep'))
+            _add_vsep(buf, self.get_option('title_entries_vsep'), empty_line)
         entry_vsep = self.get_option('entry_vsep')
 
         # Main entries
         if main_entries:
+            not_first_entry = False
             for entry in main_entries:
+                if not_first_entry:
+                    _add_vsep(buf, entry_vsep, empty_line)
                 buf.append(entry_formatter.format(entry))
                 buf.append('\n')
-                buf.append(entry_vsep)
-            buf.pop()
+                not_first_entry = True
             if insight_entries:
-                buf.append(self.get_option('main_insight_entries_vsep'))
+                _add_vsep(buf, self.get_option('main_insight_entries_vsep'),
+                          empty_line)
 
         # Insight entries
         if insight_entries:
             lines = self.wrap_insight_header(insight_entries)
             _extend_lines(buf, lines)
+            not_first_entry = False
             for entry in insight_entries:
+                if not_first_entry:
+                    _add_vsep(buf, entry_vsep, empty_line)
                 buf.append(entry_formatter.format(entry))
                 buf.append('\n')
-                buf.append(entry_vsep)
-            buf.pop()
+                not_first_entry = True
 
         buf.pop()
-
         return ''.join(buf)
 
     def configure_entry_formatter(self, entry_formatter, panel):
@@ -375,7 +389,7 @@ class PanelFormatter(Formatter):
                    for e in entries):
                 time_zone = first.tzinfo
         entry_formatter.configure(
-            indent=self.get_option('entry_indent'),
+            indent=self.get_indent() + self.get_option('entry_indent'),
             base_dir=self.get_option('base_dir'),
             time_format=self.get_option('time_format'),
             label_insight=False,
@@ -431,10 +445,10 @@ class EntryFormatter(Formatter):
 
             label_insight=False,
             content_indent='  ',
-            title_content_vsep='\n',
-            question_content_vsep='\n',
+            title_content_vsep=1,
+            question_content_vsep=1,
             # For both 'caption' and 'transcription'
-            below_content_vsep='\n',
+            below_content_vsep=1,
             transcription_indent='  ',
         )
 
@@ -458,43 +472,47 @@ class EntryFormatter(Formatter):
         _extend_lines(buf, lines)
 
         with self.indented(self.get_option('content_indent')):
+            empty_line = self.get_option('line_callback')(self.get_indent())
             # Title
             title = self.get_entry_title(entry)
             if title is not None:
                 _extend_lines(buf, self.wrap_entry_title(entry, title))
-                buf.append(self.get_option('title_content_vsep'))
+                _add_vsep(buf, self.get_option('title_content_vsep'),
+                          empty_line)
 
             # Question
             question = self.get_question(entry)
-            if question is not None:
+            # Since the way we split paragraphs is to call str.splitlines()
+            # and empty strings result in [], we're just going to ignore
+            # cases where the value isn't set OR the string is empty.
+            # (Same thing goes for transcription + caption)
+            if question:
                 _extend_lines(buf, self.wrap_question(entry, question))
-                buf.append(self.get_option('question_content_vsep'))
+                _add_vsep(buf, self.get_option('question_content_vsep'),
+                          empty_line)
 
             # Content
             content_lines = self.wrap_content(entry)
             _extend_lines(buf, content_lines)
-            buf.pop()
 
             # Caption + transcription
             caption = self.get_caption(entry)
             transcription = self.get_transcription(entry)
-            if caption is not None or transcription is not None:
-                if content_lines:
-                    buf.append('\n')
-                    buf.append(self.get_option('below_content_vsep'))
+            if (caption or transcription) and content_lines:
+                _add_vsep(buf, self.get_option('below_content_vsep'),
+                          empty_line)
 
-            if caption is not None:
+            if caption:
                 _extend_lines(buf, self.wrap_caption(entry, caption))
-                # Remove the last '\n' in case nothing will be formatted
-                # after this...
-                if transcription is None:
-                    buf.pop()
+                # XXX: Don't want this to be an option yet...?
+                # if transcription:
+                #     _add_vsep(buf, 1, empty_line)
 
-            if transcription is not None:
+            if transcription:
                 text = transcription
                 _extend_lines(buf, self.wrap_transcription(entry, text))
-                buf.pop()
 
+        buf.pop()
         return ''.join(buf)
 
     # The difference between a header and a title here is that a title
@@ -653,13 +671,13 @@ class EntryFormatter(Formatter):
         return self._center_paragraph(title)
 
     def get_question(self, entry):
-        return entry.get_attribute('question', None)
+        return entry.get_attribute('question', '')
 
     def wrap_question(self, entry, question):
         return self._wrap_paragraph(question, prefix='(Q) ')
 
     def get_caption(self, entry):
-        return entry.get_attribute('caption', None)
+        return entry.get_attribute('caption', '')
 
     def wrap_caption(self, entry, caption):
         lines = []
@@ -672,7 +690,7 @@ class EntryFormatter(Formatter):
         return lines
 
     def get_transcription(self, entry):
-        return entry.get_attribute('transcription', None)
+        return entry.get_attribute('transcription', '')
 
     def wrap_transcription(self, entry, transcription):
         lines = self._wrap_paragraph('Transcription:')
@@ -687,6 +705,8 @@ class EntryFormatter(Formatter):
 # Convenience interface
 # =====================
 
+# Note that if width or wrapper needs to be provided, they have to be
+# passed as a keyword argument!
 def format_panel(panel, *, entry_formatter=None, **options):
     formatter = PanelFormatter(**options)
     if entry_formatter is not None:

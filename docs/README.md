@@ -39,8 +39,11 @@ Inside the `docs` directory, run
 
     make html
 
-To make documentation in other languages (say `zh_CN` for Simplified
-Chinese), run
+Then if everything goes well you can just open up
+`_build/html/index.html`...
+
+To make documentation in other languages (say `zh_CN` for
+Simplified Chinese), run
 
     make -e SPHINXOPTS="-D language=zh_CN" html
 

@@ -113,6 +113,14 @@ class Panel:
         self._entries.remove(entry)
         entry._panel = None
 
+    def pop_entry(self, index=-1):
+        """Remove an entry from the current panel by index.  An IndexError
+        will be raised by list.pop() if the index is out of bounds.
+        """
+        entry = self._entries.pop(index)
+        entry._panel = None
+        return entry
+
     # You could write `entry in panel.get_entries()` and
     # `len(panel.get_entries())`... but like, really?
     # Making a copy every time?
@@ -129,7 +137,9 @@ class Panel:
 
     def has_entries(self):
         """Return True if there is at least one entry."""
-        return bool(self._entries)
+        # I read about the performance here and it says ternary operator
+        # is the fastest?  https://stackoverflow.com/a/13265186
+        return True if self._entries else False
 
     def sort_entries(self, *, key=None, reverse=False):
         """Call list.sort() on the internal entry list."""
@@ -244,7 +254,7 @@ class Entry:
     # =================
     @property
     def panel(self):
-        """Panel that the entry belongs to, None if this entry does not
+        """Panel that the entry belongs to; None if this entry does not
         belong to a panel.  This attribute can only be changed through
         calling either the remove_entry() method of the parent panel
         or the add_entry() method of a new panel.

@@ -112,12 +112,18 @@ class TzWithFold(tzinfo):
 class TestFormatter(unittest.TestCase):
     def test_wrap_paragraph(self):
         f = FormatterSubclass(width=10)
+        # Empty strings should result in an empty list only if
+        # return_empty is True
+        self.assertEqual(f.wrap_paragraph(''), [''])
+        self.assertEqual(f.wrap_paragraph('', prefix='. '), ['.'])
+        self.assertEqual(f.wrap_paragraph('', return_empty=True), [])
+        self.assertEqual(f.wrap_paragraph('', prefix='. ', return_empty=True),
+                         [])
         # Inputting string containing merely whitespace characters
         # should give nothing but the prefix
-        self.assertEqual(f.wrap_paragraph(''), [''])
         self.assertEqual(f.wrap_paragraph(' \t\n'), [''])
-        self.assertEqual(f.wrap_paragraph('hello world'),
-                         ['hello world'])
+        self.assertEqual(f.wrap_paragraph('hello world'), ['hello', 'world'])
+        self.assertEqual(f.wrap_paragraph('hi world'), ['hi world'])
         self.assertEqual(f.wrap_paragraph('hello world', prefix='> '),
                          ['> hello', '  world'])
 
@@ -213,6 +219,10 @@ class TestStringifyPanel(unittest.TestCase):
 
 
 class TestStringifyEntry(unittest.TestCase):
+    def test_content(self):
+        # test the edge case of get_content() returning ''
+        pass
+
     def test_time_zone_fold(self):
         entries = []
         panel = Panel(date(2021, 11, 7))
@@ -249,6 +259,9 @@ class TestStringifyEntry(unittest.TestCase):
             self.assertEqual(formatter.format(entry), exp)
 
         entries.clear()
+        # cleaning after ourselves even though this isn't really needed
+        while panel.has_entries():
+            panel.pop_entry()
         dt = datetime(2021, 11, 7, 7, 30, tzinfo=timezone.utc)
         for mm in range(0, 180, 30):
             entry = Entry((dt + timedelta(minutes=mm))
@@ -337,6 +350,9 @@ class TestStringifyEntry(unittest.TestCase):
         # *  title_entries_vsep
         # *  question_content_vsep
         # *  below_content_vsep
+        #
+        # MAKE SURE THAT ALL VSEP WORK (including those from
+        # PanelFormatter) WHEN NON-WHITESPACE INDENT IS SET
         pass
 
 

@@ -2,6 +2,7 @@
 
 import argparse
 from collections import defaultdict
+import code
 import calendar
 import datetime
 import io
@@ -119,6 +120,11 @@ def main():
         'merge', help='merge two or more backup files', parents=[parser_file])
     parser_merge.add_argument('out', help='output directory')
 
+    # The 'interact' subcommand
+    parser_interact = subparsers.add_parser(
+        'interact', help='launch an interactive prompt (experimental)',
+        parents=[parser_file])
+
     args = parser.parse_args()
 
     if args.config is not None:
@@ -175,9 +181,7 @@ def main():
     # First weekday
     firstweekday = getattr(config, 'firstweekday', calendar.MONDAY)
 
-    if args.subname in {'print', 'synopsis'}:
-        files = get_source_files(args.source, args.files, args.encoding)
-    elif args.subname == 'merge':
+    if args.subname in {'print', 'synopsis', 'merge', 'interact'}:
         files = get_source_files(args.source, args.files, args.encoding)
 
     if args.subname == 'print':
@@ -283,6 +287,33 @@ def main():
         print(f'exporting to {args.out!r}... ', end='', flush=True)
         dumper.dump(merged, args.out, args.encoding)
         print('done')
+
+    elif args.subname == 'interact':
+        loader = Loader()
+        set_warning_level(loader, args.wlevel)
+        cwd = os.getcwd()
+        panel_map = defaultdict(list)
+        panels = []
+        for file in files:
+            loader.configure(base_dir=os.path.dirname(file))
+            data = loader.load_json(file, args.encoding)
+            p1, p2 = loader.load_all(data), loader.load_all(data)
+            rpath = os.path.relpath(file, cwd)
+            for panel in p1:
+                panel_map[panel.date].append((panel, rpath))
+            panels.extend(p2)
+        merged = merge_panel_map(panel_map, args.wlevel)
+        panels.sort(key=lambda p: p.date)
+        merged.sort(key=lambda p: p.date)
+        code.interact(
+            local={
+                'panels': panels,
+                'merged': merged,
+                'BackupLoader': Loader,
+                'BackupDumper': Dumper,
+                'PanelPrinter': Printer,
+            })
+
     else:
         raise RuntimeError('unreachable')
 

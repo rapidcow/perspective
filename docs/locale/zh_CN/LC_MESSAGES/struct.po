@@ -9,7 +9,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: The Perspective Library \n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2022-06-01 10:45+0800\n"
+"POT-Creation-Date: 2022-06-01 12:43+0800\n"
 "PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
 "Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
 "Language-Team: LANGUAGE <LL@li.org>\n"
@@ -119,110 +119,117 @@ msgid ""
 "optional) that you may use."
 msgstr ""
 
-#: ../../struct/backup-spec.rst:63
+#: ../../struct/backup-spec.rst:65
 msgid "tz (optional)"
 msgstr ""
 
 #: ../../struct/backup-spec.rst:60
 msgid ""
 "A *str* representing the time zone for everything in this backup. Must be"
-" valid when passed to :meth:`JSONLoader.parse_timezone`. This is optional"
-" but a time zone must be eventually provided as :class:`JSONLoader` "
-"parses some time/date time string."
+" valid when passed to :meth:`JSONLoader.parse_timezone() "
+"<psp.processors.json_processor.JSONLoader.parse_timezone>`. This is "
+"optional but a time zone must be eventually provided as "
+":class:`JSONLoader <psp.processors.json_processor.JSONLoader>` parses "
+"some time/date time string."
 msgstr ""
 
-#: ../../struct/backup-spec.rst:73
+#: ../../struct/backup-spec.rst:77
 msgid "paths (optional)"
 msgstr ""
 
-#: ../../struct/backup-spec.rst:66
+#: ../../struct/backup-spec.rst:68
 msgid ""
 "A *list* of *str* for the lookup paths.  Each time the ``input`` "
 "attribute of an *entry* is parsed, its value is prepended with the "
-"``base_dir`` option of :class:`JSONLoader` and a path in this attribute."
+"``base_dir`` option of :class:`JSONLoader "
+"<psp.processors.json_processor.JSONLoader>` and a path in this attribute."
 msgstr ""
 
-#: ../../struct/backup-spec.rst:70
+#: ../../struct/backup-spec.rst:73
 msgid ""
 "By default this evaluates to simply ``['.']``---that is, the same "
 "directory as ``base_dir``.  If this is not omitted, however, be noted "
 "that ``\".\"`` will not be automatically added and you have to explicitly"
-" add it if you want :class:`JSONLoader` to look in the same directory as "
-"``base_dir``."
+" add it if you want :class:`JSONLoader "
+"<psp.processors.json_processor.JSONLoader>` to look in the same directory"
+" as ``base_dir``."
 msgstr ""
 
-#: ../../struct/backup-spec.rst:78
+#: ../../struct/backup-spec.rst:82
 msgid "data (optional)"
 msgstr ""
 
-#: ../../struct/backup-spec.rst:76
+#: ../../struct/backup-spec.rst:80
 msgid ""
 "A *list* of *dict*, each *dict* being what is called a *panel*.  The "
 "content of each *dict* is elaborated in the following section. An empty "
 "list is assumed if this is omitted."
 msgstr ""
 
-#: ../../struct/backup-spec.rst:80
+#: ../../struct/backup-spec.rst:84
 msgid ""
-"Any other key is ignored by :class:`JSONLoader`, though there is one key "
-"that is recommended for you to use.  It is also addressed because "
-":class:`JSONDumper` exports it and the ``psp synopsis`` command "
-"recognizes it."
-msgstr ""
-
-#: ../../struct/backup-spec.rst:87
-msgid "desc"
-msgstr ""
-
-#: ../../struct/backup-spec.rst:86
-msgid "A *text* attribute giving a brief description of this backup file."
-msgstr ""
-
-#: ../../struct/backup-spec.rst:91
-msgid "Panels"
+"psp.processors.json_processorAny other key is ignored by "
+":class:`JSONLoader <psp.processors.json_processor.JSONLoader>`, though "
+"there is one key that is recommended for you to use.  It is also "
+"addressed because :class:`JSONDumper "
+"<psp.processors.json_processor.JSONDumper>` exports it and the ``psp "
+"synopsis`` command recognizes it."
 msgstr ""
 
 #: ../../struct/backup-spec.rst:93
+msgid "desc"
+msgstr ""
+
+#: ../../struct/backup-spec.rst:92
+msgid "A *text* attribute giving a brief description of this backup file."
+msgstr ""
+
+#: ../../struct/backup-spec.rst:97
+msgid "Panels"
+msgstr ""
+
+#: ../../struct/backup-spec.rst:99
 msgid ""
 "Now for the panels!  A *panel* is a container of *entries*, loosely "
 "speaking. It does cooler stuff than that though, but first let's talk "
 "about the one and only **required** attribute:"
 msgstr ""
 
-#: ../../struct/backup-spec.rst:99
+#: ../../struct/backup-spec.rst:105
 msgid "date"
 msgstr ""
 
-#: ../../struct/backup-spec.rst:98
+#: ../../struct/backup-spec.rst:104
 msgid ""
 "A *str* representing the date of the panel.  Must be valid when passed to"
-" :meth:`JSONLoader.parse_date`."
+" :meth:`JSONLoader.parse_date() "
+"<psp.processors.json_processor.JSONLoader.parse_date>`."
 msgstr ""
 
-#: ../../struct/backup-spec.rst:101
+#: ../../struct/backup-spec.rst:107
 msgid "For providing entries:"
 msgstr ""
 
-#: ../../struct/backup-spec.rst:106
+#: ../../struct/backup-spec.rst:112
 msgid "entries (optional)"
 msgstr ""
 
-#: ../../struct/backup-spec.rst:104
+#: ../../struct/backup-spec.rst:110
 msgid ""
 "A *list* of *dict*, each *dict* being what is called an *entry*. The "
 "content of each *dict* is elaborated in the following section. An empty "
 "list is assumed if this is omitted."
 msgstr ""
 
-#: ../../struct/backup-spec.rst:108
+#: ../../struct/backup-spec.rst:114
 msgid "There is only one valid optional attribute:"
 msgstr ""
 
-#: ../../struct/backup-spec.rst:116
+#: ../../struct/backup-spec.rst:122
 msgid "rating (optional)"
 msgstr ""
 
-#: ../../struct/backup-spec.rst:111
+#: ../../struct/backup-spec.rst:117
 msgid ""
 "A *str* representing the rating of the panel (can be null).  The three "
 "ratings from Perspective from bad to good are represented with the "
@@ -230,25 +237,25 @@ msgid ""
 "because I'm not a nerd >_>)"
 msgstr ""
 
-#: ../../struct/backup-spec.rst:116
+#: ../../struct/backup-spec.rst:122
 msgid "Rating is set to null when omitted."
 msgstr ""
 
-#: ../../struct/backup-spec.rst:149
+#: ../../struct/backup-spec.rst:155
 msgid "Entries"
 msgstr ""
 
-#: ../../struct/backup-spec.rst:151
+#: ../../struct/backup-spec.rst:157
 msgid ""
 "Now for the entries... this can get tricky since this is where most of "
 "the things take place."
 msgstr ""
 
-#: ../../struct/backup-spec.rst:159
+#: ../../struct/backup-spec.rst:165
 msgid "Inference"
 msgstr ""
 
-#: ../../struct/backup-spec.rst:163
+#: ../../struct/backup-spec.rst:169
 msgid ""
 "This will be a reorganized version of the algorithm from :ref:`basicproc "
 "<basicproc_inference>`."
@@ -261,4 +268,3 @@ msgstr "数据结构"
 #: ../../struct/index.rst:5
 msgid "Ooh fancy specification"
 msgstr ""
-

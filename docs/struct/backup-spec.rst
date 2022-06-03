@@ -58,29 +58,35 @@ that you may use.
 
 tz (optional)
    A *str* representing the time zone for everything in this backup.
-   Must be valid when passed to :meth:`JSONLoader.parse_timezone`.
+   Must be valid when passed to
+   :meth:`JSONLoader.parse_timezone() <psp.processors.json_processor.JSONLoader.parse_timezone>`.
    This is optional but a time zone must be eventually provided as
-   :class:`JSONLoader` parses some time/date time string.
+   :class:`JSONLoader <psp.processors.json_processor.JSONLoader>` parses
+   some time/date time string.
 
 paths (optional)
    A *list* of *str* for the lookup paths.  Each time the ``input`` attribute
    of an *entry* is parsed, its value is prepended with the ``base_dir`` option
-   of :class:`JSONLoader` and a path in this attribute.
+   of :class:`JSONLoader <psp.processors.json_processor.JSONLoader>` and
+   a path in this attribute.
 
    By default this evaluates to simply ``['.']``---that is, the same directory
    as ``base_dir``.  If this is not omitted, however, be noted that ``"."``
    will not be automatically added and you have to explicitly add it if you
-   want :class:`JSONLoader` to look in the same directory as ``base_dir``.
+   want :class:`JSONLoader <psp.processors.json_processor.JSONLoader>` to
+   look in the same directory as ``base_dir``.
 
 data (optional)
    A *list* of *dict*, each *dict* being what is called a *panel*.  The
    content of each *dict* is elaborated in the following section.
    An empty list is assumed if this is omitted.
 
-Any other key is ignored by :class:`JSONLoader`, though there is one key
-that is recommended for you to use.  It is also addressed because
-:class:`JSONDumper` exports it and the ``psp synopsis`` command recognizes
-it.
+psp.processors.json_processorAny other key is ignored by
+:class:`JSONLoader <psp.processors.json_processor.JSONLoader>`, though
+there is one key that is recommended for you to use.  It is also
+addressed because
+:class:`JSONDumper <psp.processors.json_processor.JSONDumper>` exports it
+and the ``psp synopsis`` command recognizes it.
 
 desc
    A *text* attribute giving a brief description of this backup file.
@@ -96,7 +102,7 @@ only **required** attribute:
 
 date
    A *str* representing the date of the panel.  Must be valid when passed to
-   :meth:`JSONLoader.parse_date`.
+   :meth:`JSONLoader.parse_date() <psp.processors.json_processor.JSONLoader.parse_date>`.
 
 For providing entries:
 
