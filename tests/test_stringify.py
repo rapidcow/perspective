@@ -14,13 +14,6 @@ class FormatterSubclass(stringify.Formatter):
     def format(self, obj):
         return str(obj)
 
-    # Expose protected methods
-    def wrap_paragraph(self, *args, **kwargs):
-        return self._wrap_paragraph(*args, **kwargs)
-
-    def center_paragraph(self, *args, **kwargs):
-        return self._center_paragraph(*args, **kwargs)
-
 
 ZERO = timedelta(0)
 HOUR = timedelta(hours=1)

@@ -70,8 +70,8 @@ Loading
       |                            | is raised as             |                 |                 |
       |                            | exceptions. (4)          |                 |                 |
       +----------------------------+--------------------------+-----------------+-----------------+
-      | ``paths``                  | Extra lookup paths for   | iter\           | ``()``          |
-      |                            | parsing the *input*      | able            |                 |
+      | ``paths``                  | Extra lookup paths for   | iterable        | ``()``          |
+      |                            | parsing the *input*      |                 |                 |
       |                            | field for entries.       |                 |                 |
       +----------------------------+--------------------------+-----------------+-----------------+
       | ``warn_ambiguous_paths``   | If true, warn for        | *bool*          | ``True``        |
