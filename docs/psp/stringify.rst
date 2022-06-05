@@ -86,16 +86,16 @@ Formatter
 
       Low-level wrapping.
 
-   .. method:: _wrap_paragraph(text, *, prefix='', fillchar=' ', return_empty=False)
+   .. method:: wrap_paragraph(text, *, prefix='', fillchar=' ', return_empty=False)
 
       Wrap left-aligned text.
 
-   .. method:: _center_paragraph(text, *, fillchar=' ', return_empty=False)
+   .. method:: center_paragraph(text, *, fillchar=' ', return_empty=False)
 
       Wrap centered text.
 
    .. I don't plan to document about _center_line()... since it's not
-      really something you would want to use when you have _center_paragraph()
+      really something you would want to use when you have center_paragraph()
       already.
 
 .. TODO: Give subclass examples
@@ -146,3 +146,28 @@ Implementations
    .. method:: format(entry)
 
       Format an entry.
+
+
+---------------------
+Convenience Interface
+---------------------
+
+.. function:: format_panel(panel, *, entry_formatter=None, **options)
+
+   Format a panel.  This calls :meth:`PanelFormatter.format`.  If
+   ``entry_formatter`` is provided, it is set by calling
+   :meth:`PanelFormatter.set_entry_formatter`.  The options are passed
+   to the constructor of :class:`PanelFormatter`.
+
+.. function:: format_entry(entry, **options)
+
+   Format an entry.  This calls :meth:`EntryFormatter.format`.
+   The options are passed to the constructor of :class:`EntryFormatter`.
+
+.. function:: print_panel(panel, file=None, **kwargs)
+
+   Calls ``print(format_panel(panel, **kwargs), file=file)
+
+.. function:: print_entry(entry, file=None, **kwargs)
+
+   Calls ``print(format_entry(entry, **kwargs), file=file)
