@@ -411,10 +411,6 @@ class JSONLoader:
         load_data() will skip the panel (and return None if date
         is explicitly passed to it).
         """
-        # Skip this panel is it is None.
-        if not panel:
-            return None
-
         # Required field
         # --------------
         # Date
@@ -623,8 +619,8 @@ class JSONLoader:
                             "should be specified")
 
         # The algorithm for inference is still very akin to basicproc.py
-        # Check out 0.md if you wanna see how that works (i spent quite
-        # a lot of effort on it ;-;)
+        # Check out 0.md (zero.rst in this repo) if you wanna see how that
+        # works (i spent quite a lot of effort on it ;-;)
         if 'data' in entry:
             data = entry.pop('data')
             data = _ensure_text(data, 'data')
@@ -786,8 +782,12 @@ class JSONLoader:
     # Options checker...
     def check_paths_option(self, paths):
         if not isinstance(paths, (list, tuple)):
-            raise ValueError(f'paths should be a list or tuple, '
-                             f'not {paths!r}')
+            raise TypeError(f"the 'paths' option should be a list or tuple, "
+                            f"not {paths!r}")
+        for i, item in enumerate(paths, start=1):
+            if not isinstance(item, (str, os.PathLike)):
+                raise TypeError(f"expected item {i} to be a str or "
+                                f"path-like object, got {item!r}")
         return tuple(paths)
 
     # These are simply convenient checking that I just like to keep here XD
@@ -809,7 +809,7 @@ class JSONLoader:
                        .format(index_1, panel_1.date, index_2, panel_2.date),
                        LoadWarning)
         if panel_1.date == panel_2.date:
-            self._warn('panel #{} is equal to panel #{} ({})'
+            self._warn('panel #{} has the same date as #{} ({})'
                        .format(index_1, index_2, panel_2.date),
                        LoadWarning)
 
@@ -830,18 +830,18 @@ class JSONLoader:
     def __check_entry_order(self, panel):
         # Stolen from basicproc.py
         has_switched = False
-        expected_insight_value = None
+        expected_insight = None
         last_main_entry = None
         last_insight_entry = None
         # We have plenty of space so I changed i to index
         for index, entry in enumerate(panel.entries(), start=1):
-            if expected_insight_value is None:
-                expected_insight_value = entry.insight
+            if expected_insight is None:
+                expected_insight = entry.insight
 
             # Checking main -> insight order
-            if expected_insight_value != entry.insight:
+            if expected_insight != entry.insight:
                 if has_switched:
-                    expected = ('an insight entry' if expected_insight_value
+                    expected = ('an insight entry' if expected_insight
                                 else 'a main entry')
                     got = ('an insight entry' if entry.insight
                            else 'a main entry')
@@ -850,7 +850,7 @@ class JSONLoader:
                     self._warn(msg, LoadWarning)
                 else:
                     has_switched = True
-                    expected_insight_value = entry.insight
+                    expected_insight = entry.insight
 
             # Checking main entry order
             if last_main_entry is not None and not entry.insight:
@@ -957,13 +957,18 @@ class JSONDumper:
         return self._options[name]
 
     def check_paths_option(self, paths):
-        if isinstance(paths, str):
-            raise TypeError('paths should be an iterable of str, not str')
-        return tuple(paths)
+        if not isinstance(paths, (list, tuple)):
+            raise TypeError(f"the 'paths' option should be a list or tuple, "
+                            f"not {paths!r}")
+        for i, item in enumerate(paths, start=1):
+            if not isinstance(item, (str, os.PathLike)):
+                raise TypeError(f"expected item {i} to be a str or "
+                                f"path-like object, got {item!r}")
+        return tuple(os.fspath(p) for p in paths)
 
     # INTERFACES FOR DUMPING:
     # 1.  a list of Panel() objects
-    #     each entry will call back the method get_entry_filename(), which
+    #     each entry will call back the method get_entry_export_path(), which
     #     can be overridden if needed.  The following dump() method
     #     implements this.
     #
@@ -975,7 +980,7 @@ class JSONDumper:
         export_paths = []
         for panel in panels:
             for entry in panel.entries():
-                rv = self.get_entry_filename(entry, files_added.copy())
+                rv = self.get_entry_export_path(entry, files_added.copy())
                 if rv is None:
                     export_paths.append(None)
                 else:
@@ -1039,8 +1044,7 @@ class JSONDumper:
                 apath, rpath = self.__check_path(dirname, path, name)
                 relative_paths.append(rpath)
 
-        shorten_paths = self.get_option('shorten_paths')
-        if shorten_paths:
+        if self.get_option('shorten_paths'):
             input_paths = self.__compute_input_paths(relative_paths, paths)
         else:
             input_paths = relative_paths
@@ -1207,14 +1211,13 @@ class JSONDumper:
 
     # They are split up into two parts so that subclassing life can be easier!
     # (Only dump() calls these btw; basic_dump() doesn't)
-    def get_entry_filename(self, entry, added):
+    def get_entry_export_path(self, entry, added):
         # Keep text entries by default
         if entry.is_text():
             return None
-        root, filename = self.basic_get_entry_filename(entry, added, 'assets')
-        return root, os.path.join('assets', filename)
+        return self.make_entry_export_path(entry, added, 'assets')
 
-    def basic_get_entry_filename(self, entry, added, dirname, ext=None):
+    def make_entry_export_path(self, entry, added, dirname, ext=None):
         base_name = (entry.date_time.replace(tzinfo=None)
                      .isoformat(sep='_').replace(':', '-'))
         if entry.date_time.date() != entry.panel.date:
@@ -1234,7 +1237,7 @@ class JSONDumper:
                 filename = os.path.normpath(
                     os.path.join(dirname, root + ext))
                 if filename != backup_name:
-                    return root, root + ext
+                    return root, filename
             file_count += 1
         raise RuntimeError('failed to generate a file name')
 
@@ -1277,9 +1280,9 @@ class JSONDumper:
         entry_dict['type'] = entry.get_type()
         entry_dict['encoding'] = entry.get_encoding()
 
-        format_ = entry.get_format()
-        if format_ is not None:
-            entry_dict['format'] = format_
+        e_format = entry.get_format()
+        if e_format is not None:
+            entry_dict['format'] = e_format
 
         # Only write if insight is True (since it's False by default)
         if entry.insight:

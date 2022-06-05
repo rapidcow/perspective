@@ -62,9 +62,9 @@ Python:
 from psp.processors import load_json
 from psp.stringify import print_panel
 
-# Load the panel
+# Load the panel...
 panel = load_json('backup.json', date='2020-02-02')
-# Print the panel...!
+# Print the panel!
 print_panel(panel)
 ```
 
@@ -101,9 +101,9 @@ class MyPanelFormatter(PanelFormatter):
         return date.strftime(f'%B {date.day}, %Y').upper()
 
     def wrap_title(self, title):
-        # We're using _wrap_paragraph() so that the title is left-aligned!
-        # Default implementation uses _center_paragraph() in comparison.
-        return self._wrap_paragraph(title)
+        # We're using wrap_paragraph() so that the title is left-aligned!
+        # Default implementation uses center_paragraph() in comparison.
+        return self.wrap_paragraph(title)
 
 
 class MyEntryFormatter(EntryFormatter):
@@ -112,6 +112,9 @@ class MyEntryFormatter(EntryFormatter):
         # get_short_title(), get_long_title(), and get_full_title().
         # To get the full date (with year, month, and day), we're going
         # to use get_full_title().
+        #
+        # This does ignore the time zone, but I'll talk about how you can
+        # deal with that in the future.....
         return self.get_full_title(entry_time)
 ```
 
@@ -122,10 +125,10 @@ So now you can write
 panel_formatter = MyPanelFormatter()
 entry_formatter = MyEntryFormatter()
 
-# Format the panel as a string and explicitly
-# provide an entry formatter
-formatted_str = panel_formatter.format(
-    panel, entry_formatter=entry_formatter)
+# Set entry formatter for the panel formatter
+panel_formatter.set_entry_formatter(entry_formatter)
+# Format the panel as a string
+formatted_str = panel_formatter.format(panel)
 
 # Print it out!
 print(formatted_str)

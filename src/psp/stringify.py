@@ -33,11 +33,11 @@ class Formatter(abc.ABC):
 
     Although I've not written any formal explanation, I think it is probably
     worth mentioning that text wrapping does not mean that both `width` and
-    `wrapper` are set to None.  _center_paragraph() would still center the
+    `wrapper` are set to None.  center_paragraph() would still center the
     text according to `width` if _is_wrapping_disabled() returns False, but
     it would not attempt to wrap the text to fit within that width since
     wrapping is disabled.  For example, `width = 80` and `wrapper = None`
-    would still work if you called `_center_paragraph('something')`, just
+    would still work if you called `center_paragraph('something')`, just
     when 'something' exceeds the length of 80, no wrapping will happen and
     the string would just be passed on as is.
 
@@ -135,7 +135,7 @@ class Formatter(abc.ABC):
             # At least it should handle a width like 80, right??
             try:
                 wrapper.width = 80
-            except (AttributeError, ValueError):
+            except (AttributeError, TypeError):
                 raise TypeError("the 'width' attribute of wrapper should be "
                                 "mutable") from None
         self._wrapper = wrapper
@@ -197,9 +197,10 @@ class Formatter(abc.ABC):
     # The big guy (does strip)
     # (By strip we now mean calling line_callback(); it used to be just
     # simply calling str.rstrip())
-    def _wrap_paragraph(self, text, *, prefix='', fillchar=' ',
-                        return_empty=False):
-        # return_empty = False will ensure that _wrap_paragraph() returns ['']
+    # also this is now public because they are too useful to not be public
+    def wrap_paragraph(self, text, *, prefix='', fillchar=' ',
+                       return_empty=False):
+        # return_empty = False will ensure that wrap_paragraph() returns ['']
         # when provided an empty string (as opposed to _wrap())
         strlen = self._options['strlen']
         callback = self._options['line_callback']
@@ -232,7 +233,7 @@ class Formatter(abc.ABC):
             lines.append(callback(indent_and_prefix))
         return lines
 
-    def _center_paragraph(self, text, *, fillchar=' ', return_empty=False):
+    def center_paragraph(self, text, *, fillchar=' ', return_empty=False):
         strlen = self._options['strlen']
         callback = self._options['line_callback']
         indent = self.get_indent()
@@ -390,6 +391,8 @@ class PanelFormatter(Formatter):
                 time_zone = first.tzinfo
         entry_formatter.configure(
             indent=self.get_indent() + self.get_option('entry_indent'),
+            strlen=self.get_option('strlen'),
+            line_callback=self.get_option('line_callback'),
             base_dir=self.get_option('base_dir'),
             time_format=self.get_option('time_format'),
             label_insight=False,
@@ -413,7 +416,7 @@ class PanelFormatter(Formatter):
         return panel.get_attribute('rating', None)
 
     def wrap_title(self, title):
-        return self._center_paragraph(title)
+        return self.center_paragraph(title)
 
     def wrap_insight_header(self, insight_entries):
         if len(insight_entries) == 1:
@@ -611,8 +614,8 @@ class EntryFormatter(Formatter):
             # offsets, display the time zone.
             # (Comparison of two tzinfo: https://bugs.python.org/issue28601)
             elif not (time_zone == entry_time_zone or
-                    time_zone.utcoffset(entry_time) ==
-                    entry_time_zone.utcoffset(entry_time)):
+                      time_zone.utcoffset(entry_time) ==
+                      entry_time_zone.utcoffset(entry_time)):
                 display_tz = True
 
         if title is None:
@@ -631,7 +634,7 @@ class EntryFormatter(Formatter):
         return timeutil.format_offset(date_time.utcoffset())
 
     def wrap_header(self, header):
-        return self._wrap_paragraph(header)
+        return self.wrap_paragraph(header)
 
     def wrap_content(self, entry):
         if entry.is_text():
@@ -643,7 +646,7 @@ class EntryFormatter(Formatter):
         text = self.get_content(entry)
         lines = []
         for par in text.splitlines():
-            wrapped = self._wrap_paragraph(par)
+            wrapped = self.wrap_paragraph(par)
             lines.extend(wrapped)
         return lines
 
@@ -662,19 +665,19 @@ class EntryFormatter(Formatter):
                     f'at {path!r}>')
         else:
             text = f'{entry.get_type()} data sized {size_str}>'
-        return self._wrap_paragraph(text, prefix='<')
+        return self.wrap_paragraph(text, prefix='<')
 
     def get_entry_title(self, entry):
         return entry.get_title()
 
     def wrap_entry_title(self, entry, title):
-        return self._center_paragraph(title)
+        return self.center_paragraph(title)
 
     def get_question(self, entry):
         return entry.get_attribute('question', '')
 
     def wrap_question(self, entry, question):
-        return self._wrap_paragraph(question, prefix='(Q) ')
+        return self.wrap_paragraph(question, prefix='(Q) ')
 
     def get_caption(self, entry):
         return entry.get_attribute('caption', '')
@@ -683,7 +686,7 @@ class EntryFormatter(Formatter):
         lines = []
         prefix = 'Caption: '
         for par in caption.splitlines():
-            wrapped = self._wrap_paragraph(par, prefix=prefix)
+            wrapped = self.wrap_paragraph(par, prefix=prefix)
             lines.extend(wrapped)
             # len('Caption: ') equals 9
             prefix = ' ' * 9
@@ -693,10 +696,10 @@ class EntryFormatter(Formatter):
         return entry.get_attribute('transcription', '')
 
     def wrap_transcription(self, entry, transcription):
-        lines = self._wrap_paragraph('Transcription:')
+        lines = self.wrap_paragraph('Transcription:')
         with self.indented(self.get_option('transcription_indent')):
             for par in transcription.splitlines():
-                wrapped = self._wrap_paragraph(par)
+                wrapped = self.wrap_paragraph(par)
                 lines.extend(wrapped)
         return lines
 
