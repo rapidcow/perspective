@@ -1,6 +1,6 @@
 """Test the psp.stringify module."""
 from datetime import date, datetime, timedelta, timezone, tzinfo
-from textwrap import dedent, wrap
+from textwrap import dedent
 import unittest
 
 from psp import stringify
@@ -11,8 +11,8 @@ from psp.types import Entry, Panel
 
 class FormatterSubclass(stringify.Formatter):
     # Concrete implementation which we aren't really using
-    def wrap(self, obj):
-        return [str(obj)]
+    def format(self, obj):
+        return str(obj)
 
 
 ZERO = timedelta(0)
@@ -109,12 +109,12 @@ class TestFormatter(unittest.TestCase):
         # return_empty is True
         self.assertEqual(f.wrap_paragraph(''), [''])
         self.assertEqual(f.wrap_paragraph('', prefix='. '), ['.'])
-
+        self.assertEqual(f.wrap_paragraph('', return_empty=True), [])
+        self.assertEqual(f.wrap_paragraph('', prefix='. ', return_empty=True),
+                         [])
         # Inputting string containing merely whitespace characters
         # should give nothing but the prefix
-        self.assertEqual(f.wrap_paragraph(' hi\t\n'), [' hi'])
-        f.set_option('line_callback', str)
-        self.assertEqual(f.wrap_paragraph(' hi\t\n'), wrap(' hi\t\n'))
+        self.assertEqual(f.wrap_paragraph(' \t\n'), [''])
         self.assertEqual(f.wrap_paragraph('hello world'), ['hello', 'world'])
         self.assertEqual(f.wrap_paragraph('hi world'), ['hi world'])
         self.assertEqual(f.wrap_paragraph('hello world', prefix='> '),
@@ -123,8 +123,8 @@ class TestFormatter(unittest.TestCase):
         # Indentation
         # -----------
         f.set_indent('| ')
-        self.assertEqual(f.wrap_paragraph(''), ['| '])
-        self.assertEqual(f.wrap_paragraph(' \t\n'), ['| '])
+        self.assertEqual(f.wrap_paragraph(''), ['|'])
+        self.assertEqual(f.wrap_paragraph(' \t\n'), ['|'])
         self.assertEqual(f.wrap_paragraph('hello world'),
                          ['| hello', '| world'])
         self.assertEqual(f.wrap_paragraph('hello world', prefix='> '),
@@ -305,7 +305,6 @@ class TestStringifyEntry(unittest.TestCase):
         formatter.configure(coerce_time_zone=False)
         self.assertEqual(formatter.format(entry), fmt('4:40 PM'))
 
-    # TODO: These
     def test_infer_time_zone(self):
         pass
 
@@ -313,7 +312,17 @@ class TestStringifyEntry(unittest.TestCase):
         # Long title, short title and stuff
         pass
 
+    # TODO: These
+    def test_entry_title(self):
+        pass
+
     def test_question(self):
+        pass
+
+    def test_caption(self):
+        pass
+
+    def test_transcription(self):
         pass
 
     def test_options(self):
