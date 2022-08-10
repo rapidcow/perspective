@@ -4,9 +4,9 @@
 Tutorials
 =========
 
-A friendly tutorial (hopefully)
-
 .. toctree::
    :maxdepth: 1
 
    backup.rst
+   cookbook.rst
+   extensions.rst

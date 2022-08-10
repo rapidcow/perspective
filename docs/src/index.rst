@@ -1,7 +1,7 @@
 .. _home:
 
 =============================
-The Perspective Library 0.1.1
+The Perspective Library 0.2.0
 =============================
 
 Documentation for ``basicproc.py`` (archived) and the ``psp`` library
@@ -17,9 +17,10 @@ JSON backup files.
    :maxdepth: 1
    :caption: Contents:
 
+   changelog/index.rst
    intro/about.rst
    intro/install.rst
-   tutorial/index.rst
+   tutorials/index.rst
    basicproc/zero.rst
    psp/index.rst
    struct/index.rst

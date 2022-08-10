@@ -143,7 +143,7 @@ rating (optional)
    ... }
    ... """))
    >>> for panel in panels:
-   ...     rating = panel.get_attribute('rating')
+   ...     rating = panel.get_attribute('rating', default=None)
    ...     print('{!r:27}  {!r}'.format(panel.date, rating))
    datetime.date(2021, 4, 29)   ':)'
    datetime.date(2021, 12, 25)  None

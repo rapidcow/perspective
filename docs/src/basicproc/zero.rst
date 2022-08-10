@@ -6,7 +6,7 @@ The :mod:`basicproc` Module
 
 .. module:: basicproc
 
-(Formerly ``0.md``, titled Backup File and Processing)
+(Formerly ``0.md``, titled *Backup File and Processing*)
 
 :Author: rapidcow
 :Date: June 21, 2021
@@ -44,11 +44,14 @@ Inspection
 To begin with, let's start by looking at the user interface of Perspective
 so that we know what we're dealing with.  I chose this day because it has
 alost all types of information we need to store.  First, we have the text
-"Tuesday, September 4, 2018" at the top.  This page contains *entries* such
-as the one with the time "4:21 |nbsp| AM" and "Sep |nbsp| 7 |nbsp| |nbsp|
-1:00 |nbsp| AM".  And for terminology sake, we'll call this page a *panel*.
-A panel is perhaps better thought of as a forum where entries with relevant
-topics ares posted.
+"Tuesday, September 4, 2018" at the top [Note from future me: I totally
+misread it which is why I used ``%B`` instead of ``%b`` in my code... just to
+tell you I didn't mean to do that!  If you came from the :mod:`psp` library
+please read :ref:`this <pspcb_0>` on how to fix this issue].  This page
+contains *entries* such as the one with the time "4:21 |nbsp| AM" and
+"Sep |nbsp| 7 |nbsp| |nbsp| 1:00 |nbsp| AM".  And for terminology sake,
+we'll call this page a *panel*.  A panel is perhaps better thought of as a
+forum where entries with relevant topics ares posted.
 
 There are two types of entries, "main" entries and insight entries; the name
 "main" is an unofficial name I gave to the entries that are not insight
@@ -142,7 +145,7 @@ panels may have no entries at all, which means that we should treat
       {
         "date": "2018-09-04",
         "entries": [
-         "..."
+          "..."
         ]
       }
      ]
@@ -245,11 +248,6 @@ locally.  You can also put one directly inside an entry like this:
    }
 
 and the time zone will only apply to this entry.
-
-.. warning::
-
-   In :class:`psp.processors.json_processor.JSONLoader`, time zone may ONLY
-   provided as a top-level attribute.
 
 
 Insight and Question
@@ -452,6 +450,7 @@ An excerpt of the backup file we're dealing with (save it as
 
 .. Prepare for the upcoming doctest
 .. testsetup::
+   :skipif: basicproc is None
 
    import json
    import io
@@ -600,6 +599,7 @@ to show you what I want to do here.  If you have the script now, what you
 may do is run
 
 .. doctest::
+   :skipif: basicproc is None
 
    >>> from basicproc import *
 
@@ -607,6 +607,7 @@ to follow along.  First, we want to load the backup file.  After you load
 the file you'll see it has some keys:
 
 .. doctest::
+   :skipif: basicproc is None
 
    >>> import json
    >>> with open('backup_test.json', encoding='utf-8') as fp:
@@ -619,6 +620,7 @@ The functions we mentioned above extract the dictionary in multiple ways
 by their keys.  I wrote what keys they extract in the comments.
 
 .. doctest::
+   :skipif: basicproc is None
 
    >>> # Extract 'desc'
    >>> backup_get_description(bk)
@@ -646,6 +648,7 @@ printer for us to use, which is why we pass the keyword argument ``width`` to
 it.
 
 .. doctest::
+   :skipif: basicproc is None
 
    >>> panel_dict = data[0]
    >>> panel = Panel(panel_dict, attrs, width=60)
@@ -661,6 +664,7 @@ it.
 We can access the fields belonging to the entries too:
 
 .. doctest::
+   :skipif: basicproc is None
 
    >>> entry = panel.entries[0]
    >>> entry
@@ -684,6 +688,7 @@ an :class:`Entry` object, you'll need the parent panel and a dictionary of an
 entry.
 
 .. doctest::
+   :skipif: basicproc is None
 
    >>> entry_dict = panel_dict['entries'][0]
    >>> entry_dict
@@ -699,6 +704,7 @@ Now here's the really cool part: you can call the ``to_string()`` method to
 format the panel!
 
 .. doctest::
+   :skipif: basicproc is None
 
    >>> if True:
    ...     print('=' * 60)
@@ -719,6 +725,7 @@ the ``width`` attribute, although the result can look weird if you decide to
 try out small values...
 
 .. doctest::
+   :skipif: basicproc is None
 
    >>> panel.width = 10
    >>> if True:
@@ -742,6 +749,7 @@ try out small values...
 :meth:`Panel.to_string` to format string for a single entry):
 
 .. doctest::
+   :skipif: basicproc is None
 
    >>> if True:
    ...     print('=' * 10)
@@ -761,352 +769,356 @@ arguments, and store the information within themselves.  The ``to_string``
 methods format the panel and entry and can be printed out as shown above.
 
 
-.. class:: Panel
-
 The ``Panel`` Class
 ^^^^^^^^^^^^^^^^^^^
 
-The main job of :class:`Panel` is to hold the following attributes:
+.. this was originally written in Markdown so i didn't describe each
+   method structurally :(
 
--   The date
--   The entries: a list of objects representing the entries
--   The rating: an optional string like ``':)'`` and ``':('``
+.. class:: Panel
 
-In addition to that, we also want to keep track of the lookup paths when
-we encounter an ``"input"`` field.  For the purpose of printing, we also need
-to know what text wrapper (an object that wraps text to a certain width)
-we're using, as well as the level of indentation.
+   The main job of :class:`Panel` is to hold the following attributes:
 
-The date and entries are stored in the attributes ``date`` and ``entries`` of
-the class respectively, however ``rating`` is stored in the dict ``attrs``. [1]_
-Weirdly enough, the time zone string ``tz`` is also stored in ``attrs``.
+   -   The date
+   -   The entries: a list of objects representing the entries
+   -   The rating: an optional string like ``':)'`` and ``':('``
 
-The list of lookup paths is stored in ``paths``.  The width of text is
-internally stored in ``_width``, which will be accessed through a descriptor
-later on.  The wrapper and the level of indentation are stored in
-``_wrapper`` and ``_indent`` respectively.
+   In addition to that, we also want to keep track of the lookup paths when
+   we encounter an ``"input"`` field.  For the purpose of printing, we also need
+   to know what text wrapper (an object that wraps text to a certain width)
+   we're using, as well as the level of indentation.
 
-Here's the entire code for the initialization::
+   The date and entries are stored in the attributes ``date`` and ``entries`` of
+   the class respectively, however ``rating`` is stored in the dict ``attrs``. [1]_
+   Weirdly enough, the time zone string ``tz`` is also stored in ``attrs``.
 
-   class Panel:
-       """Panel containing entries for a single day.
+   The list of lookup paths is stored in ``paths``.  The width of text is
+   internally stored in ``_width``, which will be accessed through a descriptor
+   later on.  The wrapper and the level of indentation are stored in
+   ``_wrapper`` and ``_indent`` respectively.
 
-       Parameters
-       ----------
-       panel : dict
-           A dict loaded from a JSON object of the panel.  In `backup.json`
-           this is any of the objects within the "data" key.
+   Here's the entire code for the initialization::
 
-           This can be extracted from a backup dict using `backup_get_data`.
+      class Panel:
+          """Panel containing entries for a single day.
 
-       attrs : dict
-           Extracted by `backup_get_attributes`, this contains information that
-           acts as global options in `backup.json`.
+          Parameters
+          ----------
+          panel : dict
+              A dict loaded from a JSON object of the panel.  In `backup.json`
+              this is any of the objects within the "data" key.
 
-       width : int, default 80
-           Maximum length of lines for the printed text.
-           Since this works by calling `textwrap.TextWrapper`, this
-           breaks if trying to format a paragraph with a word longer than
-           this integer.
-       """
-       __slots__ = (
-           'date', 'entries', '_width', '_wrapper',
-           '_indent', 'paths', 'attrs',
-       )
+              This can be extracted from a backup dict using `backup_get_data`.
 
-       def __init__(self, panel, attrs, width=80):
-           # Default values
-           self.attrs = dict(tz=None, rating=None)
-           self.paths = ['.']
+          attrs : dict
+              Extracted by `backup_get_attributes`, this contains information that
+              acts as global options in `backup.json`.
 
-           self._set(attrs)
-           self.width = width
-           self._indent = 0
-           self._wrapper = textwrap.TextWrapper()
-           self._process(panel)
+          width : int, default 80
+              Maximum length of lines for the printed text.
+              Since this works by calling `textwrap.TextWrapper`, this
+              breaks if trying to format a paragraph with a word longer than
+              this integer.
+          """
+          __slots__ = (
+              'date', 'entries', '_width', '_wrapper',
+              '_indent', 'paths', 'attrs',
+          )
 
-We see that ``attrs`` is processed by the ``_set`` method and ``panel`` is
-processed by the ``_process`` method.  The ``_set`` method sets the attributes
-if they exist, and the attributes include the time zone `tz` and the lookup
-paths `paths`.  It is called before ``_process(panel)`` so that attributes in
-`panel` can override the attributes in ``attrs``.  The following lines setting
-``width``, ``_indent``, and ``_wrapper`` don't affect anything set by ``_set``.
+          def __init__(self, panel, attrs, width=80):
+              # Default values
+              self.attrs = dict(tz=None, rating=None)
+              self.paths = ['.']
 
-Any key aside from ``tz`` and ``paths`` will cause an
-:exc:`InvalidEntryError` to be raised.  Something like this:
+              self._set(attrs)
+              self.width = width
+              self._indent = 0
+              self._wrapper = textwrap.TextWrapper()
+              self._process(panel)
 
-.. doctest::
+   We see that ``attrs`` is processed by the ``_set`` method and ``panel`` is
+   processed by the ``_process`` method.  The ``_set`` method sets the attributes
+   if they exist, and the attributes include the time zone `tz` and the lookup
+   paths `paths`.  It is called before ``_process(panel)`` so that attributes in
+   `panel` can override the attributes in ``attrs``.  The following lines setting
+   ``width``, ``_indent``, and ``_wrapper`` don't affect anything set by ``_set``.
 
-   >>> from basicproc import Panel
-   >>> Panel({}, {'extra': 0, 'keys': 0, 'paths': []})
-   Traceback (most recent call last):
-     ...
-   basicproc.InvalidEntryError: unrecognized keys: 'extra', 'keys'
+   Any key aside from ``tz`` and ``paths`` will cause an
+   :exc:`InvalidEntryError` to be raised.  Something like this:
 
-Next is the ``_process`` method call.  It only requires one attribute: the
-``date``.  It also takes in some optional attributes:
+   .. doctest::
+      :skipif: basicproc is None
 
-paths
-   Lookup paths, identical to that in `attrs`.  Required to be a list of
-   ``str`` if provided.  Will be used to update ``self.paths`` in a way these
-   paths are looked up first. [2]_
+      >>> from basicproc import Panel
+      >>> Panel({}, {'extra': 0, 'keys': 0, 'paths': []})
+      Traceback (most recent call last):
+        ...
+      basicproc.InvalidEntryError: unrecognized keys: 'extra', 'keys'
 
-tz
-   Time zone, identical to that in ``attrs``.  Will be set in
-   ``self.attrs['tz']``.
+   Next is the ``_process`` method call.  It only requires one attribute: the
+   ``date``.  It also takes in some optional attributes:
 
-   A ``tz`` has a rather strict syntax, namely due to that the class method
-   ``datetime.datetime.fromisoformat`` is used for parsing.  If we denote the
-   string holding the value as ``tz``, and the ``fromisoformat`` method as
-   ``f``, then ``tz`` is valid only when ``f('0001-01-01T00:00' + tz)``
-   doesn't raise a ``ValueError``.
+   paths
+      Lookup paths, identical to that in `attrs`.  Required to be a list of
+      ``str`` if provided.  Will be used to update ``self.paths`` in a way these
+      paths are looked up first. [2]_
 
-rating
-   The rating of the day.  Will be set in ``self.attrs['rating']`` and
-   defaults to ``None``.
+   tz
+      Time zone, identical to that in ``attrs``.  Will be set in
+      ``self.attrs['tz']``.
 
-entries
-   List of ``dict``.  If we store each ``dict`` in a variable named ``entry``,
-   then ``Entry(entry, self)`` is created and is appended to the list
-   ``self.entries``.
+      A ``tz`` has a rather strict syntax, namely due to that the class method
+      ``datetime.datetime.fromisoformat`` is used for parsing.  If we denote the
+      string holding the value as ``tz``, and the ``fromisoformat`` method as
+      ``f``, then ``tz`` is valid only when ``f('0001-01-01T00:00' + tz)``
+      doesn't raise a ``ValueError``.
 
+   rating
+      The rating of the day.  Will be set in ``self.attrs['rating']`` and
+      defaults to ``None``.
 
-.. class:: Entry
+   entries
+      List of ``dict``.  If we store each ``dict`` in a variable named ``entry``,
+      then ``Entry(entry, self)`` is created and is appended to the list
+      ``self.entries``.
+
 
 The ``Entry`` Class
 ^^^^^^^^^^^^^^^^^^^
 
-An :class:`Entry` holds a lot of things:
+.. class:: Entry
 
--   The date and time (plus time zone)
--   The parent panel---the panel it belongs to
--   A boolean for whether or not it is an insight
--   The data (like the text or image)
--   The metadata (like the creation time of a photo)
+   An :class:`Entry` holds a lot of things:
 
-In addition to that, it holds the following attribute optionally:
+   -   The date and time (plus time zone)
+   -   The parent panel---the panel it belongs to
+   -   A boolean for whether or not it is an insight
+   -   The data (like the text or image)
+   -   The metadata (like the creation time of a photo)
 
--   Question (see `Insight and Question`_ if you don't know what that is)
+   In addition to that, it holds the following attribute optionally:
 
-(Yeah.  I know that's just one but I still listed it just to be consistent.)
+   -   Question (see `Insight and Question`_ if you don't know what that is)
 
-In addition, we need the variables for the wrapper and indent just like the
-case for :class:`Panel`, but instead of creating our own ``_wrapper`` and
-``_indent``, we're going to inherit them from :class:`Entry`. ::
+   (Yeah.  I know that's just one but I still listed it just to be consistent.)
 
-   class Entry:
-       """An entry belonging to a panel.
+   In addition, we need the variables for the wrapper and indent just like the
+   case for :class:`Panel`, but instead of creating our own ``_wrapper`` and
+   ``_indent``, we're going to inherit them from :class:`Entry`. ::
 
-       Parameters
-       ----------
-       entry : dict
-           A dict loaded from a JSON object of the entry.  In
-           `backup.json` this is any of the objects in the "entries"
-           key of a panel.
+      class Entry:
+          """An entry belonging to a panel.
 
-       panel : Panel object
-           The panel that the entry to be created belongs to.
+          Parameters
+          ----------
+          entry : dict
+              A dict loaded from a JSON object of the entry.  In
+              `backup.json` this is any of the objects in the "entries"
+              key of a panel.
 
-       load_file : bool, default False
-           Whether to load file that are specified "input" into memory.
+          panel : Panel object
+              The panel that the entry to be created belongs to.
 
-       strict : bool, default True
-           Whether to validate the entry at the end of initialization.
-       """
-       __slots__ = (
-           'date_time', 'panel', '_wrapper', '_indent', 'insight',
-           'data', 'attrs',
-       )
+          load_file : bool, default False
+              Whether to load file that are specified "input" into memory.
 
-       def __init__(self, entry, panel, load_file=False, strict=True):
-           self.panel = panel
-           self.insight = False
+          strict : bool, default True
+              Whether to validate the entry at the end of initialization.
+          """
+          __slots__ = (
+              'date_time', 'panel', '_wrapper', '_indent', 'insight',
+              'data', 'attrs',
+          )
 
-           # Default values
-           self.data = dict(type=None, format=None, encoding=None, caption=None)
-           self.attrs = dict(question=None)
-           self._wrapper = self.panel._wrapper
-           self._process(entry, load_file=load_file)
-           if strict:
-               self._validate()
+          def __init__(self, entry, panel, load_file=False, strict=True):
+              self.panel = panel
+              self.insight = False
 
-Again we're going to talk about what ``_process`` does here.  The required
-fields however aren't just simply one but one of two keys.  They are:
+              # Default values
+              self.data = dict(type=None, format=None, encoding=None, caption=None)
+              self.attrs = dict(question=None)
+              self._wrapper = self.panel._wrapper
+              self._process(entry, load_file=load_file)
+              if strict:
+                  self._validate()
 
--  ``time`` or ``date-time``
--  ``data`` or ``input``
+   Again we're going to talk about what ``_process`` does here.  The required
+   fields however aren't just simply one but one of two keys.  They are:
 
-For example, if you look at the first entry, you will see that only
-`time` and `data` are provided:
+   -  ``time`` or ``date-time``
+   -  ``data`` or ``input``
 
-.. code-block:: json
+   For example, if you look at the first entry, you will see that only
+   `time` and `data` are provided:
 
-   {
-     "time": "04:21",
-     "data": "Found this app today!"
-   }
+   .. code-block:: json
 
-Here's a brief description of all the possible keys you can pick.  Starting
-from time-related keys:
+      {
+        "time": "04:21",
+        "data": "Found this app today!"
+      }
 
-time
-   Time in ISO format.  This when joined with the ``date`` value using
-   ``date + 'T' + time + tz``, where ``tz`` is the time zone, must be valid
-   when passed to ``datetime.datetime.fromisoformat``.  Can contain time zone
-   offset; see more at description of ``date-time``.
+   Here's a brief description of all the possible keys you can pick.  Starting
+   from time-related keys:
 
-date
-   Date in ISO format.  See description of `time` for when this is valid.
-   Defaults to ``panel.date.isoformat()`` where ``panel`` is the second
-   argument in ``__init__`` (aside from ``self``).
+   time
+      Time in ISO format.  This when joined with the ``date`` value using
+      ``date + 'T' + time + tz``, where ``tz`` is the time zone, must be valid
+      when passed to ``datetime.datetime.fromisoformat``.  Can contain time zone
+      offset; see more at description of ``date-time``.
 
-date-time
-   Date time in ISO format.  Must be a valid string when passed to
-   ``datetime.datetime.fromisoformat``.  Can contain time zone
-   offset which will be preserved as opposed to inheriting from
+   date
+      Date in ISO format.  See description of `time` for when this is valid.
+      Defaults to ``panel.date.isoformat()`` where ``panel`` is the second
+      argument in ``__init__`` (aside from ``self``).
 
-Then we have data and input.  These are the primary ways to store data as we
-discussed in `Data Model and Images`_.
+   date-time
+      Date time in ISO format.  Must be a valid string when passed to
+      ``datetime.datetime.fromisoformat``.  Can contain time zone
+      offset which will be preserved as opposed to inheriting from
 
-data
-   The text data verbatim.  Or, if ``data-encoding`` is specified, the
-   encoded ASCII string verbatim.  May be a string or a list of strings.
+   Then we have data and input.  These are the primary ways to store data as we
+   discussed in `Data Model and Images`_.
 
-input
-   The path of the file containing the data.  The program will first seek
-   the path in the current working directory (``os.getcwd()`` or
-   ``basicproc.BASE_DIR`` which you can modify for more control) and then
-   ``paths`` if you specified them, treating all of them as relative paths to
-   ``BASE_DIR``.
+   data
+      The text data verbatim.  Or, if ``data-encoding`` is specified, the
+      encoded ASCII string verbatim.  May be a string or a list of strings.
 
-   Side note: ``paths`` specified in the current panel are sought first, and
-   then ``paths`` specified at the top level are sought second.
+   input
+      The path of the file containing the data.  The program will first seek
+      the path in the current working directory (``os.getcwd()`` or
+      ``basicproc.BASE_DIR`` which you can modify for more control) and then
+      ``paths`` if you specified them, treating all of them as relative paths to
+      ``BASE_DIR``.
 
-data-encoding
-   A string that is either one of the strings in the "Name" column of the
-   following table.
+      Side note: ``paths`` specified in the current panel are sought first, and
+      then ``paths`` specified at the top level are sought second.
 
-   =============  ====================
-   Name           Function called
-   -------------  --------------------
-   ``"base16"``   ``base64.b16decode``
-   ``"base32"``   ``base64.b32decode``
-   ``"base64"``   ``base64.b64decode``
-   ``"base85"``   ``base64.b85decode``
-   ``"ascii85"``  ``base64.a85decode``
-   =============  ====================
+   data-encoding
+      A string that is either one of the strings in the "Name" column of the
+      following table.
 
-Next is the type and encoding fields.  It's worth noting that although these
-field are optional, they are automatically inferred from other information
-provided.  See `Inference Rules`_ for the algorithm.
+      =============  ====================
+      Name           Function called
+      -------------  --------------------
+      ``"base16"``   ``base64.b16decode``
+      ``"base32"``   ``base64.b32decode``
+      ``"base64"``   ``base64.b64decode``
+      ``"base85"``   ``base64.b85decode``
+      ``"ascii85"``  ``base64.a85decode``
+      =============  ====================
 
-type
-   A string that describes the type of the data.  Default types are
-   ``"plain"`` for text data and ``"binary"`` for binary data.
+   Next is the type and encoding fields.  It's worth noting that although these
+   field are optional, they are automatically inferred from other information
+   provided.  See `Inference Rules`_ for the algorithm.
 
-   There are text types such as ``markdown`` and binary types such as
-   ``jpeg`` and ``png``.
+   type
+      A string that describes the type of the data.  Default types are
+      ``"plain"`` for text data and ``"binary"`` for binary data.
 
-   If this is not provided, then it defaults to ``"plain"`` or ``"binary"``
-   based on how the data is provided.
+      There are text types such as ``markdown`` and binary types such as
+      ``jpeg`` and ``png``.
 
-encoding
-   A string that is either ``"binary"`` or an encoding supported by the Python
-   module ``codec``.  If this is not provided, then it defaults to `"utf-8"`
-   or ``"binary"`` based on how the data is provided.
+      If this is not provided, then it defaults to ``"plain"`` or ``"binary"``
+      based on how the data is provided.
 
-Here are some rules on how `type` and `encoding` are inferred, if they're not
-provided:
+   encoding
+      A string that is either ``"binary"`` or an encoding supported by the Python
+      module ``codec``.  If this is not provided, then it defaults to `"utf-8"`
+      or ``"binary"`` based on how the data is provided.
 
--  If data is given by the key ``"data"`` without ``"data-encoding"``,
-   then by default, ``type = "plain"``, ``encoding = "utf-8"``.
+   Here are some rules on how `type` and `encoding` are inferred, if they're not
+   provided:
 
-   -  Actually ``encoding = "utf-8"`` is not a default, but rather a strict
-      requirement.  This is because strings in Python 3 are UTF-8 strings
-      internally, and so it would only make sense if the encoding is
-      UTF-8 too to reflect that.
+   -  If data is given by the key ``"data"`` without ``"data-encoding"``,
+      then by default, ``type = "plain"``, ``encoding = "utf-8"``.
 
-      Providing an encoding other than ``"utf-8"`` will cause the program to
-      issue a ``logging.WARNING`` level of log and the encoding is treated as
-      ``"utf-8"``.
+      -  Actually ``encoding = "utf-8"`` is not a default, but rather a strict
+         requirement.  This is because strings in Python 3 are UTF-8 strings
+         internally, and so it would only make sense if the encoding is
+         UTF-8 too to reflect that.
 
--  If data is given by the key ``"input"`` or by keys ``"data"`` and
-   `"data-encoding"` together, then by default (when neither ``type`` or
-   `encoding` is provided) ``type = "binary"``, ``encoding = "binary"``.
+         Providing an encoding other than ``"utf-8"`` will cause the program to
+         issue a ``logging.WARNING`` level of log and the encoding is treated as
+         ``"utf-8"``.
 
-   -  This gets a little more complicated when the input path has an
-      extension we can extract with ``os.path.splitext``.  Of course, the main
-      motivation for this inference is that we don't want to provide the
-      same kind of information twice.  When we input from a file with a
-      ``.jpg`` or ``.jpeg`` extension, we know that it is a JPEG file and so we
-      shouldn't need to write ``"type": "jpeg"`` again.
+   -  If data is given by the key ``"input"`` or by keys ``"data"`` and
+      `"data-encoding"` together, then by default (when neither ``type`` or
+      `encoding` is provided) ``type = "binary"``, ``encoding = "binary"``.
 
-      When the file has extension and the program can *infer* the type
-      from it, then ``type`` is set to that inferred type, and `encoding`
-      is either set to ``"utf-8"`` or ``"binary"``, depending on whether the
-      inferred type is of text or binary type.
+      -  This gets a little more complicated when the input path has an
+         extension we can extract with ``os.path.splitext``.  Of course, the main
+         motivation for this inference is that we don't want to provide the
+         same kind of information twice.  When we input from a file with a
+         ``.jpg`` or ``.jpeg`` extension, we know that it is a JPEG file and so we
+         shouldn't need to write ``"type": "jpeg"`` again.
 
-Some more optional fields:
+         When the file has extension and the program can *infer* the type
+         from it, then ``type`` is set to that inferred type, and `encoding`
+         is either set to ``"utf-8"`` or ``"binary"``, depending on whether the
+         inferred type is of text or binary type.
 
-format
-   The format of the data, typically accompanied by ``type``.  For example,
-   when we have a ``type`` of ``"markdown"`` and ``format`` of ``"pandoc"``,
-   then we're saying that the Markdown file should be interpreted with
-   `pandoc`_'s default format.
+   Some more optional fields:
 
-.. _pandoc: https://pandoc.org/
+   format
+      The format of the data, typically accompanied by ``type``.  For example,
+      when we have a ``type`` of ``"markdown"`` and ``format`` of ``"pandoc"``,
+      then we're saying that the Markdown file should be interpreted with
+      `pandoc`_'s default format.
 
-type-format
-   Shorthand for providing `type` and `format`.
-   ``"type-format": "TYPE_STRING-FORMAT_STRING"`` is equivalent to
-   ``"type": "TYPE_STRING", "format": "FORMAT_STRING"``, where the hyphen
-   character `-` separates the two.
+   .. _pandoc: https://pandoc.org/
 
-caption
-   Short caption/alt text for the data.  Can be a string or a list of
-   strings.  Defaults to ``None``.
+   type-format
+      Shorthand for providing `type` and `format`.
+      ``"type-format": "TYPE_STRING-FORMAT_STRING"`` is equivalent to
+      ``"type": "TYPE_STRING", "format": "FORMAT_STRING"``, where the hyphen
+      character `-` separates the two.
 
-question
-   A string of a question preceding the block of text written by the user.
-   Defaults to ``None``.
+   caption
+      Short caption/alt text for the data.  Can be a string or a list of
+      strings.  Defaults to ``None``.
 
-   See `Insight and Question`_ for reference.
+   question
+      A string of a question preceding the block of text written by the user.
+      Defaults to ``None``.
 
-insight
-   A boolean indicating whether this entry is an insight (see
-   `Insight and Question`_ too for reference).  Defaults to ``False``.
+      See `Insight and Question`_ for reference.
 
-meta
-   Metadata.  Currently this can be any ``dict`` with no restriction
-   whatsoever, but the following attributes specifically will be parsed:
+   insight
+      A boolean indicating whether this entry is an insight (see
+      `Insight and Question`_ too for reference).  Defaults to ``False``.
 
-   -  ``created``: Creation time of a file as a string.  For a photo, this
-      would also be the time it was taken at.  Should be a valid string when
-      passed to ``datetime.datetime.fromisoformat``, and if the result is a
-      naive time object, replaces ``tzinfo`` with that of ``self.date_time``.
+   meta
+      Metadata.  Currently this can be any ``dict`` with no restriction
+      whatsoever, but the following attributes specifically will be parsed:
 
-      Defaults to `None`, which means that the creation date is unknown
-      or this piece of information doesn't make sense here.
+      -  ``created``: Creation time of a file as a string.  For a photo, this
+         would also be the time it was taken at.  Should be a valid string when
+         passed to ``datetime.datetime.fromisoformat``, and if the result is a
+         naive time object, replaces ``tzinfo`` with that of ``self.date_time``.
 
-      This time should be no later than the time provided through
-      the ``date-time``/``time`` field, otherwise an ``InvalidEntryError``
-      exception is raised.
+         Defaults to `None`, which means that the creation date is unknown
+         or this piece of information doesn't make sense here.
 
-   -  ``posted``: Time that this entry was posted at as a string.  Note
-      that this is reserved specifically to the time that is displayed on
-      the Perspective app.  This key is useful when the entry was posted
-      much much later than when it was actually written (e.g. |nbsp| when I
-      wasn't with my phone and could only write on my notebook or type on my
-      laptop).
+         This time should be no later than the time provided through
+         the ``date-time``/``time`` field, otherwise an ``InvalidEntryError``
+         exception is raised.
 
-      Format requirements is similar to that of ``created``.
+      -  ``posted``: Time that this entry was posted at as a string.  Note
+         that this is reserved specifically to the time that is displayed on
+         the Perspective app.  This key is useful when the entry was posted
+         much much later than when it was actually written (e.g. |nbsp| when I
+         wasn't with my phone and could only write on my notebook or type on my
+         laptop).
 
-      This time should be no earlier than the time provided through
-      the ``date-time``/``time`` field, otherwise an ``InvalidEntryError``
-      exception is raised.
+         Format requirements is similar to that of ``created``.
 
-   -  ``desc``: Description.  This key is provided very commonly but
-      surprisingly there's no validation???  ``None`` by default.
+         This time should be no earlier than the time provided through
+         the ``date-time``/``time`` field, otherwise an ``InvalidEntryError``
+         exception is raised.
+
+      -  ``desc``: Description.  This key is provided very commonly but
+         surprisingly there's no validation???  ``None`` by default.
 
 
 .. _basicproc_inference:
@@ -1127,9 +1139,11 @@ in a `dict` with a key.  The following are all possible inferences:
 2. From encoding, to type.
 3. From extension (like ``.jpg``, ``.txt``), to type.
 
+.. XXX: Update this in 0.md
+
 Oh, and in addition, types can have aliases!  Like for example, you can write
 ``"type": "jpeg"`` or ``"type": "jpg"``, and they'll all be converted to
-``"type": "jpg"``. [3]_
+``"type": "jpeg"``. [3]_
 
 For the first inference: the inference from type to encoding, it is made
 possible by keeping track of types that are known to be text, which is
@@ -1141,6 +1155,7 @@ stored under the name ``TEXT_TYPES`` as a set of strings: [4]_ ::
 Therefore the inference works something like this:
 
 .. testcode::
+   :skipif: basicproc is None
 
    from basicproc import TEXT_TYPES
 
@@ -1154,6 +1169,7 @@ And as a few examples, if you define the above function and fire up an
 interactive prompt:
 
 .. doctest::
+   :skipif: basicproc is None
 
    >>> infer = infer_encoding_from_type
    >>> infer('plain')
@@ -1171,6 +1187,7 @@ some sort of text format, which would make the type ``plain``, by default.  An
 implementation would therefore look like this:
 
 .. testcode::
+   :skipif: basicproc is None
 
    def infer_type_from_encoding(encoding):
        if encoding == 'binary':
@@ -1183,6 +1200,7 @@ beginning of the program.  They can be looked up using ``TYPE_EXTENSIONS``
 dictionary:
 
 .. doctest::
+   :skipif: basicproc is None
 
    >>> from basicproc import TYPE_EXTENSIONS as ext_to_type
    >>> ext_to_type['.jpg']
@@ -1199,6 +1217,7 @@ dictionary:
 The algorithm for the inference looks like this:
 
 .. testcode::
+   :skipif: basicproc is None
 
    from basicproc import TYPE_EXTENSIONS
    from os.path import splitext
@@ -1217,6 +1236,7 @@ new ``psp`` module!  (Get excited for that too!  Or not... i don't care...)
 Examples:
 
 .. doctest::
+   :skipif: basicproc is None
 
    >>> infer = infer_type_from_input_path
    >>> infer('some/dir/dog.png')
