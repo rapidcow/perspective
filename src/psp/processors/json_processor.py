@@ -1,102 +1,40 @@
 """Processor for JSON archives."""
 
 import base64
+import copy
 import collections
 import datetime
 import fnmatch
-import glob
 import io
-import itertools
+import glob
 import json
 import os
 import shutil
 
 from ..types import Panel, Entry
-from ..types import Configurable
-from .. import filetypes
+from .. import datatypes
 from .. import timeutil
-from .. import util
 
 __all__ = [
-    'JSONLoader', 'JSONDumper', 'load_json', 'dump_json',
-    'LoadError', 'DumpError', 'LoadWarning', 'DumpWarning',
-    'find_paths', 'get_lookup_paths', 'InferenceManager',
+    'JSONLoader', 'JSONDumper',
+    'LoadError', 'DumpError', 'LoadWarning',
+    'load_json', 'dump_json',
 ]
 
 
-class LoadError(ValueError):
-    """Error that occured while loading a JSON file."""
+class LoadError(Exception):
+    """Error that occured while loading a JSON archive."""
 
 
 class LoadWarning(UserWarning):
-    """Warning that occured while loading a JSON file."""
+    """Warning that occured while loading a JSON archive."""
 
 
-class DumpError(ValueError):
-    """Error that occured while dumping a JSON file."""
+class DumpError(Exception):
+    """Error that occured while dumping a JSON archive."""
 
 
-class DumpWarning(UserWarning):
-    """Warning that occured while dumping a JSON file."""
-
-
-# This is a class now... yippee! XD
-class InferenceManager:
-    """Manager of the inference rules."""
-    __slots__ = ()
-
-    def alias_check(self, name):
-        """Return the name of a file type if `type` is an alias of
-        it, else return `type`.
-        """
-        return filetypes.get_context().alias_check(name)
-
-    def infer_type_from_encoding(self, enc):
-        """Infer file type from encoding.  enc is None if user didn't
-        provide a value, otherwise it is a str.  This method should
-        return a str or None upon failure.
-        """
-        if enc is None:
-            return None
-        return 'binary' if enc == 'binary' else 'plain'
-
-    def infer_encoding_from_type(self, type):
-        """Infer encoding from file type.  type is a str.
-        This method should return a str or None upon failure.  The str
-        should be precisely 'binary' for a binary file and any other
-        str for a text file.
-        """
-        ctx = filetypes.get_context()
-        try:
-            is_text = ctx.is_text_type(type)
-        except LookupError:
-            return None
-        return 'utf-8' if is_text else 'binary'
-
-    def infer_type_from_path(self, filepath):
-        """Infer file type from file path.  filepath is a str.
-        This method should return a str when inference is successful
-        or return None upon failure.
-        """
-        ctx = filetypes.get_context()
-        parts = os.path.basename(filepath).split('.')
-        # The part after a leading dot is not an extension
-        if parts and not parts[0]:
-            del parts[0]
-        # Strip out the file name part.  The rest are all going to be
-        # tested for extension.
-        extparts = collections.deque(f'.{part}' for part in parts[1:])
-        # Prefer the longest possible extension to shorter ones
-        while extparts:
-            try:
-                return ctx.extension_to_type(''.join(extparts))
-            except LookupError:
-                extparts.popleft()
-        return None
-
-
-# JSON field validators (not public, but could be helpful :/)
-def _assert_type(obj, objtype, key, article='a', extra=''):
+def _assert_type(obj, objtype, key, extra=''):
     """Assert that `obj` has type `objtype`, else raise a TypeError
     exception.
 
@@ -105,9 +43,6 @@ def _assert_type(obj, objtype, key, article='a', extra=''):
     key : str
         The name of the JSON key the attribute belongs to.
         This will be formatted in its repr form in the exception.
-
-    article : str, default 'a'
-        Article to use before the object type.
 
     extra : str, optional
         Extra string to append to the exception message.
@@ -118,11 +53,11 @@ def _assert_type(obj, objtype, key, article='a', extra=''):
     keyname = f'{key!r}{extra}'
     typename = objtype.__name__
     clsname = type(obj).__name__
-    raise TypeError(f'{keyname}: expected {article} {typename}, '
+    raise TypeError(f'{keyname}: expected a {typename}, '
                     f'got {clsname}')
 
 
-def _assert_type_or_none(obj, objtype, key, article='a', extra=''):
+def _assert_type_or_none(obj, objtype, key, extra=''):
     """Assert that `obj` has type `objtype` or is None (JSON null),
     else raise a TypeError exception.
 
@@ -132,25 +67,16 @@ def _assert_type_or_none(obj, objtype, key, article='a', extra=''):
         The name of the JSON key the attribute belongs to.
         This will be formatted in its repr form in the exception.
 
-    article : str, default 'a'
-        Article to use before the object type.
-
     extra : str, optional
         Extra string to append to the exception message.
         This will be appended after `key`.
-
-    Return
-    ------
-    obj is not None.
     """
-    if isinstance(obj, objtype):
-        return True
-    if obj is None:
-        return False
+    if isinstance(obj, objtype) or obj is None:
+        return
     keyname = f'{key!r}{extra}'
     typename = objtype.__name__
     clsname = type(obj).__name__
-    raise TypeError(f'{keyname}: expected {article} {typename} or None, '
+    raise TypeError(f'{keyname}: expected a {typename} or None, '
                     f'got {clsname}')
 
 
@@ -176,7 +102,7 @@ def _assert_list_type(obj, item_type, key, extra=''):
         typename = item_type.__name__
         clsname = type(obj).__name__
         raise TypeError(f'{header}: expected a list of {typename}, '
-                        f'found item {i} to be an instance of {clsname}')
+                        f'found item {i} to be a {clsname}')
 
 
 def _ensure_text(obj, key, extra=''):
@@ -192,10 +118,6 @@ def _ensure_text(obj, key, extra=''):
     extra : str, optional
         Extra string to append to the exception message.
         This will be appended after `key`.
-
-    Return
-    ------
-    A mushed string uwu
     """
     if isinstance(obj, str):
         return obj
@@ -204,43 +126,86 @@ def _ensure_text(obj, key, extra=''):
             return ''.join(obj)
         except TypeError:
             # We already know there's something wrong in the list, so
-            # let _assert_list_type() raise that error for us...
+            # let _assert_list_type() raise that error for us.
             _assert_list_type(obj, str, key, extra)
-            # or just in case...
-            raise
     header = f'{key!r}{extra}'
     clsname = type(obj).__name__
     raise TypeError(f'{header}: expected a str or a list of str, '
                     f'got {clsname!r}')
 
 
-# Namespace for the panel/entry classes created by make_*_class()
-_class_ns = {'__slots__': ()}
+_data_enc_table = {
+    'base16': base64.b16decode,
+    'base32': base64.b32decode,
+    'base64': base64.b64decode,
+    'base64_url': base64.urlsafe_b64decode,
+    'ascii85': base64.a85decode,
+    'base85': base64.b85decode,
+}
 
 
-class JSONLoader(Configurable):
+class JSONLoader:
     """A JSON archive loader.
 
     The constructor takes no positional arguments; all keyword
     arguments are passed to the `configure()` method.
     """
-    __slots__ = ('_inference_manager',)
+    __slots__ = ('_all_options', '_options')
 
     def __init__(self, **options):
-        super().__init__()
+        # TODO: Write documentation for these options
+
+        # Since you only need one or two loaders at a time, creating
+        # a list of options shouldn't be a memory issue.
+        #
+        # This is to make subclassing possible, where options are
+        # extended based on this.
+        self._all_options = {
+            # 'load_from_file', # 'validate',
+            'check_panel_duplicates', 'check_panel_order',
+            'check_entry_order', 'error_on_warning', 'suppress_warnings',
+            'paths', 'base_dir', 'json_options', 'warn_ambiguous_paths',
+        }
+
+        self._options = {
+            'check_panel_order': True,
+            'check_entry_order': True,
+            # When check_panel_order is disabled, one may enable this to
+            # merely check for duplicate panels
+            'check_panel_duplicates': False,
+            'error_on_warning': False,
+            'suppress_warnings': False,
+            'warn_ambiguous_paths': True,
+
+            # directories paths to prepend to input paths when they're not
+            # found
+            'paths': (),
+            # the base directory, used as the ROOT of relative paths
+            'base_dir': os.getcwd(),
+            # keyword arguments to pass to json.loads
+            'json_options': {},
+        }
         self.configure(**options)
 
-    def get_inference_manager(self):
-        """Get the inference manager for this loader."""
-        try:
-            return self._inference_manager
-        except AttributeError:
-            self._inference_manager = InferenceManager()
-            return self._inference_manager
+    def configure(self, **options):
+        """Configure options."""
+        invalid = options.keys() - self._all_options
+        if invalid:
+            invalid_str = ', '.join(sorted(invalid))
+            plural = '' if len(invalid_str) == 1 else 's'
+            raise ValueError(f'invalid key{plural}: {invalid_str}')
+        for k, v in options.items():
+            try:
+                checker = getattr(self, f'check_{k}_option')
+            except AttributeError:
+                pass
+            else:
+                v = checker(v)
+            self._options[k] = v
 
-    def set_inference_manager(self, manager, /):
-        """Set the inference manager for this loader."""
-        self._inference_manager = manager
+    def get_option(self, name):
+        """Get option by the name `name`."""
+        return self._options[name]
 
     def _warn(self, msg, w):
         """Raise an exception with w(msg) if the `error_on_warning` option
@@ -252,99 +217,185 @@ class JSONLoader(Configurable):
             return
         if self.get_option('error_on_warning'):
             raise w(msg)
-        import warnings
-        warnings.warn(msg, w, 2)
+        else:
+            import warnings
+            warnings.warn(msg, w, 2)
 
-    def load(self, fp):
-        """Load an archive from a file object and return the panels.
+    def load(self, file, date=None, *, encoding='utf-8'):
+        """Load an archive from a file as a list of `Panel`s.
 
         If `date` is provided, optimize the loading process by only
         returning the panel on that date.
 
         Parameters
         ----------
-        fp : file object
-            A file-like object that implements a read().
+        file : path-like object or file-like object
+            May be a file path to the JSON archive to be read (an instance
+            of `str` or `os.PathLike`) or a readable file-like object
+            (an object with a `read()` method that returns the file content
+            as a `str`).
+
+        date : datetime.date object or object, optional
+            A `datetime.date` instance or a `str` representing a date.
+            The string must be valid for `timeutil.parse_date`.
+
+        encoding : str, default 'utf-8'
+            The encoding used to open `file` if it is a file path.
 
         Return
         ------
-        A generator of panels, same as load_data().
+        A list of panels if `date` is not provided, and a single panel
+        if `date` is provided.
         """
-        data = self.load_json(fp)
-        return self.load_data(data)
+        content = self.__handle_readable_file(file, encoding)
+        data = json.loads(content, **self.get_option('json_options'))
+        return self.load_data(data, date)
 
-    def load_json(self, fp):
-        """Load a JSON archive from a file object and return a dict."""
-        return json.load(fp, **self.get_option('json_options'))
+    def __handle_readable_file(self, file, encoding):
+        """Handle a path-like or file-like object and return the file
+        content on success.
+        """
+        if isinstance(file, (str, os.PathLike)):
+            with io.open(file, 'r', encoding=encoding) as fp:
+                content = fp.read()
+        elif hasattr(file, 'read'):
+            content = file.read()
+        else:
+            raise TypeError(f'file should be a path-like object or a '
+                            f'readable file-like object, not {file!r}')
+        return content
 
-    def load_data(self, data):
-        """Load an archive from a dict and return a generator of panels.
+    def load_data(self, data, date=None):
+        """Load an archive from a Python dict.
 
         Parameters
         ----------
         data : dict
             The JSON archive.
 
+        date : datetime.date or str, optional
+            The date of the panel to load.  If this is provided as a str,
+            it must be a valid date string for `timeutil.parse_date()`.
+            LookupError is issued if JSONLoader fails to find the panel.
+
         Return
         ------
-        A generator of panels.
+        A list of panels if `date` is not provided, and a single panel
+        if `date` is provided.
         """
-        panels, attrs = self.split_data(data)
-        hist = collections.deque(maxlen=2)
+        panels, attrs = self.__split_data(data)
+        if date is None:
+            obj = self.__load_all_data(panels, attrs)
+        else:
+            if isinstance(date, str):
+                date = timeutil.parse_date(date)
+            elif not isinstance(date, datetime.date):
+                raise TypeError(f'date should be a str or datetime.date '
+                                f'object, not {type(date).__name__}')
+            obj = self.__load_single_panel(panels, attrs, date)
+        return obj
 
-        check_panel_order = self.get_option('check_panel_order')
-        check_entry_order = self.get_option('check_entry_order')
-        for index, panel_dict in enumerate(panels, start=1):
-            panel = self.process_panel(panel_dict.copy(), attrs)
-            hist.append(panel)
-            if check_panel_order:
-                # Hooman index!  Maybe?
-                self.__check_panel_order(hist, index)
-            if check_entry_order:
-                self.__check_entry_order(panel, index)
-            yield panel
-
-    def split_data(self, data):
-        """Split a dict representing a JSON archive into (panels, attrs).
-
-        'panels' is a list of panels, each of which is passed to
-        process_panel().  'attrs' is the top-level attributes.
-        Default implementation takes 'panels' from the 'data' key,
-        while 'attrs' is everything else other than 'data'.
-
-        Note that while split_data() operates on a shallow copy of
-        'data', 'panels' is a reference to the original list.
-        """
+    def __split_data(self, data):
+        """data -> (panels, attrs)"""
         # The name might be a bit misleading since it doesn't actually
         # simply "split" the data (since we're not returning the
         # attributes and so it remains a local variable to us).
         if not isinstance(data, dict):
-            raise TypeError('JSON data should be a dict')
+            raise TypeError('JSON data should be a dictionary')
         data = data.copy()
-        try:
-            panels = data.pop('data')
-            _assert_list_type(panels, dict, 'data')
-        except KeyError:
-            panels = []
+        # This list is not safe to pop() (as it is a reference to the
+        # original list)
+        panels = data.pop('data', [])
+        _assert_list_type(panels, dict, 'data')
 
-        # The rest of 'data' are attributes.  (At least this allows
-        # subclasses to do weird stuff to them)
+        # The rest of 'data' are attributes.
         attrs = data
 
-        if 'paths' in attrs:
-            _assert_list_type(attrs['paths'], str, 'paths')
+        if 'paths' in data:
+            # Make a copy of 'paths' so as to not mutate the original list,
+            # and at the same time reassign it to attrs.
+            paths = attrs['paths']
+            _assert_list_type(paths, str, 'paths')
+            # Create a list from the lookup paths from the 'paths' option
+            # and append the ones from attrs to it.
+            combined = list(self.get_option('paths'))
+            combined.extend(paths)
+            attrs['paths'] = combined
         else:
-            attrs['paths'] = ['.']
+            # Directly take the paths from the 'paths' option
+            paths = list(self.get_option('paths'))
+            # In case the option was empty, use ['.'].
+            attrs['paths'] = paths or ['.']
 
         if 'tz' in attrs:
             _assert_type(attrs['tz'], str, 'tz', 'top level')
-        else:
-            attrs['tz'] = None
 
         return panels, attrs
 
+    def __load_all_data(self, panels, attrs):
+        """Internal implementation of load_data() when date is
+        not provided.
+        """
+        output = []
+        check_panel_order = self.get_option('check_panel_order')
+        check_entry_order = self.get_option('check_entry_order')
+        for panel_dict in panels:
+            try:
+                # Copy panel because we want the exception below to
+                # be raised properly.
+                # Copy attrs too because attrs can be assigned to a
+                # new item like time zone.
+                panel = self.process_panel(panel_dict.copy(), attrs.copy())
+            except (TypeError, ValueError, LoadError, LoadWarning) as exc:
+                # To make debugging life easier
+                if 'date' in panel_dict:
+                    raise LoadError(f'error while loading '
+                                    f'{panel_dict["date"]}') from exc
+                elif output:
+                    raise LoadError(f'error after loading '
+                                    f'{output[-1].date}') from exc
+                raise
+
+            if panel is not None:
+                output.append(panel)
+
+                if check_panel_order:
+                    self.__check_panel_order(output)
+                if check_entry_order:
+                    self.__check_entry_order(panel)
+
+        if not check_panel_order:
+            if self.get_option('check_panel_duplicates'):
+                self.__check_panel_duplicates(output)
+        return output
+
+    def __load_single_panel(self, panels, attrs, date):
+        """Internal implementation of load_data() when date is
+        provided.
+        """
+        for panel_dict in panels:
+            # In any of these cases we just ignore the panel_dict:
+            #
+            #  *  KeyError: `date` is not in panel_dict (invalid panel)
+            #  *  TypeError: `panel_dict['date']` is not a str or
+            #     `panel_dict` is not a dict
+            #  *  ValueError: `date` is an invalid date string
+            try:
+                panel_date = self.parse_date(panel_dict['date'])
+            except (KeyError, TypeError, ValueError):
+                continue
+            if panel_date == date:
+                break
+        else:
+            raise LookupError(f'cannot find panel with date {date}')
+
+        panel = self.process_panel(panel_dict, attrs)
+        if panel is not None and self.get_option('check_entry_order'):
+            self.__check_entry_order(panel)
+        return panel
+
     def process_panel(self, panel, attrs):
-        """Process a JSON object representing a panel.
+        """Process a JSON object of an Entry.
 
         Parameters
         ----------
@@ -360,30 +411,6 @@ class JSONLoader(Configurable):
         load_data() will skip the panel (and return None if date
         is explicitly passed to it).
         """
-        extensions = self.get_panel_extensions(panel, attrs)
-        panel_class = self.make_panel_class(extensions)
-        return self.make_panel(panel_class, panel, attrs)
-
-    def get_panel_extensions(self, panel, attrs):
-        """Get a list of `Panel` subclasses, with the first base class
-        coming last in the list.
-        """
-        return []
-
-    def make_panel_class(self, extensions):
-        """Create a `Panel` class with the `extensions` list
-        reversed as the bases.
-        """
-        if not extensions:
-            return Panel
-        bases = list(extensions)
-        extnames = ', '.join(cls.get_extension_name() for cls in bases)
-        bases.reverse()
-        bases.append(Panel)
-        return type(f'Panel[{extnames}]', tuple(bases), _class_ns)
-
-    def make_panel(self, panel_class, panel, attrs):
-        """Create a panel object.  process_panel() calls this method."""
         # Required field
         # --------------
         # Date
@@ -393,7 +420,7 @@ class JSONLoader(Configurable):
             raise LoadError('panel must provide date') from None
         _assert_type(date_str, str, 'date')
         date = self.parse_date(date_str)
-        obj = panel_class(date)
+        obj = Panel(date)
 
         # Optional fields
         # ---------------
@@ -401,45 +428,49 @@ class JSONLoader(Configurable):
         if 'tz' in panel:
             tz = panel.pop('tz')
             _assert_type(tz, str, 'tz', 'in panel')
-            attrs = attrs.copy()
             attrs['tz'] = tz
         # Rating
         rating = panel.pop('rating', None)
         _assert_type_or_none(rating, str, 'rating')
-        if rating is not None:
-            obj.set_rating(rating)
+        obj.set_attribute('rating', rating)
 
         # Entries
         # -------
         entries = panel.pop('entries', [])
 
         if panel:
-            # I know map(str, ...) is totally redundant, but debugging
-            # would suck if some mysterious object mixed in causing this
-            # line to fail...
             keys_str = ', '.join(sorted(map(str, panel.keys())))
             plural = '' if len(panel) == 1 else 's'
             self._warn(f'ignored panel key{plural}: {keys_str}',
                        LoadWarning)
 
-        for entry_dict in entries:
-            entry = self.process_entry(entry_dict.copy(), obj, attrs)
-            obj.add_entry(entry)
+        for index, entry_dict in enumerate(entries, start=1):
+            # 'attrs' is only accessed and not mutated, so no need to copy.
+            # However we do need to copy the entry... because we only assumed
+            # that whoever called process_panel() only made a shallow copy
+            # of the 'panel' dictionary...
+            try:
+                entry = self.process_entry(obj, entry_dict.copy(), attrs)
+            except (TypeError, ValueError, LoadError, LoadWarning) as exc:
+                raise LoadError(
+                    f'error while loading entry {index}') from exc
+            if entry is not None:
+                obj.add_entry(entry)
 
         return obj
 
-    def process_entry(self, entry, panel, attrs):
-        """Process a JSON object representing an entry.
+    def process_entry(self, panel, entry, attrs):
+        """Process a JSON object of an Entry.
 
         Parameters
         ----------
-        entry : dict
-            The JSON object (dict) to be processed.  This is a shallow
-            copy and can be mutated.
-
         panel : Panel
             The panel that this entry belongs to.  Will be used to make
             inferences from.
+
+        entry : dict
+            The JSON object (dict) to be processed.  This is a shallow
+            copy and can be mutated.
 
         attrs : dict
             Attributes such as the time zone and lookup paths.  This
@@ -448,89 +479,39 @@ class JSONLoader(Configurable):
 
         Return
         ------
-        An Entry object, or None for skipping this entry.
-
-        Note
-        ----
-        If you're using an extension, then more often than not you would
-        probably want to override make_entry(), since this directly calls
-        that.
-
-        In addition, if you want to extend the entry class, override
-        `get_entry_extensions()` and append your Entry subclass to the
-        list of extensions.  (See the bigentry and captions extensions
-        for how I did it.)
-        """
-        extensions = self.get_entry_extensions(entry, panel, attrs)
-        entry_class = self.make_entry_class(extensions)
-        return self.make_entry(entry_class, entry, panel, attrs)
-
-    def get_entry_extensions(self, entry, panel, attrs):
-        """Get a list of `Entry` subclasses, with the first base class
-        coming last in the list.
-        """
-        return []
-
-    def make_entry_class(self, extensions):
-        """Create an `Entry` class with the `extensions` list
-        reversed as the bases.
-        """
-        if not extensions:
-            return Entry
-        bases = list(extensions)
-        extnames = ', '.join(cls.get_extension_name() for cls in bases)
-        bases.reverse()
-        bases.append(Entry)
-        return type(f'Entry[{extnames}]', tuple(bases), _class_ns)
-
-    def make_entry(self, entry_class, entry, panel, attrs):
-        """Create an entry object.  process_entry() calls this method
-        after an entry class has been made.
-
-        Parameters
-        ----------
-        entry_class : subclass of Entry
-            The class to create the entry with.
-
-        entry, panel, attrs
-            The same arguments passed from self.process_entry().
-
-        Return
-        ------
-        An entry object constructed from `entry_class`, or None
-        for skipping this entry.
+        An Entry object.  This may return None, in which case
+        process_panel() will skip the entry.
         """
         # Required fields
         # ---------------
         # Date time
 
-        # First check for the time zone.  If the user never set any,
-        # we'll just assume no time zone (tz = None)
+        # First check for the time zone.  If the user never set any, we'll
+        # just assume no time zone (tz = None)
         if 'tz' in entry:
             tz = entry.pop('tz')
             _assert_type(tz, str, 'tz', 'in entry')
-        else:
-            # this should be None for omitting this in top level
-            # and panel level
+        elif 'tz' in attrs:
             tz = attrs['tz']
+        else:
+            # LoadError for the omitted time zone (as tz = None) will be
+            # raise later when checking for the tzinfo of date_time.
+            tz = None
         if tz is not None:
             tz = self.parse_timezone(tz)
 
         if 'fold' in entry:
             fold = entry.pop('fold')
-            _assert_type_or_none(fold, int, 'fold', article='an')
+            _assert_type_or_none(fold, int, 'fold')
         else:
-            # None for not changing the fold attribute of the parsed
-            # datetime
+            # None for not changing the fold attribute of the parsed datetime
             fold = None
 
         if 'date-time' in entry:
-            dt_str = entry.pop('date-time')
-            _assert_type(dt_str, str, 'date-time')
-            date_time = self.parse_datetime(dt_str, tzinfo=tz, fold=fold)
-            if 'time' in entry:
-                raise LoadError("exactly one of 'date-time' and 'time' "
-                                "can be provided")
+            datetime_str = entry.pop('date-time')
+            _assert_type(datetime_str, str, 'date-time')
+            date_time = self.parse_datetime(datetime_str, tzinfo=tz,
+                                            fold=fold)
         elif 'time' in entry:
             time_str = entry.pop('time')
             _assert_type(time_str, str, 'time')
@@ -547,59 +528,96 @@ class JSONLoader(Configurable):
                             "the key 'time' or 'date-time'")
 
         # Make sure that the tzinfo is there and working!
-        # (i.e. aware datetime)
         if date_time.tzinfo is None:
             raise LoadError('time zone is not provided')
         if date_time.tzinfo.utcoffset(date_time) is None:
             raise LoadError(f'{date_time.tzinfo!r} returns None for '
                             f'utcoffset()')
 
-        # Insight (optional but we have to get the value here)
+        # Do not link to the panel yet (so that user can override this method
+        # and return a None instead if an entry is not desired)
+        obj = Entry(date_time)
+
+        # Process 'data' or 'input'
+        self._process_entry_data(obj, entry, attrs)
+
+        # Optional fields
+        # ---------------
+        # Insight
         insight = entry.pop('insight', False)
         _assert_type(insight, bool, 'insight')
+        obj.insight = insight
 
-        # Do not link to the panel yet (so that user can override this
-        # method and return a None instead if an entry is not desired)
-        obj = entry_class(date_time, insight)
+        # Title
+        if 'title' in entry:
+            title = entry.pop('title')
+            _assert_type(title, str, 'title')
+            obj.set_title(title)
 
+        # Caption
+        if 'caption' in entry:
+            caption = entry.pop('caption')
+            _assert_type(caption, str, 'caption')
+            obj.set_attribute('caption', caption)
+
+        # Question
+        if 'question' in entry:
+            question = entry.pop('question')
+            _assert_type(question, str, 'question')
+            obj.set_attribute('question', question)
+
+        # Transcription
+        if 'transcription' in entry:
+            text = entry.pop('transcription')
+            # Since transcriptions usually are long...
+            text = _ensure_text(text, 'transcription')
+            obj.set_attribute('transcription', text)
+
+        if entry:
+            keys_str = ', '.join(sorted(map(str, entry.keys())))
+            plural = '' if len(entry) == 1 else 's'
+            self._warn(f'ignored entry key{plural}: {keys_str}',
+                       LoadWarning)
+
+        return obj
+
+    # To keep the naming consistent I'm using 'obj' for the Entry instance.
+    def _process_entry_data(self, obj, entry, attrs):
         # Type and format
-        im = self.get_inference_manager()
         if 'type-format' in entry:
             type_format = entry.pop('type-format')
             _assert_type(type_format, str, 'type-format')
-            e_type, e_format = type_format.split('-', 1)
+            type_, fmt = type_format.split('-', 1)
         else:
             if 'type' in entry:
-                e_type = entry.pop('type')
-                _assert_type(e_type, str, 'type')
-                e_type = im.alias_check(e_type)
+                type_ = entry.pop('type')
+                _assert_type(type_, str, 'type')
+                type_ = datatypes.alias_check(type_)
             else:
-                e_type = None
+                type_ = None
 
             if 'format' in entry:
-                e_format = entry.pop('format')
-                _assert_type(e_format, str, 'format')
+                fmt = entry.pop('format')
+                _assert_type(fmt, str, 'format')
             else:
-                e_format = None
+                fmt = None
 
         # Encoding
         if 'encoding' in entry:
-            e_enc = entry.pop('encoding')
-            _assert_type(e_enc, str, 'encoding')
+            enc = entry.pop('encoding')
+            _assert_type(enc, str, 'encoding')
         else:
             # None just means the encoding wasn't provided.
-            e_enc = None
+            enc = None
 
         # Data and input
         if 'data' in entry and 'input' in entry:
             raise LoadError("only one of 'data' and 'input' can be "
                             "specified")
-        if not ('data' in entry or 'input' in entry):
+        elif not ('data' in entry or 'input' in entry):
             raise LoadError("at least one of 'data' and 'input' "
                             "should be specified")
 
-        # Process 'data' or 'input'
-        #
         # The algorithm for inference is still very akin to basicproc.py
         # Check out 0.md (zero.rst in this repo) if you wanna see how that
         # works (i spent quite a lot of effort on it ;-;)
@@ -610,104 +628,182 @@ class JSONLoader(Configurable):
                 data_enc = entry.pop('data-encoding')
                 _assert_type(data_enc, str, 'data-encoding')
                 try:
-                    func = self.get_option('data_decoders')[data_enc]
-                except KeyError:
+                    func = self.get_data_encoder(data_enc)
+                except LookupError:
                     raise LoadError(f'invalid data encoding: '
                                     f'{data_enc!r}') from None
-                raw = func(data)
-                if e_type is None:
-                    e_type = im.infer_type_from_encoding(e_enc)
-                    if e_type is None:
-                        e_type = 'binary'
-                if e_enc is None:
-                    e_enc = im.infer_encoding_from_type(e_type)
-                    if e_enc is None:
-                        e_enc = 'binary'
+                raw = func(data.encode('ascii'))
+                if type_ is None:
+                    type_ = self._infer_type_from_encoding(enc)
+                if enc is None:
+                    enc = self._infer_encoding_from_type(type_)
             else:
-                # Python 3 strings are always Unicode.
-                if not (e_enc is None or e_enc == 'utf-8'):
-                    self._warn(f"'data': encoding {e_enc!r} treated as "
+                if not (enc is None or enc == 'utf-8'):
+                    self._warn(f"'data': encoding {enc!r} treated as "
                                f"'utf-8'", LoadWarning)
-                e_enc = 'utf-8'
-                if e_type is None:
-                    # This returns 'plain' precisely for our default
-                    # implementation, but users may override this for
-                    # a different default type.
-                    e_type = im.infer_type_from_encoding(e_enc)
-                    if e_type is None:
-                        e_type = 'plain'
-                raw = data.encode(e_enc)
+                enc = 'utf-8'
+                raw = data.encode(enc)
+                # No need to go through the hassle of calling
+                # _infer_type_from_encoding since we know that
+                # enc == 'utf-8'...
+                if type_ is None:
+                    type_ = 'plain'
             obj.set_raw_data(raw)
         else:
             path = entry.pop('input')
             _assert_type(path, str, 'input')
-            obj.set_source(self.__find_path(path, attrs['paths']))
-            if e_type is None:
-                e_type = im.infer_type_from_path(path)
-                if e_type is None:
-                    e_type = im.infer_type_from_encoding(e_enc)
-                    if e_type is None:
-                        e_type = 'binary'
-            if e_enc is None:
-                e_enc = im.infer_encoding_from_type(e_type)
-                if e_enc is None:
-                    e_enc = 'binary'
+            obj.set_source(self._find_path(path, attrs['paths']))
+            if type_ is None:
+                type_ = self._infer_type_from_input_path(path)
+            if type_ is None:
+                type_ = self._infer_type_from_encoding(enc)
+            if enc is None:
+                enc = self._infer_encoding_from_type(type_)
 
-        obj.set_type(e_type)
-        obj.set_format(e_format)
-        obj.set_encoding(e_enc)
+        obj.set_type(type_)
+        obj.set_format(fmt)
+        obj.set_encoding(enc)
 
-        # Optional fields
-        # ---------------
-        # Question
-        if 'question' in entry:
-            question = entry.pop('question')
-            _assert_type(question, str, 'question')
-            obj.set_question(question)
+        # Metadata
+        # --------
+        # Creation time
+        meta = entry.pop('meta', {})
 
-        if entry:
-            keys_str = ', '.join(sorted(map(str, entry.keys())))
-            plural = '' if len(entry) == 1 else 's'
-            self._warn(f'ignored entry key{plural}: {keys_str}',
-                       LoadWarning)
+        # Posted time (specific to the Perspective app)
+        # The default value of obj.date_time is already set by types.Entry,
+        # so we only need to handle non-default cases here.
+        if 'posted' in meta:
+            posted = meta.pop('posted')
+            _assert_type(posted, str, 'posted')
+            obj.set_meta_attribute(
+                'posted', self.parse_datetime(
+                    posted, tzinfo=obj.date_time.tzinfo,
+                    fold=obj.date_time.fold))
 
-        return obj
+        # Creation time
+        if 'created' in meta:
+            created = meta.pop('created')
+            _assert_type(created, str, 'created')
+            time_created = self.parse_datetime(
+                created, tzinfo=obj.date_time.tzinfo,
+                fold=obj.date_time.fold)
+        else:
+            time_created = None
 
-    def __find_path(self, path, paths):
-        """Find an 'input' path with each directory path pattern in
-        'paths' prepended to it.
-        """
-        base_dir = self.get_option('base_dir')
-        finder = find_paths(path, base_dir, paths)
+        obj.set_meta_attribute('created', time_created)
+
+        if 'modified' in meta:
+            modified = meta.pop('modified')
+            _assert_type(modified, str, 'modified')
+            time_modified = self.parse_datetime(
+                modified, tzinfo=obj.date_time.tzinfo,
+                fold=obj.date_time.fold)
+        else:
+            time_modified = time_created
+
+        obj.set_meta_attribute('modified', time_modified)
+
+        # Description
+        if 'desc' in meta:
+            desc = meta.pop('desc')
+            obj.set_meta_attribute('desc', _ensure_text(desc, 'desc'))
+
+        for key, value in meta.items():
+            obj.set_meta_attribute(key, copy.deepcopy(value))
+
+    # This is a protected method (hence the single underscore)!
+    def _find_path(self, path, dirpaths):
+        base = self.get_option('base_dir')
+        candidates = []
+        break_loop = False  # *sad goto noises*
+        for pattern in dirpaths:
+            # Append `os.sep` to ensure glob looks for directories only
+            pattern = os.path.abspath(os.path.join(base, pattern)) + os.sep
+            for dirpath in glob.iglob(pattern):
+                filepath = os.path.join(dirpath, path)
+                if os.path.isfile(filepath):
+                    candidates.append(os.path.normpath(filepath))
+                    if not self.get_option('warn_ambiguous_paths'):
+                        break_loop = True
+                        break
+            if break_loop:
+                break
 
         try:
-            first = next(finder)
-        except StopIteration:
+            first = candidates[0]
+        except IndexError:
             raise LoadError(f'cannot find path {path!r}') from None
 
         # From the for loop above, since having warn_ambiguous_paths = False
         # would break the loop after the first match, it would imply that
         # matches more than 1 means that duplicates are found.
-        if self.get_option('warn_ambiguous_paths'):
-            try:
-                next(finder)
-            except StopIteration:
-                pass
-            else:
-                self._warn(f'found more than one path for {path!r}; '
-                           f'using the first path found {first!r}', LoadWarning)
+        #
+        # Note that this might raise an exception if the 'paths' variable
+        # are ill-defined (like ['img', '*']; both of the paths would match
+        # the directory 'img').
+        if len(candidates) > 1:
+            self._warn(f'found more than one path for {path!r}; '
+                       f'using the first path found {first!r}', LoadWarning)
         return first
+
+    ### Inference ###
+    @staticmethod
+    def _infer_type_from_encoding(enc, default='binary'):
+        """Infer type from encoding.  Always succeeds unless `enc` is None,
+        in which case `default` is returned.
+        """
+        if enc is None:
+            return default
+        return 'binary' if enc == 'binary' else 'plain'
+
+    @staticmethod
+    def _infer_type_from_input_path(path, default=None):
+        try:
+            return datatypes.path_to_type(path)
+        except LookupError:
+            return default
+
+    @staticmethod
+    def _infer_encoding_from_type(type_):
+        # assert type_ is not None
+        try:
+            is_text = datatypes.is_text_type(type_)
+        except LookupError:
+            is_text = False
+        return 'utf-8' if is_text else 'binary'
+
+    def get_data_encoder(self, data_enc):
+        """Return data encoding given its name as a string.
+        Raise LookupError on an invalid data encoding.
+        """
+        # This raises KeyError which is a subclass of LookupError
+        return _data_enc_table[data_enc]
+
+    # Options checker...
+    def check_paths_option(self, paths):
+        if not isinstance(paths, (list, tuple)):
+            raise TypeError(f"the 'paths' option should be a list or tuple, "
+                            f"not {paths!r}")
+        for i, item in enumerate(paths, start=1):
+            if not isinstance(item, (str, os.PathLike)):
+                raise TypeError(f"expected item {i} to be a str or "
+                                f"path-like object, got {item!r}")
+        return tuple(paths)
 
     # These are simply convenient checking that I just like to keep here XD
     # These are private simply because I don't see any point in subclassing
     # these... (although a `check_hook` could be called every time a panel
     # is added... but again I don't see the point.  Yet.)
-    def __check_panel_order(self, panels, index):
+    def __check_panel_order(self, panels):
         if len(panels) < 2:
+            # This is just the first panel.  No need to compare!
             return
-        # The deque has a maximum of 2 items, so just unpact it
-        panel_1, panel_2 = panels
-        index_1, index_2 = index - 1, index
+        # Since this is called every time a new panel is added, we only
+        # need to compare the last two panels :D
+        panel_1, panel_2 = panels[-2:]
+        length = len(panels)
+        # Hooman index!  Maybe?
+        index_1, index_2 = length - 1, length
         if panel_1.date > panel_2.date:
             self._warn('panel #{} ({}) is after panel #{} ({})'
                        .format(index_1, panel_1.date, index_2, panel_2.date),
@@ -717,7 +813,21 @@ class JSONLoader(Configurable):
                        .format(index_1, index_2, panel_2.date),
                        LoadWarning)
 
-    def __check_entry_order(self, panel, p_index):
+    def __check_panel_duplicates(self, panels):
+        # Make a dict with date as keys and indices as values
+        panel_dict = collections.defaultdict(list)
+        for index, panel in enumerate(panels, start=1):
+            panel_dict[panel.date].append(index)
+
+        # We know there are duplicates if any list has more than one index
+        for panel_date, indices in sorted(panel_dict.items()):
+            if len(indices) > 1:
+                index_str = (', '.join(map(str, indices[:-1]))
+                             + f' and {indices[-1]}')
+                self._warn(f'panels {index_str} are share the same date '
+                           f'{panel_date}', LoadWarning)
+
+    def __check_entry_order(self, panel):
         # Stolen from basicproc.py
         has_switched = False
         expected_insight = None
@@ -735,8 +845,8 @@ class JSONLoader(Configurable):
                                 else 'a main entry')
                     got = ('an insight entry' if entry.insight
                            else 'a main entry')
-                    msg = (f'expected entry {index} to be {expected}, got '
-                           f'{got} (in panel {p_index} on {panel.date})')
+                    msg = (f'expected entry {index} to be {expected}, '
+                           f'got {got} (on {panel.date})')
                     self._warn(msg, LoadWarning)
                 else:
                     has_switched = True
@@ -744,18 +854,18 @@ class JSONLoader(Configurable):
 
             # Checking main entry order
             if last_main_entry is not None and not entry.insight:
-                if last_main_entry.time > entry.time:
-                    msg = (f'inconsistent order in main entries in panel '
-                           f'{p_index} on {panel.date} (entry {index} '
-                           f'precedes entry {index - 1} in time)')
+                if last_main_entry.date_time > entry.date_time:
+                    msg = (f'inconsistent order in main entries '
+                           f'on {panel.date} (entry {index} precedes '
+                           f'entry {index - 1} in time)')
                     self._warn(msg, LoadWarning)
 
             # Checking insight entry order
             if last_insight_entry is not None and entry.insight:
-                if last_insight_entry.time > entry.time:
-                    msg = (f'inconsistent order in insight entries in panel '
-                           f'{p_index} on {panel.date} (entry {index} '
-                           f'precedes entry {index - 1} in time)')
+                if last_insight_entry.date_time > entry.date_time:
+                    msg = (f'inconsistent order in insight entries '
+                           f'on {panel.date} (entry {index} precedes '
+                           f'entry {index - 1} in time)')
                     self._warn(msg, LoadWarning)
 
             if entry.insight:
@@ -768,922 +878,606 @@ class JSONLoader(Configurable):
         """Parse the 'tz' field."""
         return timeutil.parse_timezone(s)
 
+    def parse_datetime(self, s, *, tzinfo, fold):
+        """Parse the 'date-time' field and time meta attributes
+        ('posted', 'created', 'modified').  The keyword arguments
+        are None unless they are known.
+        """
+        return timeutil.parse_datetime(s, tzinfo=tzinfo, fold=fold)
+
+    def parse_time(self, s, *, tzinfo, fold):
+        """Parse the 'time' field, similar to parse_datetime()."""
+        return timeutil.parse_time(s, tzinfo=tzinfo, fold=fold)
+
     def parse_date(self, s):
         """Parse the 'date' field."""
         return timeutil.parse_date(s)
 
-    def parse_datetime(self, s, tzinfo, fold):
-        """Parse the 'date-time' field.  The tzinfo and fold arguments
-        are None unless they are known.
 
-        NOTE: When subclassing this, fold should be ignored when
-        tzinfo is None.
-        """
-        return timeutil.parse_datetime(s, tzinfo=tzinfo, fold=fold)
-
-    def parse_time(self, s, tzinfo, fold):
-        """Parse the 'time' field, similar to parse_datetime().
-
-        NOTE: When subclassing this, fold should be ignored when
-        tzinfo is None.
-        """
-        return timeutil.parse_time(s, tzinfo=tzinfo, fold=fold)
-
-
-# this was a method in JSONLoader exclusively until it becomes too
-# important it has to be shared across two classes
-#
-# (it's also a generator now woohoo)
-def find_paths(path, base_dir, paths):
-    """Yield all reachable file paths with the input path 'path'.
-
-    get_lookup_paths() is called to obtain true lookup paths, and
-    each lookup path is joined with 'path' to create a candidate path.
-    If the candidate path exists, yield it.
-
-    Arguments
-    ---------
-    path : str
-        Input path.
-
-    base_dir : str
-        Absolute path to the base directory.
-
-    paths : list of str
-        Lookup paths.  Can include non-recursive Unix glob patterns.
-
-    Yield
-    -----
-    Absolute (but not resolved), normalized file paths of the existing
-    candidate paths.
-    """
-    for dirpath in get_lookup_paths(base_dir, paths):
-        filepath = os.path.join(dirpath, path)
-        if os.path.isfile(filepath):
-            yield os.path.normpath(filepath)
-
-
-def get_lookup_paths(base_dir, paths):
-    """Yield existing directories determined by 'paths'.
-    Helper generator of find_paths().
-
-    Arguments
-    ---------
-    base_dir : str
-        Absolute path to the base directory.
-
-    paths : list of str
-        Lookup paths.  Can include non-recursive Unix glob patterns.
-
-    Yield
-    -----
-    Absolute (but not resolved), normalized lookup paths.
-    """
-    seen = set()
-    for pattern in paths:
-        # Append os.sep to ensure glob looks for directories only
-        pattern = os.path.abspath(os.path.join(base_dir, pattern)) + os.sep
-        for dirpath in glob.iglob(pattern):
-            dirpath = os.path.normpath(dirpath)
-            if not dirpath in seen:
-                yield dirpath
-                seen.add(dirpath)
-
-
-# Below are implementation details!
-# TODO: This needs testing; i'm afraid we might miss some
-def _can_find_any_path(prefix, base_dir, paths):
-    """return whether any path can be found, ignoring extensions
-
-    this is like saying next(find_paths(name, base_dir, paths), None)
-    is not None, except any extension is permitted
-    """
-    prefix = os.path.normpath(prefix)
-    n = len(prefix)
-    for dirpath in get_lookup_paths(base_dir, paths):
-        for root, dirs, files in os.walk(dirpath):
-            for file in files:
-                filepath = os.path.join(root, file)
-                filename = os.path.relpath(filepath, dirpath)
-                if filename == prefix:
-                    return True
-                if filename.startswith(prefix) and filename[n:n+1] == '.':
-                    return True
-    return False
-
-
-def _split_path(path):
-    """splitting a relative path --- emphasis on RELATIVE!!!
-    this won't work on an ABSOLUTE path because in that case
-    'root' would never be empty
-    """
-    root = os.path.normpath(path)
-    if root == '.':
-        return []
-    parts = []
-    while root:
-        root, name = os.path.split(root)
-        parts.append(name)
-        if not root:
-            break
-    parts.reverse()
-    return parts
-
-
-def _fn_pattern_match(path, pattern):
-    """component-wise comparison using fnmatch"""
-    file_parts = _split_path(path)
-    pattern_parts = _split_path(pattern)
-    if len(file_parts) != len(pattern_parts):
-        return False
-    for s, p in zip(file_parts, pattern_parts):
-        if not fnmatch.fnmatch(s, p):
-            return False
-    return True
-
-
-def _check_relpath(path, base_dir, name):
-    """make sure that path is a relative path and join(base_dir, path)
-    is inside base_dir.  if any of these conditions fails, DumpError.
-    """
-    if os.path.isabs(path):
-        raise DumpError(f'{name} {path!r} is absolute')
-    abspath = os.path.abspath(os.path.join(base_dir, path))
-    # i don't know if this rule makes sense but you shouldn't
-    # really do this anyways so ummmm whatever
-    # https://stackoverflow.com/a/37095733
-    if (os.path.commonpath([abspath, base_dir])
-            != os.path.commonpath([base_dir])):
-        raise DumpError(f'{name} {path!r} beyond base directory')
-
-
-class JSONDumper(Configurable):
+class JSONDumper:
     """A JSON archive dumper.
-
-    IMPORTANT NOTE: The default base directory is '.' which is almost
-    NEVER what you want.  (Your files won't be overridden but it would
-    be annoying if you have an existing directory named 'assets/'.)
-    Remember to change it!!
 
     The constructor takes no positional arguments; all keyword
     arguments are passed to the `configure()` method.
     """
-    __slots__ = ('_inference_manager',)
+    __slots__ = ('_all_options', '_options',)
 
-    def __init__(self, **kwargs):
-        super().__init__()
-        self.configure(**kwargs)
+    def __init__(self, **options):
+        self._all_options = {
+            'json_options', 'backup_name',
+            'default_time_zone_offset', 'paths',
+        }
+        self._options = {
+            'backup_name': 'backup.json',
+            'json_options': dict(
+                ensure_ascii=False,
+                indent=2,
+                sort_keys=False,
+            ),
+            # Time zone
+            #
+            # When this is None, JSONDumper does not attempt to set a global
+            # variable for the entries (every entry has its own time zone).
+            #
+            # When this is set, it should be a datetime.timedelta() object!
+            # (and it should be strictly between -24 hours and 24 hours)
+            # A global variable for the time zone is then set globally, and
+            # if the offset is different from this one, it is then explicitly
+            # written out in each entry.
+            #
+            'default_time_zone_offset': None,
+            # Paths to add to the archive (should be set before anything
+            # happens)
+            'paths': ('assets',),
+            'shorten_paths': True,
 
-    def get_inference_manager(self):
-        """Get the inference manager for this dumper."""
-        try:
-            return self._inference_manager
-        except AttributeError:
-            self._inference_manager = InferenceManager()
-            return self._inference_manager
+            # Description (as a fixed string)
+            'desc': '',
+        }
+        self.configure(**options)
 
-    def set_inference_manager(self, manager, /):
-        """Set the inference manager for this dumper."""
-        self._inference_manager = manager
+    def configure(self, **options):
+        """Configure options."""
+        invalid = options.keys() - self._all_options
+        if invalid:
+            invalid_str = ', '.join(sorted(invalid))
+            plural = '' if len(invalid_str) == 1 else 's'
+            raise ValueError(f'invalid key{plural}: {invalid_str}')
+        for k, v in options.items():
+            try:
+                checker = getattr(self, f'check_{k}_option')
+            except AttributeError:
+                pass
+            else:
+                v = checker(v)
+            self._options[k] = v
 
-    def _warn(self, msg, w):
-        """Raise an exception with w(msg) if the `error_on_warning` option
-        is set to True, else issue an warning.
+    def get_option(self, name):
+        """Get option by the name `name`."""
+        return self._options[name]
 
-        The `suppress_warnings` option overrides everything.
-        """
-        if self.get_option('suppress_warnings'):
-            return
-        if self.get_option('error_on_warning'):
-            raise w(msg)
-        import warnings
-        warnings.warn(msg, w, 2)
+    def check_paths_option(self, paths):
+        if not isinstance(paths, (list, tuple)):
+            raise TypeError(f"the 'paths' option should be a list or tuple, "
+                            f"not {paths!r}")
+        for i, item in enumerate(paths, start=1):
+            if not isinstance(item, (str, os.PathLike)):
+                raise TypeError(f"expected item {i} to be a str or "
+                                f"path-like object, got {item!r}")
+        return tuple(os.fspath(p) for p in paths)
 
-    def dump(self, panels, fp):
-        """Dump an iterable of panels to a file object.
-
-        Arguments
-        ---------
-        panels : iterable of Panel objects
-            The panels to dump.
-
-        fp : file object
-            A file-like object implementing the `write()` method.
-            (Should be open in text mode)
-        """
-        data = self.dump_data(panels)
-        self.dump_json(data, fp)
-
-    def dump_json(self, data, fp):
-        """Dump a dict as a JSON object to a file object.
-        dump() calls this after constructing a dict with dump_data().
-
-        Arguments
-        ---------
-        data : dict
-            The dict to dump.
-
-        fp : file object
-            A file-like object implementing the `write()` method.
-        """
-        json.dump(data, fp, **self.get_option('json_options'))
-
-    def dump_data(self, panels):
-        """Dump an iterable of panels to a dict.  dump() calls this.
-
-        (There's literally one argument so... I'm not writing that whole
-        argument list.)
-        """
-        attrs = self.get_top_level_attributes(panels)
-        data = self.prepare_backup(attrs)
-        panel_list = data['data'] = []
+    # INTERFACES FOR DUMPING:
+    # 1.  a list of Panel() objects
+    #     each entry will call back the method get_entry_export_path(), which
+    #     can be overridden if needed.  The following dump() method
+    #     implements this.
+    #
+    # 2.  a list of Panel() objects, joined with a list of export paths
+    #     this is exposed as the basic_dump() method
+    def dump(self, panels, dirname, *, encoding='utf-8'):
+        panels = list(panels)
+        files_added = set()
+        export_paths = []
         for panel in panels:
-            panel_dict = self.wrap_panel(panel, attrs)
-            panel_list.append(panel_dict)
-        if not panel_list:
-            del data['data']
+            for entry in panel.entries():
+                rv = self.get_entry_export_path(entry, files_added.copy())
+                if rv is None:
+                    export_paths.append(None)
+                else:
+                    root, filename = rv
+                    files_added.add(root)
+                    export_paths.append(filename)
+
+        os.mkdir(dirname)
+        try:
+            self.__basic_dump(panels, export_paths, dirname, encoding)
+        except:
+            self.__cleanup(dirname)
+            raise
+
+    # Low-level interface (lower than ever!)
+    def basic_dump(self, panels, export_paths, dirname,
+                   *, encoding='utf-8'):
+        panels = list(panels)
+        os.mkdir(dirname)
+        try:
+            self.__basic_dump(panels, export_paths, dirname, encoding)
+        except:
+            self.__cleanup(dirname)
+            raise
+
+    def dumps(self, panels):
+        panels = list(panels)
+        data = self.dump_data(panels, (), os.devnull)
+        if 'paths' in data:
+            del data['paths']
+        return json.dumps(data, **self.get_option('json_options'))
+
+    # basic_dump() but without creating directory
+    def __basic_dump(self, panels, export_paths, dirname, encoding):
+        data = self.dump_data(panels, export_paths, dirname)
+        backup_name = self.get_option('backup_name')
+        backup_path = os.path.normpath(os.path.join(dirname, backup_name))
+        os.makedirs(os.path.dirname(backup_path), exist_ok=True)
+        with io.open(backup_path, 'x', encoding=encoding) as fp:
+            json.dump(data, fp, **self.get_option('json_options'))
+            fp.write('\n')
+
+    # XXX: Should we allow user to dump duplicate paths or paths that
+    # are the same as backup_name??
+    #
+    # XXX: This is PUBLIC now????
+    #
+    # TODO: Make sure to document that panels is always a list, not just any
+    # iterable/iterator
+    def dump_data(self, panels, export_paths, dirname):
+        input_paths = []
+        paths = list(self.get_option('paths'))
+        dirname = os.path.abspath(dirname)
+
+        relative_paths = []
+        for i, path in enumerate(export_paths, start=1):
+            if path is None:
+                relative_paths.append(None)
+            else:
+                name = f'export path {i}'
+                apath, rpath = self.__check_path(dirname, path, name)
+                relative_paths.append(rpath)
+
+        if self.get_option('shorten_paths'):
+            input_paths = self.__compute_input_paths(relative_paths, paths)
+        else:
+            input_paths = relative_paths
+
+        data = self.prepare_backup(panels, export_paths, dirname)
+        panel_dicts = []
+        path_it = zip(export_paths, input_paths)
+        for panel in panels:
+            panel_dict, panel_entries = self.wrap_panel(panel)
+            for entry in panel.entries():
+                entry_dict = self.wrap_entry(entry, panel)
+                relative_path, input_path = next(path_it, (None, None))
+                if relative_path is None:
+                    self.write_entry_data(entry_dict, entry)
+                else:
+                    export_path = os.path.join(dirname, relative_path)
+                    self.export_entry(entry_dict, entry,
+                                      export_path, input_path)
+                if entry_dict is not None:
+                    panel_entries.append(entry_dict)
+            if panel_dict is not None:
+                panel_dicts.append(panel_dict)
+
+        data['data'] = panel_dicts
         return data
 
-    # This panels attribute is INTENTIONALLY unused --- read
-    # docstring or dumpy again for why
-    def get_top_level_attributes(self, panels):
-        """Get the top-level attributes for the iterable of panels.
-        dump_data() calls this with its only argument.
+    # TODO: Write tests for this algorithm
+    def __compute_input_paths(self, relative_paths, paths):
+        # Take the shortcut if every file were unique
+        basenames = [os.path.basename(p) for p in relative_paths
+                     if p is not None]
+        unique_names = len(basenames) == len(set(basenames))
 
-        NOTE: The iterable of panels is directly passed from dump_data(),
-        meaning if it is an iterator it will be exhausted by the time
-        dump_data() gets to it.  Default implementation doesn't use this
-        argument at all but be noted that you should convert it to a list
-        if your subclass implementation uses it.
-        """
-        return {'tz': self.get_option('time_zone'),
-                'paths': self.get_option('paths')}
+        input_paths = []
+        for relative_path in relative_paths:
+            if relative_path is None:
+                # Just add a placeholder
+                input_paths.append(None)
+                continue
+            # Break the relative path into parts.
+            # (This is like the 'parts' property of pathlib.Path objects...)
+            parts = []
+            path = relative_path
+            while path:
+                path, name = os.path.split(path)
+                parts.append(name)
+            parts.reverse()
 
-    def prepare_backup(self, attrs):
-        """Get the JSON top-level attributes from the top-level
-        attributes.
+            # This part might be a bit hard to grasp... so let me give some
+            # concrete examples.
+            #
+            # Suppose we have relative_paths = ['a/1.txt', 'b/1.txt'] and
+            # paths = ['a', 'b'], then there's an ambiguity if we had made
+            # input paths all '1.txt'.  For example, if we specified 'a/1.txt'
+            # as '1.txt', then it would match against both paths.
+            # The only way we may specify this is by specifying
+            # ['a/1.txt', 'b/1.txt'].
+            #
+            # Now suppose this time we have relative_paths =
+            # ['a/1.txt', 'a/b/1.txt'] and paths = ['a'].  In this case we
+            # would actually be safe to specify 'a/1.txt' as '1.txt' since it
+            # would never be matched against 'a/b/1.txt'.  Then we find
+            # 'b/1.txt' to be the only way to specify 'a/b/1.txt' since, when
+            # we try to pick the shortest component, '1.txt', it doesn't work
+            # because we only have 'a' in the path.
+            #
+            # What happens below is the precisely the process of finding the
+            # "right" path I said here...
+            for i in reversed(range(len(parts))):
+                # Start by checking all the possible sub-paths from the
+                # shortest to the path itself.  For example, for 'a/b/c/1.txt'
+                # we check '1.txt', 'c/1.txt', then 'b/c/1.txt' and finally
+                # 'a/b/c/1.txt'.
+                test_path = os.path.join(*parts[i:])
+                test_dir = os.path.join(*parts[:i] or ['.'])
+                # Boolean to keep track of whether we are able to find this
+                # path.  We don't have to worry about finding this path
+                # multiple times as long as we can ensure in the check after
+                # this that we can ONLY find this path and nothing else.
+                reachable = False
+                for path_pat in paths:
+                    if fnmatch.fnmatch(test_dir, path_pat):
+                        reachable = True
+                        break
+                # If we never find this path, it's probably not reachable;
+                # (like the case of relative_path = ['a/b/1.txt'],
+                # paths = ['a'], and test_path = '1.txt'); this is the business
+                # left for the next iteration/code outside this loop.  If there
+                # are more than one matches (like the case of relative_path
+                # = ['a/1.txt'] and paths = ['a', '*']), then perhaps the
+                # 'paths' are ill-defined, but it is still possible that the
+                # match for THIS specific path is unique.
+                #
+                # Either way, we say a path is okay if we find at least one
+                # match this way.  It is the following check that is the most
+                # important...
+                if reachable:
+                    # no_match is True ONLY if 'test_path' is unambiguous;
+                    # that is it, combined with all possible prefixes in
+                    # 'paths', it never matches any other path in
+                    # 'relative_paths'.
+                    no_match = True
+                    test_path_esc = glob.escape(test_path)
+                    if not unique_names:
+                        for dir_pattern in paths:
+                            pattern = os.path.join(dir_pattern, test_path_esc)
+                            for other in relative_paths:
+                                if (other != relative_path and
+                                        fnmatch.fnmatch(other, pattern)):
+                                    no_match = False
+                                    break
+                    if no_match:
+                        input_paths.append(test_path)
+                        break
+            else:
+                raise DumpError(
+                    f"{relative_path!r} cannot be resolved, likely due to "
+                    f"being unreachable with the current 'paths' option "
+                    f"{paths!r}")
+        return input_paths
 
-        (Keep in mind that the 'data' key will always be overridden
-        by dump_data() with the list of panels!)
-        """
-        data = {}
-        tz = attrs['tz']
-        if tz is not None:
-            data['tz'] = self.format_timezone(tz)
-        paths = attrs['paths']
-        if paths != ['.']:
+    @staticmethod
+    def __cleanup(dirname):
+        if os.path.exists(dirname):
+            shutil.rmtree(dirname, ignore_errors=True)
+
+    def prepare_backup(self, panels, export_paths, dirname):
+        """Prepare backup for dump() / basic_dump()."""
+        data = collections.OrderedDict()
+        default_offset = self.get_option('default_time_zone_offset')
+        data['desc'] = self.get_description()
+        if default_offset is not None:
+            if not isinstance(default_offset, datetime.timedelta):
+                raise TypeError(f"'default_time_zone_offset' should be a "
+                                f"datetime.timedelta object, not "
+                                f"{default_offset!r}")
+            # XXX: Lazy time zone range checking
+            datetime.timezone(default_offset)
+            data['tz'] = timeutil.format_offset(default_offset)
+        paths = list(self.get_option('paths'))
+        if paths:
             data['paths'] = paths
         return data
 
-    def wrap_panel(self, panel, attrs):
-        """Convert a panel object into a dict.
+    def get_description(self):
+        desc = self.get_option('desc')
+        if desc:
+            optional = f'\nDescription: {desc}'
+        else:
+            optional = ''
+        timestr = self.get_current_time_string()
+        return f'This is a backup file exported at {timestr}.{optional}'
 
-        Arguments
-        ---------
-        panel : Panel object
-            The panel to convert.
+    # Helper... subclass-method-ish thingy?
+    def get_current_time_string(self):
+        offset = self.get_option('default_time_zone_offset')
+        if offset is not None and offset:
+            tz = datetime.timezone(offset)
+            base = datetime.datetime.now().astimezone(tz).ctime()
+            return f'{base} (UTC{timeutil.format_offset(offset)})'
+        utc = datetime.timezone.utc
+        base = datetime.datetime.now().astimezone(utc).ctime()
+        return f'{base} (UTC)'
 
-        attrs : dict
-            Top-level attributes.
+    # They are split up into two parts so that subclassing life can be easier!
+    # (Only dump() calls these btw; basic_dump() doesn't)
+    def get_entry_export_path(self, entry, added):
+        # Keep text entries by default
+        if entry.is_text():
+            return None
+        return self.make_entry_export_path(entry, added, 'assets')
 
-        Return
-        ------
-        A JSON-serializable dict representation of the panel.
+    def make_entry_export_path(self, entry, added, dirname, ext=None):
+        base_name = (entry.date_time.replace(tzinfo=None)
+                     .isoformat(sep='_').replace(':', '-'))
+        if entry.date_time.date() != entry.panel.date:
+            base_name = entry.panel.date.isoformat() + '_' + base_name
+        file_count = 1
+        if ext is None:
+            ext = datatypes.get_extension(entry.get_type(), default='')
+        # No infinte loops!
+        # (Worst case scenario, '1 <= file_count <= len(added)' all
+        # coincide with the 'added' set, and the one above it coincides with
+        # 'self.backup_name'. This SHOULD however terminate at
+        # 'len(added) + 2'...)
+        backup_name = os.path.normpath(self.get_option('backup_name'))
+        while file_count < len(added) + 3:
+            root = f'{base_name}_{file_count}'
+            if root not in added:
+                filename = os.path.normpath(
+                    os.path.join(dirname, root + ext))
+                if filename != backup_name:
+                    return root, filename
+            file_count += 1
+        raise RuntimeError('failed to generate a file name')
+
+    def __check_path(self, dirname, path, name):
+        # Absolute path, just to make sure we're on the same level
+        apath = os.path.abspath(os.path.join(dirname, path))
+        # Make sure we're not exporting somewhere outside of 'dst'
+        dirname = os.path.abspath(dirname)
+        prefix = os.path.commonpath([apath, dirname])
+        if prefix != dirname:
+            raise ValueError(f'{name} beyond current directory: '
+                             f'{path!r}')
+        rpath = os.path.relpath(apath, dirname)
+        return apath, rpath
+
+    # ====================
+    # IMPORTANT FUNCTIONS!
+    # ====================
+    def wrap_panel(self, panel):
+        """(panel,) -> (panel_dict, panel_entries)
+
+        `panel_dict` is a dictionary (JSON object) of the exported panel,
+        and `panel_entries` is a list that points to `panel_dict['entries']`.
+        (The entries are returned so the append() method can be directly
+        called to add entries.)
         """
-        if not isinstance(panel, Panel):
-            raise TypeError(f'wrap_panel() expected a Panel object, '
-                            f'got {panel!r}')
-        panel_dict = {}
+        panel_dict = collections.OrderedDict()
         panel_dict['date'] = self.format_date(panel.date)
-        if panel.has_rating():
-            panel_dict['rating'] = panel.get_rating()
-        if panel.has_entries():
-            entry_list = panel_dict['entries'] = []
-            for entry in panel.entries():
-                entry_dict = self.wrap_entry(entry, attrs)
-                entry_list.append(entry_dict)
-        return panel_dict
+        rating = panel.get_attribute('rating')
+        if rating is not None:
+            panel_dict['rating'] = rating
+        panel_dict['entries'] = entries = []
+        return panel_dict, entries
 
-    # just like how process_entry() can be called independently
-    # without panel linkage, we should be able to call wrap_entry()
-    # with an unlinked entry too!
-    def wrap_entry(self, entry, attrs):
-        """Convert an entry object into a dict.
+    def wrap_entry(self, entry, panel):
+        """(entry, panel) -> (entry_dict)"""
+        entry_dict = collections.OrderedDict()
+        self.set_entry_time(entry_dict, entry, panel)
 
-        Arguments
-        ---------
-        entry : Entry object
-            The entry to convert.
+        entry_dict['type'] = entry.get_type()
+        entry_dict['encoding'] = entry.get_encoding()
 
-        attrs : dict
-            Top-level attributes.
+        e_format = entry.get_format()
+        if e_format is not None:
+            entry_dict['format'] = e_format
 
-        Return
-        ------
-        A JSON-serializable dict representation of the entry.
-        """
-        if not isinstance(entry, Entry):
-            raise TypeError(f'wrap_entry() expected an Entry object, '
-                            f'got {entry!r}')
-        entry_dict = {}
-        # time
-        entry_time = entry.time
-        tz = attrs['tz']
-        if tz is not None:
-            converted = entry_time.astimezone(tz)
-            # we only require the utcoffset to be equal, as always?
-            if converted.utcoffset() == entry_time.utcoffset():
-                entry_time = entry_time.replace(tzinfo=None)
-        if entry.has_panel() and entry.panel.date == entry_time.date():
-            self.write_entry_time(entry_dict, entry_time)
-        else:
-            self.write_entry_date_and_time(entry_dict, entry.time)
+        # Only write if insight is True (since it's False by default)
         if entry.insight:
-            entry_dict['insight'] = True
-        # data and input
-        base_dir = self.get_option('base_dir')
-        paths = attrs['paths']
-        input_path = self.get_input_path(entry, attrs)
-        if input_path is None:
-            self.__write_entry_data(entry_dict, entry)
-        else:
-            if not isinstance(input_path, str):
-                raise TypeError(f'input path should be a str, not '
-                                f'{input_path!r}')
-            # even if we don't export, we still gotta make sure the
-            # one we claim to have exported is good
-            candidates = find_paths(input_path, base_dir, paths)
-            try:
-                first = next(candidates)
-            except StopIteration:
-                raise DumpError(f'unreachable input path '
-                                f'{input_path!r}') from None
-            try:
-                next(candidates)
-            except StopIteration:
-                pass
-            else:
-                self._warn(f'more than one path found for input '
-                           f'path {input_path!r}', DumpWarning)
-            with (open(first, 'rb') as fp1,
-                    entry.stream_raw_data() as fp2):
-                if not util.fileobjequal(fp1, fp2):
-                    raise DumpError(
-                        f'entry raw data differs from the content '
-                        f'of {first!r} (from the input path '
-                        f'{input_path!r})')
-            self.__write_entry_input(entry_dict, entry, input_path)
-        # extra attributes (just question)
-        if entry.has_question():
-            entry_dict['question'] = entry.get_question()
+            entry_dict['insight'] = entry.insight
+
+        if entry.has_title():
+            entry_dict['title'] = entry.get_title()
+
+        # Attributes
+        question = entry.get_attribute('question', None)
+        if question is not None:
+            entry_dict['question'] = question
+
+        caption = entry.get_attribute('caption', None)
+        if caption is not None:
+            entry_dict['caption'] = caption
+
+        transcription = entry.get_attribute('transcription', None)
+        if transcription is not None:
+            entry_dict['transcription'] = transcription
+
+        meta = self.wrap_meta_dict(entry)
+        if meta:
+            # Sort it cuz why not???? :D
+            entry_dict['meta'] = collections.OrderedDict(sorted(meta.items()))
         return entry_dict
 
-    def get_input_path(self, entry, attrs):
-        """Get an input path for the entry.  The arguments passed are
-        the exact same from wrap_entry().  This determines whether an entry
-        is exported or kept inside the backup dict.
+    def wrap_meta_dict(self, entry):
+        meta_dict = {}
+        meta = entry.get_meta_dict()
+        time = entry.date_time
 
-        Arguments
-        ---------
-        entry, attrs
-            See wrap_entry().
+        time_posted = meta.pop('posted')
+        time_created = meta.pop('created', None)
+        time_modified = meta.pop('modified', None)
 
-        Return
-        ------
-        None is returned when an entry is to be kept inside the backup dict.
-        Otherwise, a str is returned.
+        if time_posted != time:
+            meta_dict['posted'] = self.format_datetime(time_posted)
+        if time_created is not None:
+            meta_dict['created'] = self.format_datetime(time_created)
+        if time_modified != time_created:
+            meta_dict['modified'] = self.format_datetime(time_modified)
 
-        Several notes on the implementation:
+        filename = meta.pop('filename', None)
+        if filename is not None:
+            meta_dict['filename'] = filename
 
-          *  get_input_path() should create the appropriate file it is
-             referring to and it is valid as long as its content matches
-             that of entry.get_raw_data().
+        desc = meta.pop('desc', '')
+        if desc:
+            meta_dict['desc'] = desc
 
-          *  It is unnecessary to raise any exceptions when get_input_path()
-             fails to generate an input path.  Just return an arbitrary
-             string and let wrap_entry() do its job.
+        for key, value in meta.items():
+            if isinstance(value, (int, float, str)):
+                meta_dict[key] = value
+            elif value is not None:
+                meta_dict[key] = str(value)
+        return meta_dict
 
-          *  (JSONDumper) When overriding this method, feel free to just
-             copy and modify the default implementation!  The 'assets'
-             variable is hard-coded just for that reason ;)
-        """
-        # by default we don't keep entries that don't have a sufficient
-        # text representation.
-        if self.use_inline_text(entry):
-            return None
-        # always export to the 'assets' directory; this is hard-coded
-        base = self.get_export_path_name(entry)
-        ext = self.get_export_path_extension(entry)
-        paths = attrs['paths']
-        # this is like 'base + ext' but safer (and fancier)
-        filename = self.generate_export_path(base, ext, 'assets', paths)
-        self.export_entry(entry, os.path.join('assets', filename))
-        # arbitrarily extend the input path by its directory name
-        return self.compute_input_path(filename, 'assets', paths)
+    def format_date(self, d):
+        return d.isoformat()
 
-    def get_export_path_name(self, entry):
-        """Return the base name (the part of file name excluding extension)
-        for the export path of an entry.
-        """
-        etime = entry.time.replace(tzinfo=None)
-        name = etime.isoformat('_').replace(':', '-')
-        # prepend the panel's date only if entry has a panel whose date
-        # differs from its time
-        if entry.has_panel() and etime.date() != entry.panel.date:
-            name = f'{entry.panel.date}_{name}'
-        return name
+    # NOTE: time and datetime can both be either naive or aware
+    # As for the results, well... it depends.  In this case I simply
+    # set the time zone within the 'time' and 'date-time' key, though
+    # I figured users can override these so that they set the time zone
+    # separately in the 'tz' key or something... idk :/
+    def handle_time(self, entry_dict, t):
+        timespec = 'auto' if t.second or t.microsecond else 'minutes'
+        entry_dict['time'] = t.isoformat(timespec)
 
-    def get_export_path_extension(self, entry):
-        """Return the file extension for the export path of an entry."""
-        ctx = filetypes.get_context()
-        try:
-            return ctx.get_default_extension(entry.get_type())
-        except LookupError:
-            return ''
+    def handle_datetime(self, entry_dict, dt):
+        timespec = 'auto' if dt.second or dt.microsecond else 'minutes'
+        entry_dict['date-time'] = dt.isoformat(' ', timespec)
 
-    def get_export_path_candidates(self, name):
-        """Return an iterator (infinite or finite, depending on what
-        you want) of the base name (the part of file name excluding
-        extension) for generate_export_path() to use.
-        """
-        # file names: 'name.txt', 'name_001.txt', 'name_002.txt', ...
-        # (this doesn't return the '.txt' part, but you get the gist.)
-        return itertools.chain(
-            [name],
-            (f'{name}_{i:03}' for i in itertools.count(1)))
+    def format_datetime(self, dt):
+        timespec = 'auto' if dt.second or dt.microsecond else 'minutes'
+        return dt.isoformat(' ', timespec)
 
-    def generate_export_path(self, base, ext, dirname, paths):
-        """Generate a nonexistent, unambiguous file name for exporting.
-        (Yes, the function name is a bit misleading, but it does not return
-        an actual path.  Sorry but I couldn't think of a better name.)
+    def set_entry_time(self, entry_dict, entry, panel):
+        entry_time = entry.date_time
+        # XXX: Is this okay???
+        offset = self.get_option('default_time_zone_offset')
+        # Remove tzinfo if the time zone offset matches
+        if offset is not None and entry_time.utcoffset() == offset:
+            entry_time = entry_time.replace(tzinfo=None)
+        # Hide date if possible
+        if entry_time.date() == panel.date:
+            self.handle_time(entry_dict, entry_time.timetz())
+        else:
+            self.handle_datetime(entry_dict, entry_time)
 
-        This docstring is meant to give a technical overview, so it might
-        not be the best for those lacking the general background!
-        (i'll write about it somewhere else yeah)
-
-        Arguments
-        ---------
-        base : str
-            The base name, or the part of file name without extension.
-            This can contain more than one file component, but a DumpWarning
-            will be issued if there is the POTENTIAL of making existing input
-            paths ambiguous as this is taken to be the shortest permitted
-            input path.
-
-        ext : str
-            The file extension.  Should just be the extension and nothing
-            else. (like don't write '.txt/../somewhere_else.txt' it's not
-            gonna work lol)
-
-        dirname : str
-            The directory path.  A relative directory path such that
-            join(dirname, base + ext) where join = os.path.join is a
-            valid path.
-
-        paths : list of str
-            The 'paths' attribute.
-
-        Return
-        ------
-        The first nonexistent, unambiguous file name.  File extensions are
-        disregarded, so 'name.txt' is considered to be the same file as
-        'name.pdf' or 'name.tar.gz'.
-
-        The file base name is acquired from get_export_path_candidates().
-        A DumpError is raised if the iteration of get_export_path_candidates()
-        ended before a successful file name is returned.
-        """
-        base_dir = self.get_option('base_dir')
-        # just to check if this contains any slashes
-        ext_head, ext_tail = os.path.split(ext)
-        if ext_head or ext_tail != ext:
-            raise ValueError(f'invalid file extension: {ext!r}')
-        abs_dirname = os.path.normpath(os.path.join(base_dir, dirname))
-
-        # since the file name ('base' and 'ext' considered as a whole) can be
-        # arbitrarily extended by 'dirname', we also have to make sure the
-        # numbering doesn't collide with them
-        dirparts = _split_path(dirname)
-        # prefixes starts with no prefix, then includes directories
-        # one by one from right to left... (i = n-1, n-2, ... 1, 0)
-        prefixes = [os.path.join(*dirparts[i:] or ['']) for i in
-                    reversed(range(len(dirparts) + 1))]
-
-        # make sure the file name 'name' is the shortest reachable path to
-        # 'join(dirname, name)', otherwise issue a warning (one is enough)
-        parts = _split_path(base)
-        # for a 'name' that looks like 'a/b/.../c/d/name', iterate through
-        # 'a', 'a/b', ..., 'a/b/.../c', 'a/b/.../c/d'.
-        for i in range(1, len(parts)):
-            long_dir = os.path.normpath(os.path.join(dirname, *parts[:i]))
-            for lookup_path in paths:
-                if _fn_pattern_match(long_dir, lookup_path):
-                    name = f'{base}{ext}'
-                    export_path = (
-                        os.path.normpath(os.path.join(dirname, name)))
-                    self._warn(
-                        f'{name!r} is not the shortest reachable '
-                        f'path for {export_path!r} (parent directory '
-                        f'{os.path.join(*parts[:i])!r} matches the lookup '
-                        f'path {lookup_path!r}); name collisions may occur',
-                        DumpWarning)
-                    break
-            # break the outer loop when the inner loop is broken
+    def write_entry_data(self, entry_dict, entry):
+        """Write the raw data in `entry` to `entry_dict`."""
+        type_ = entry_dict['type']
+        enc = entry_dict['encoding']
+        if entry.is_text():
+            entry_dict['data'] = entry.get_data()
+            if type_ == 'plain':
+                del entry_dict['type']
+            # Encoding is always 'utf-8' in this case!
+            del entry_dict['encoding']
+        else:
+            raw = entry.get_raw_data()
+            raw_encoded = base64.b64encode(raw)
+            entry_dict['data-encoding'] = 'base64'
+            entry_dict['data'] = raw_encoded.decode('ascii')
+            if type_ == 'binary':
+                del entry_dict['type']
+            if datatypes.is_text_type(type_, default=False):
+                inferred_enc = 'utf-8'
             else:
-                continue
-            break
+                inferred_enc = 'binary'
+            if enc == inferred_enc:
+                del entry_dict['encoding']
+        if 'meta' in entry_dict:
+            entry_dict.move_to_end('meta')
 
-        for candidate in self.get_export_path_candidates(base):
-            # test if the path being exported to has yet to exist
-            if os.path.exists(os.path.join(abs_dirname, candidate)):
-                continue
-            # test if the path with the current numbering matches against
-            # none of the existing files.  if any path, with any arbitrarily
-            # extended prefix, matched at all, we start over.
-            matched = False
-            for prefix in prefixes:
-                extended = os.path.join(prefix, candidate)
-                if _can_find_any_path(extended, base_dir, paths):
-                    matched = True
-                    break
-            if not matched:
-                return f'{candidate}{ext}'
-
-        # we've tried everything so just give up (lol you can count on
-        # me for optimism)
-        name = f'{base}{ext}'
-        raise DumpError(f'failed to generate an input path for {name!r} '
-                        f'(with directory name {dirname!r})')
-
-    def compute_input_path(self, name, dirname, paths):
-        """Compute a (potentially) valid input path.
-        Note that join(dirname, name) has to exist for this to work!
-
-        Arguments
-        ---------
-        name : str
-            The file name.  Will be used as the shortest input path.
-
-        dirname : str
-            The directory path relative to paths.  Will be used to
-            progressively extend 'name'.
-
-        paths : list of str
-            The 'paths' attribute.
-
-        Return
-        ------
-        The shorest unambiguous path, or the full path if all fails.
-
-        Note
-        ----
-        This function makes no guarantee that an input path will remain
-        unambiguous in the future (see what I wrote in dumpy log).
-        It's at your own risk if you don't use generate_export_path() or
-        use inconsistent lookup paths!
+    # 'export_path' is an absolute path!
+    # 'input_path' is the path relative to the base directory...
+    def export_entry(self, entry_dict, entry, export_path, input_path):
+        """Export the raw data in `entry` to `export_path`, and then
+        add it to `entry_dict`.
         """
-        base_dir = self.get_option('base_dir')
-        parts = _split_path(dirname)
-        name = input_path = os.path.normpath(name)
-        target = os.path.abspath(os.path.join(base_dir, dirname, name))
-        # the one and only path we should find must be 'target'
-        # otherwise the loop continues until we obtain the full path
-        while True:
-            finder = find_paths(input_path, base_dir, paths)
-            try:
-                first = next(finder)
-            except StopIteration:
-                pass
-            else:
-                if os.path.samefile(target, first):
-                    try:
-                        next(finder)
-                    except StopIteration:
-                        break
-            try:
-                input_path = os.path.join(parts.pop(), input_path)
-            except IndexError:
-                break
-        return input_path
-
-    def export_entry(self, entry, export_path):
-        """Export entry to an export path.  The export path is relative
-        to the base_dir option.  Intermediary directies are created
-        with os.makedirs() even if they exist, although the export path
-        must not exist by the time of being exported.
-        """
-        # convert base_dir to an absolute path for the following
-        # commonpath() check to work
-        base_dir = os.path.abspath(self.get_option('base_dir'))
-        _check_relpath(export_path, base_dir, 'export_path')
-        export_path = os.path.join(base_dir, export_path)
-        if os.path.exists(export_path):
-            raise DumpError(f'export path {export_path!r} exists')
+        # Create intermediate directories
         os.makedirs(os.path.dirname(export_path), exist_ok=True)
-        with entry.stream_raw_data() as fsrc:
-            with open(export_path, 'xb') as fdst:
-                shutil.copyfileobj(fsrc, fdst)
 
-    def __write_entry_data(self, entry_dict, entry):
-        """branch of wrap_entry() for inline data"""
-        im = self.get_inference_manager()
-        e_type = entry.get_type()
-        e_enc = entry.get_encoding()
-        e_format = entry.get_format()
-        if self.use_inline_text(entry):
-            # encoding is always 'utf-8' so we don't need to put
-            # that in.  Provide 'type' only if type can't be correctly
-            # inferred from encoding.
-            i_type = im.infer_type_from_encoding('utf-8')
-            if i_type is None:
-                i_type = 'plain'
-            if i_type != e_type:
-                self.write_entry_type_and_format(entry_dict, e_type, e_format)
-            elif e_format is not None:
-                entry_dict['format'] = e_format
-            self.write_entry_text_data(entry_dict, entry)
-        else:
-            self.__write_binary_entry(entry_dict, e_type, e_enc, e_format)
-            self.write_entry_binary_data(entry_dict, entry)
+        # Exporting is dangerous, so we have to make sure we're doing the
+        # right thing here.  dump_data() should have joined the
+        # path with dirname's absolute path, so we should get an absolute
+        # path (otherwise there's something seriously wrong with this program
+        # XD)
+        if os.path.abspath(export_path) != os.path.normpath(export_path):
+            raise RuntimeError(
+                'exporting to a relative path: {!r}'.format(export_path))
+        entry.export(export_path)
 
-    def __write_entry_input(self, entry_dict, entry, input_path):
-        """branch of wrap_entry() for exporting"""
-        im = self.get_inference_manager()
-        e_type = entry.get_type()
-        e_enc = entry.get_encoding()
-        e_format = entry.get_format()
-        # note that once type is successfully inferred from the
-        # input path, encoding will NOT be used to infer again
-        i_type = im.infer_type_from_path(input_path)
-        if i_type is not None:
-            if i_type != e_type:
-                self.write_entry_type_and_format(entry_dict, e_type, e_format)
-            elif e_format is not None:
-                entry_dict['format'] = e_format
-            i_enc = im.infer_encoding_from_type(e_type)
-            if i_enc is None:
-                i_enc = 'binary'
-            if i_enc != e_enc:
-                entry_dict['encoding'] = e_enc
-        else:
-            # fallback to the same reverse inference rules as inline
-            # binary data
-            self.__write_binary_entry(entry_dict, e_type, e_enc, e_format)
         entry_dict['input'] = input_path
+        type_ = entry_dict['type']
+        enc = entry_dict['encoding']
 
-    # the same code twice so i don't have to copy-and-paste
-    def __write_binary_entry(self, entry_dict, e_type, e_enc, e_format):
-        """common reverse inference rules for inline binary & exported
-        entries when type cannot be inferred from input path
-        """
-        im = self.get_inference_manager()
-        # if type can be inferred from the LACK of encoding
-        # and encoding can THEN be inferred from that type,
-        # no information is needed.
-        i_type = im.infer_type_from_encoding(None)
-        if i_type is None:
-            i_type = 'binary'
-        i_enc = im.infer_encoding_from_type(e_type)
-        if i_enc is None:
-            i_enc = 'binary'
-        if i_type == e_type and i_enc == e_enc:
-            if e_format is not None:
-                entry_dict['format'] = e_format
+        # First the type is inferred from path, if possible.
+        # If that was not possible, the type is inferred from the encoding
+        # (where type is then guaranteed to be set).
+        # Next the encoding is inferred from the current type, if it is unset.
+        #
+        # In this reverse-inference process, we assume that either 'type'
+        # or 'encoding' is not given and the program is left to infer it
+        # on its own.  If the inference matches, then we remove the redundant
+        # information.
+        inferred_type = datatypes.path_to_type(input_path, default=None)
+        if inferred_type is not None and inferred_type == type_:
+            del entry_dict['type']
+            inferred_enc = (
+                'utf-8' if datatypes.is_text_type(type_, default=False)
+                else 'binary')
+            if inferred_enc == enc:
+                del entry_dict['encoding']
         else:
-            # if type can be inferred from encoding, then just
-            # encoding is enough.  otherwise type must be provided.
-            i_type = im.infer_type_from_encoding(e_enc)
-            if i_type is None:
-                i_type = 'binary'
-            if i_type == e_type:
-                entry_dict['encoding'] = e_enc
-                if e_format is not None:
-                    entry_dict['format'] = e_format
+            if enc == 'binary':
+                inferred_type = 'binary'
             else:
-                self.write_entry_type_and_format(entry_dict, e_type, e_format)
-                # provide encoding only if it can't be correctly
-                # inferred from type
-                if i_enc != e_enc:
-                    entry_dict['encoding'] = e_enc
+                inferred_type = 'utf-8'
 
-    def format_timezone(self, tz):
-        """Format a tzinfo object as a str."""
-        # users can allow more interesting input (ANSI time zone
-        # with zoneinfo, for instance), but only with the appropriate
-        # extension of parse_timezone()
-        if isinstance(tz, datetime.timezone):
-            if tz is datetime.timezone.utc:
-                return 'UTC'
-            # since datetime.timezone is a fixed offset, just pass any
-            # arbitrary datetime and we should be good
-            return timeutil.format_offset(
-                tz.utcoffset(datetime.datetime.min))
-        raise ValueError(f'cannot serialize time zone {tz!r}')
+            if inferred_type == type_:
+                del entry_dict['type']
+            else:
+                inferred_enc = (
+                    'utf-8' if datatypes.is_text_type(type_, default=False)
+                    else 'binary')
+                if inferred_enc == enc:
+                    del entry_dict['encoding']
 
-    def format_date(self, date):
-        """Format a date object as a str."""
-        return timeutil.format_date(date)
-
-    def write_entry_time(self, entry_dict, dt):
-        """Update entry_dict with entry time, omitting the date."""
-        entry_dict['time'] = timeutil.format_time(dt)
-        if timeutil.is_naive(dt) and dt.fold:
-            entry_dict['fold'] = dt.fold
-
-    def write_entry_date_and_time(self, entry_dict, dt):
-        """Update entry_dict with entry time, including the date."""
-        entry_dict['date-time'] = timeutil.format_datetime(dt)
-        if timeutil.is_naive(dt) and dt.fold:
-            entry_dict['fold'] = dt.fold
-
-    def write_entry_type_and_format(self, entry_dict, e_type, e_format):
-        """Update entry_dict with entry type and format."""
-        if '-' not in e_type and e_format is not None:
-            entry_dict['type-format'] = f'{e_type}-{e_format}'
-        else:
-            entry_dict['type'] = e_type
-            if e_format is not None:
-                entry_dict['format'] = e_format
-
-    def use_inline_text(self, entry):
-        """Return whether an entry can and will be fully represented with
-        inline text.  Every entry can be represented as inline binary, but
-        not every entry can be represented as inline text.  This method is
-        ONLY called when an entry is NOT being exported.
-        """
-        return entry.is_text()
-
-    # technically this doesn't have to be a method updating entry_dict,
-    # but meh, i'll keep it consistent even if it's just one attribute.
-    def write_entry_text_data(self, entry_dict, entry):
-        """Update entry_dict with inline text representation of entry.
-        This usually means assigning a str to the 'data' key.
-
-        Note: DO NOT write type, encoding, or format as that is already
-        done for you!
-        """
-        entry_dict['data'] = entry.get_data()
-
-    def write_entry_binary_data(self, entry_dict, entry):
-        """Update entry_dict with inline binary representation of entry.
-        This usually means assigning an encoded str to the 'data' key
-        and adding the appropriate data encoding.
-
-        Note: DO NOT write type, encoding, or format as that is already
-        done for you!
-        """
-        data_enc, data = self.get_option('data_encoder')(entry)
-        entry_dict['data'] = data
-        entry_dict['data-encoding'] = data_enc
+        if 'meta' in entry_dict:
+            entry_dict.move_to_end('meta')
 
 
-# Options
-# -------
-data_decoders = {
-    'base16': base64.b16decode,
-    'base32': base64.b32decode,
-    'base64': base64.b64decode,
-    'base64_url': base64.urlsafe_b64decode,
-    'ascii85': base64.a85decode,
-    'base85': base64.b85decode,
-}
-
-
-def data_encoder(entry):
-    return 'base64', base64.b64encode(entry.get_raw_data()).decode('ascii')
-
-
-def type_checker(cls):
-    def checker(_self, name, value):
-        if not isinstance(value, cls):
-            raise TypeError(f'the {name!r} option should be an instance of '
-                            f'{cls.__qualname__!r}, not {value!r}')
-        return value
-    return checker
-
-
-def type_checker_ii(cls):
-    def checker(_self, name, value):
-        if not (value is None or isinstance(value, cls)):
-            raise TypeError(f'the {name!r} option should be an instance of '
-                            f'{cls.__qualname__!r} or None, not {value!r}')
-        return value
-    return checker
-
-
-bool_checker = type_checker(bool)
-list_checker = type_checker(list)
-dict_checker = type_checker(dict)
-
-
-def callable_checker(_self, _name, value):
-    if not callable(value):
-        raise TypeError(f'the {name!r} option should be a callable, not '
-                        f'{value!r}')
-    return value
-
-
-def base_dir_checker(_self, _name, value):
-    if not isinstance(value, (str, os.PathLike)):
-        raise TypeError(f"the 'base_dir' option should be a str or a "
-                        f"path-like object, not {value!r}")
-    return value
-
-
-def make_paths_checker(list_checker):
-    def paths_checker(self, name, value):
-        list_checker(self, name, value)
-        paths = []
-        for i, item in enumerate(value, start=1):
-            if not isinstance(item, (str, os.PathLike)):
-                raise TypeError(f"expected item {i} of the 'paths' option "
-                                f"to be a str or path-like object, got {item!r}")
-            paths.append(os.fspath(item))
-        return paths
-    return paths_checker
-
-paths_checker = make_paths_checker(list_checker)
-del make_paths_checker
-
-
-JSONLoader.add_option('base_dir', '.', base_dir_checker)
-JSONLoader.add_option('json_options', {}, dict_checker)
-JSONLoader.add_option('check_panel_order', True, bool_checker)
-JSONLoader.add_option('check_entry_order', True, bool_checker)
-# When check_panel_order is disabled, one may enable this to
-# merely check for duplicate panels
-JSONLoader.add_option('suppress_warnings', False, bool_checker)
-JSONLoader.add_option('error_on_warning', False, bool_checker)
-JSONLoader.add_option('warn_ambiguous_paths', True, bool_checker)
-JSONLoader.add_option('data_decoders', data_decoders, dict_checker)
-
-JSONDumper.add_option('base_dir', '.', base_dir_checker)
-JSONDumper.add_option('json_options', {}, dict_checker)
-JSONDumper.add_option('data_encoder', data_encoder, callable_checker)
-JSONDumper.add_option('paths', ['.'], paths_checker)
-JSONDumper.add_option('time_zone', None, type_checker_ii(datetime.tzinfo))
-JSONDumper.add_option('suppress_warnings', False, bool_checker)
-JSONDumper.add_option('error_on_warning', False, bool_checker)
-
-del data_decoders, data_encoder
-del type_checker, type_checker_ii, bool_checker, list_checker, dict_checker
-del base_dir_checker, paths_checker, callable_checker
-
-
-# TODO: address convenience interface of providing date
-def load_json(file, date=None, *, encoding=None, errors=None, cls=JSONLoader,
-              **options):
+def load_json(file, date=None, *, encoding='utf-8', **options):
     """Simple interface for loading a JSON archive.
 
-    Extra keyword arguments are passed on to the configure() method.
+    For method signature, see JSONLoader.load().  Extra keyword
+    arguments are passed on to the configure() method.
     """
+    loader = JSONLoader()
     if isinstance(file, (str, os.PathLike)):
-        options.setdefault('base_dir', os.path.dirname(file))
-    loader = cls(**options)
-    if hasattr(file, 'read'):
-        fp = file
-        close = False
-    else:
-        fp = io.open(file, encoding=encoding, errors=errors)
-        close = True
-    try:
-        if date is not None:
-            # convert date if it is a string
-            if isinstance(date, str):
-                date = loader.parse_date(date)
-            elif not isinstance(date, datetime.date):
-                raise TypeError(f'date should be a str or datetime.date, '
-                                f'not {date!r}')
-            # filter and return the first result
-            try:
-                return next(p for p in loader.load(fp) if p.date == date)
-            except StopIteration:
-                raise ValueError(f'date {date} not found') from None
-        return list(loader.load(fp))
-    finally:
-        if close:
-            fp.close()
+        loader.configure(base_dir=os.path.abspath(os.path.dirname(file)))
+    loader.configure(**options)
+    return loader.load(file, date=date, encoding=encoding)
 
 
-def dump_json(panels, file, *, encoding=None, errors=None, exist_ok=False,
-              cls=JSONDumper, **options):
+def dump_json(panels, dirname, *, encoding='utf-8', **options):
     """Simple interface for dumping a JSON archive.
 
     For method signature, see JSONDumper.dump().  Extra keyword
     arguments are passed on to the configure() method.
     """
-    if isinstance(file, (str, os.PathLike)):
-        options.setdefault('base_dir', os.path.dirname(file))
-    dumper = cls(**options)
-    mode = 'w' if exist_ok else 'x'
-    if hasattr(file, 'read'):
-        fp = file
-        close = False
-    else:
-        fp = io.open(file, mode, encoding=encoding, errors=errors)
-        close = True
-    try:
-        dumper.dump(panels, fp)
-    finally:
-        if close:
-            fp.close()
+    dumper = JSONDumper()
+    dumper.configure(**options)
+    return dumper.dump(panels, dirname, encoding=encoding)
