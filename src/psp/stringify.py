@@ -2,10 +2,9 @@
 
 import abc
 import contextlib
-import itertools
 import os
 
-from .types import Panel, Entry, Configurable
+from . import Entry, Panel
 from . import timeutil
 
 __all__ = [
@@ -17,7 +16,19 @@ __all__ = [
 ]
 
 
-class Formatter(Configurable):
+def _extend_lines(buf, lines):
+    for line in lines:
+        buf.append(line)
+        buf.append('\n')
+
+
+def _add_vsep(buf, vsep, line):
+    for _ in range(vsep):
+        buf.append(line)
+        buf.append('\n')
+
+
+class Formatter(abc.ABC):
     """String formatter using a text wrapper supporting a constant width.
 
     Although I've not written any formal explanation, I think it is probably
@@ -47,7 +58,7 @@ class Formatter(Configurable):
     After you've instantiated the object, though, this convenient shortcut
     to enabling text wrapping is gone.  You will have to explicitly set
     `width` AND `wrapper` in order for text wrapping to happen.  (You'll
-    know it when `_is_wrapping_disabled()` returns False.)  If you set
+    know it when _is_wrapping_disabled() returns False.)  If you set
     `width` to 80, `wrapper` will not magically become a
     textwrap.TextWrapper object!
 
@@ -67,10 +78,10 @@ class Formatter(Configurable):
         a textwrap.TextWrapper() instance.  Be noted that has no effect if
         `width` is None (as mentioned above).
     """
-    __slots__ = ('_wrapper', '_width')
 
-    def __init__(self, width=80, wrapper=None, *args, **kwargs):
-        super().__init__(*args, **kwargs)
+    __slots__ = ('_wrapper', '_width', '_all_options', '_options')
+
+    def __init__(self, width=80, wrapper=None):
         if width is None:
             self.width = None
             self.wrapper = None
@@ -82,12 +93,35 @@ class Formatter(Configurable):
             else:
                 self.wrapper = wrapper
 
-    def format(self, obj):
-        return '\n'.join(self.wrap(obj))
+        self._all_options = {
+            'indent', 'strlen', 'line_callback',
+        }
+        self._options = {
+            'indent': '',
+            'strlen': len,  # can be replaced by say wcwidth.wcswidth
+            'line_callback': str.rstrip,    # called on every line
+        }
 
     @abc.abstractmethod
-    def wrap(self, obj):
-        return []
+    def format(self, obj):
+        raise NotImplementedError
+
+    def configure(self, **options):
+        invalid = options.keys() - self._all_options
+        if invalid:
+            invalid_str = ', '.join(sorted(invalid))
+            raise ValueError(f'invalid keys: {invalid_str!r}')
+        for k, v in options.items():
+            try:
+                checker = getattr(self, f'check_{k}_option')
+            except AttributeError:
+                pass
+            else:
+                v = checker(v)
+            self._options[k] = v
+
+    def get_option(self, name):
+        return self._options[name]
 
     @property
     def wrapper(self):
@@ -121,14 +155,19 @@ class Formatter(Configurable):
             raise ValueError('width should be greater than 0')
         self._width = width
 
+    def check_indent_option(self, indent):
+        if not isinstance(indent, str):
+            raise TypeError(f'indent should be a str, not {indent!r}')
+        return indent
+
     # Synonyms of get_option('indent') and configure(indent=...), but...
     # this is a lot more readable (given just how many times indent is
     # modified in this code)
     def get_indent(self):
-        return self.get_option('indent')
+        return self._options['indent']
 
     def set_indent(self, indent):
-        self.set_option('indent', indent)
+        self._options['indent'] = self.check_indent_option(indent)
 
     @contextlib.contextmanager
     def indented(self, extra_indent):
@@ -159,7 +198,10 @@ class Formatter(Configurable):
     # (By strip we now mean calling line_callback(); it used to be just
     # simply calling str.rstrip())
     # also this is now public because they are too useful to not be public
-    def wrap_paragraph(self, text, *, prefix='', fillchar=' '):
+    def wrap_paragraph(self, text, *, prefix='', fillchar=' ',
+                       return_empty=False):
+        # return_empty = False will ensure that wrap_paragraph() returns ['']
+        # when provided an empty string (as opposed to _wrap())
         strlen = self._options['strlen']
         callback = self._options['line_callback']
         if strlen(fillchar) != 1:
@@ -168,7 +210,10 @@ class Formatter(Configurable):
         indent = self.get_indent()
         if not (prefix or indent):
             self.wrapper.width = self.width
-            wrapped = self._wrap(text) or ['']
+            if return_empty:
+                wrapped = self._wrap(text)
+            else:
+                wrapped = self._wrap(text) or ['']
             return [callback(line) for line in wrapped]
 
         prefix_len = strlen(prefix)
@@ -184,11 +229,11 @@ class Formatter(Configurable):
             # Use 'prefix_fill' on every other iteration
             indent_and_prefix = indent + prefix_fill
 
-        if not lines:
+        if not lines and not return_empty:
             lines.append(callback(indent_and_prefix))
         return lines
 
-    def center_paragraph(self, text, *, fillchar=' '):
+    def center_paragraph(self, text, *, fillchar=' ', return_empty=False):
         strlen = self._options['strlen']
         callback = self._options['line_callback']
         indent = self.get_indent()
@@ -206,7 +251,7 @@ class Formatter(Configurable):
             line = indent + self._center_line(line, width, fillchar)
             lines.append(callback(line))
 
-        if not lines:
+        if not lines and not return_empty:
             lines.append(callback(indent))
         return lines
 
@@ -226,85 +271,60 @@ class Formatter(Configurable):
         return line
 
 
-def indent_checker(_self, _name, indent):
-    if not isinstance(indent, str):
-        raise TypeError(f'indent should be a str, not {indent!r}')
-    return indent
-
-def strlen_checker(_self, _name, strlen):
-    if not callable(strlen):
-        raise TypeError(f'strlen should be a callable, not {strlen!r}')
-    return strlen
-
-def callback_checker(_self, _name, func):
-    if not callable(func):
-        raise TypeError(f'line_callback should be a callable, not {func!r}')
-    return func
-
-Formatter.add_option('indent', '', indent_checker)
-# can be replaced by say wcwidth.wcswidth
-Formatter.add_option('strlen', len, strlen_checker)
-# called on every line
-Formatter.add_option('line_callback', str.rstrip, callback_checker)
-del indent_checker, strlen_checker, callback_checker
-
-
 class PanelFormatter(Formatter):
     __slots__ = ('_entry_formatter',)
 
-    def __init__(self, width=80, wrapper=None, *args, **options):
-        super().__init__(width, wrapper, *args)
+    def __init__(self, width=80, wrapper=None, **options):
+        super().__init__(width, wrapper)
+        self._entry_formatter = None
+        self._all_options.update({
+            'base_dir', 'time_zone', 'infer_time_zone', 'coerce_time_zone',
+            'entry_indent', 'time_format', 'date_rating_sep',
+            'title_entries_vsep', 'entry_vsep', 'main_insight_entries_vsep',
+        })
+
+        self.configure(
+            base_dir=None,
+            # Entry formatter parameters
+            entry_indent='',
+            time_format='12 hour',
+
+            time_zone=None,
+            # convenience option made so that users don't have to
+            # see time zone every time
+            # (set this to False to get all time zone explicitly
+            # displayed)
+            infer_time_zone=True,
+            coerce_time_zone=False,
+
+            date_rating_sep='  ',
+            title_entries_vsep=2,
+            entry_vsep=1,
+            main_insight_entries_vsep=2,
+        )
         self.configure(**options)
 
     def set_entry_formatter(self, formatter):
         if not isinstance(formatter, EntryFormatter):
-            raise TypeError(f'formatter should be an EntryFormatter '
-                            f'object, not {formatter!r}')
+            raise TypeError(f'formatter should be an EntryFormatter object, '
+                            f'not {formatter!r}')
         self._entry_formatter = formatter
 
     def get_entry_formatter(self):
         # Make an entry formatter automatically if the user hasn't
         # explicitly set one
-        try:
-            return self._entry_formatter
-        except AttributeError:
+        if self._entry_formatter is None:
             self._entry_formatter = EntryFormatter()
-            return self._entry_formatter
+        formatter = self._entry_formatter
+        return formatter
 
-    def configure_entry_formatter(self, entry_formatter, panel):
-        entry_formatter.wrapper = self.wrapper
-        entry_formatter.width = self.width
-        time_zone = self.get_option('time_zone')
-        # For convenience, hide all entry time zones if they happen to have
-        # the same offset (unless an explicit time zone is provided or
-        # infer_time_zone is set to False)
-        if (time_zone is None
-                and self.get_option('infer_time_zone')
-                and panel.has_entries()):
-            entries = panel.entries()
-            first = next(entries).time
-            if all(e.time.tzinfo == first.tzinfo or
-                   e.time.utcoffset() == first.utcoffset()
-                   for e in entries):
-                time_zone = first.tzinfo
-        entry_formatter.configure(
-            indent=self.get_indent(),
-            strlen=self.get_option('strlen'),
-            line_callback=self.get_option('line_callback'),
-            base_dir=self.get_option('base_dir'),
-            time_format=self.get_option('time_format'),
-            label_insight=False,
-            time_zone=time_zone,
-            coerce_time_zone=self.get_option('coerce_time_zone'),
-        )
-
-    def wrap(self, panel):
+    def format(self, panel):
         if not isinstance(panel, Panel):
             raise TypeError('format() expected a Panel object, got {!r}'
                             .format(panel))
 
         buf = []
-        empty_lines = self.wrap_paragraph('')
+        empty_line = self.get_option('line_callback')(self.get_indent())
         entry_formatter = self.get_entry_formatter()
         self.configure_entry_formatter(entry_formatter, panel)
 
@@ -319,41 +339,66 @@ class PanelFormatter(Formatter):
         # Title
         title = self.get_title(panel)
         lines = self.wrap_title(title)
-        buf.extend(lines)
+        _extend_lines(buf, lines)
 
         if main_entries or insight_entries:
-            vsep = self.get_option('title_entries_vsep')
-            buf.extend(itertools.chain.from_iterable(
-                itertools.repeat(empty_lines, vsep)))
-
+            _add_vsep(buf, self.get_option('title_entries_vsep'), empty_line)
         entry_vsep = self.get_option('entry_vsep')
+
         # Main entries
         if main_entries:
             not_first_entry = False
             for entry in main_entries:
                 if not_first_entry:
-                    buf.extend(itertools.chain.from_iterable(
-                        itertools.repeat(empty_lines, entry_vsep)))
-                buf.extend(entry_formatter.wrap(entry))
+                    _add_vsep(buf, entry_vsep, empty_line)
+                buf.append(entry_formatter.format(entry))
+                buf.append('\n')
                 not_first_entry = True
             if insight_entries:
-                vsep = self.get_option('main_insight_entries_vsep')
-                buf.extend(itertools.chain.from_iterable(
-                    itertools.repeat(empty_lines, vsep)))
+                _add_vsep(buf, self.get_option('main_insight_entries_vsep'),
+                          empty_line)
 
         # Insight entries
         if insight_entries:
             lines = self.wrap_insight_header(insight_entries)
-            buf.extend(lines)
+            _extend_lines(buf, lines)
             not_first_entry = False
             for entry in insight_entries:
                 if not_first_entry:
-                    buf.extend(itertools.chain.from_iterable(
-                        itertools.repeat(empty_lines, entry_vsep)))
-                buf.extend(entry_formatter.wrap(entry))
+                    _add_vsep(buf, entry_vsep, empty_line)
+                buf.append(entry_formatter.format(entry))
+                buf.append('\n')
                 not_first_entry = True
 
-        return buf
+        buf.pop()
+        return ''.join(buf)
+
+    def configure_entry_formatter(self, entry_formatter, panel):
+        entry_formatter.wrapper = self.wrapper
+        entry_formatter.width = self.width
+        time_zone = self.get_option('time_zone')
+        # For convenience, hide all entry time zones if they happen to have
+        # the same offset (unless an explicit time zone is provided or
+        # infer_time_zone is set to False)
+        if (time_zone is None
+                and self.get_option('infer_time_zone')
+                and panel.has_entries()):
+            entries = panel.entries()
+            first = next(entries).date_time
+            if all(e.date_time.tzinfo == first.tzinfo or
+                   e.date_time.utcoffset() == first.utcoffset()
+                   for e in entries):
+                time_zone = first.tzinfo
+        entry_formatter.configure(
+            indent=self.get_indent() + self.get_option('entry_indent'),
+            strlen=self.get_option('strlen'),
+            line_callback=self.get_option('line_callback'),
+            base_dir=self.get_option('base_dir'),
+            time_format=self.get_option('time_format'),
+            label_insight=False,
+            time_zone=time_zone,
+            coerce_time_zone=self.get_option('coerce_time_zone'),
+        )
 
     # Can be subclassed (public method too!)
     def get_date_string(self, date):
@@ -361,12 +406,14 @@ class PanelFormatter(Formatter):
 
     def get_title(self, panel):
         date_str = self.get_date_string(panel.date)
-        try:
-            rating = panel.get_rating()
-        except KeyError:
+        rating = self.get_rating(panel)
+        if rating is None:
             return date_str
         sep = self.get_option('date_rating_sep')
         return f'{date_str}{sep}{rating}'
+
+    def get_rating(self, panel):
+        return panel.get_attribute('rating', None)
 
     def wrap_title(self, title):
         return self.center_paragraph(title)
@@ -377,67 +424,105 @@ class PanelFormatter(Formatter):
         return ['Insights', '--------']
 
 
-# TODO: Checkers?
-for name, default in dict(
-        base_dir=None,
-        # Entry formatter parameters
-        time_format='12 hour',
-
-        time_zone=None,
-        # convenience option made so that users don't have to
-        # see time zone every time
-        # (set this to False to get all time zone explicitly
-        # displayed)
-        infer_time_zone=True,
-        coerce_time_zone=False,
-
-        date_rating_sep='  ',
-        title_entries_vsep=2,
-        entry_vsep=1,
-        main_insight_entries_vsep=2,
-    ).items():
-    PanelFormatter.add_option(name, default)
-
-
 class EntryFormatter(Formatter):
-    def __init__(self, width=80, wrapper=None, *args, **options):
-        super().__init__(width, wrapper, *args)
+    def __init__(self, width=80, wrapper=None, **options):
+        super().__init__(width, wrapper)
+        self._all_options.update({
+            'base_dir', 'time_zone', 'coerce_time_zone',
+            'time_format', 'date_time_sep',
+            'entry_title_attr_sep', 'label_insight', 'content_indent',
+            'title_content_vsep', 'question_content_vsep',
+            'below_content_vsep', 'transcription_indent',
+        })
+
+        self.configure(
+            # None for displaying absolute paths
+            base_dir=None,
+            # None for displaying every time zone offset
+            time_zone=None,
+            coerce_time_zone=False,
+            time_format='12 hour',
+
+            date_time_sep='  ',
+            entry_title_attr_sep='  ',
+
+            label_insight=False,
+            content_indent='  ',
+            title_content_vsep=1,
+            question_content_vsep=1,
+            # For both 'caption' and 'transcription'
+            below_content_vsep=1,
+            transcription_indent='  ',
+        )
+
         self.configure(**options)
 
-    def wrap(self, entry):
+    def check_time_format_option(self, tm_format):
+        if tm_format not in {'12 hour', '24 hour'}:
+            raise ValueError("time format should be one of '12 hour', "
+                             "'24 hour'")
+        return tm_format
+
+    def format(self, entry):
         if not isinstance(entry, Entry):
             raise TypeError('format() expected an Entry object, got {!r}'
                             .format(entry))
 
         buf = []
-        header = self.get_header(entry)
-        buf.extend(self.wrap_header(header))
-        buf.extend(self.wrap_content(entry))
-        return buf
 
-    def wrap_content(self, entry):
-        lines = []
+        header = self.get_header(entry)
+        lines = self.wrap_header(header)
+        _extend_lines(buf, lines)
+
         with self.indented(self.get_option('content_indent')):
-            (empty_line,) = self.wrap_paragraph('')
-            question = self.get_question(entry)
-            content_lines = self.wrap_entry_content(entry)
+            empty_line = self.get_option('line_callback')(self.get_indent())
+            # Title
+            title = self.get_entry_title(entry)
+            if title is not None:
+                _extend_lines(buf, self.wrap_entry_title(entry, title))
+                _add_vsep(buf, self.get_option('title_content_vsep'),
+                          empty_line)
 
             # Question
-            if question is not None:
-                lines.extend(self.wrap_question(question))
-                if content_lines:
-                    for _ in range(self.get_option('question_content_vsep')):
-                        lines.append(empty_line)
+            question = self.get_question(entry)
+            # Since the way we split paragraphs is to call str.splitlines()
+            # and empty strings result in [], we're just going to ignore
+            # cases where the value isn't set OR the string is empty.
+            # (Same thing goes for transcription + caption)
+            if question:
+                _extend_lines(buf, self.wrap_question(entry, question))
+                _add_vsep(buf, self.get_option('question_content_vsep'),
+                          empty_line)
 
             # Content
-            lines.extend(content_lines)
-        return lines
+            content_lines = self.wrap_content(entry)
+            _extend_lines(buf, content_lines)
+
+            # Caption + transcription
+            caption = self.get_caption(entry)
+            transcription = self.get_transcription(entry)
+            if (caption or transcription) and content_lines:
+                _add_vsep(buf, self.get_option('below_content_vsep'),
+                          empty_line)
+
+            if caption:
+                _extend_lines(buf, self.wrap_caption(entry, caption))
+                # XXX: Don't want this to be an option yet...?
+                # if transcription:
+                #     _add_vsep(buf, 1, empty_line)
+
+            if transcription:
+                text = transcription
+                _extend_lines(buf, self.wrap_transcription(entry, text))
+
+        buf.pop()
+        return ''.join(buf)
 
     # The difference between a header and a title here is that a title
     # is merely a time, but the header would be the complete string of
     # information ready to be displayed
     def get_header(self, entry):
-        entry_time = entry.time
+        entry_time = entry.date_time
         # If we have a panel, hide the date it is equal to panel date
         if entry.has_panel():
             panel_date = entry.panel.date
@@ -545,28 +630,27 @@ class EntryFormatter(Formatter):
 
         return title
 
-    def format_timezone(self, dt):
-        return timeutil.format_offset(dt.utcoffset())
+    def format_timezone(self, date_time):
+        return timeutil.format_offset(date_time.utcoffset())
 
     def wrap_header(self, header):
         return self.wrap_paragraph(header)
 
-    def wrap_entry_content(self, entry):
+    def wrap_content(self, entry):
         if entry.is_text():
             return self.wrap_text_content(entry)
         return self.wrap_binary_content(entry)
 
     def wrap_text_content(self, entry):
         """Default implementation for wrapping text entries."""
-        text = self.get_entry_content(entry)
+        text = self.get_content(entry)
         lines = []
-        for par in text.splitlines() or ['']:
+        for par in text.splitlines():
             wrapped = self.wrap_paragraph(par)
             lines.extend(wrapped)
         return lines
 
-    # TODO: Test whether this is ONLY called when entry.is_text() is True!
-    def get_entry_content(self, entry):
+    def get_content(self, entry):
         return entry.get_data()
 
     def wrap_binary_content(self, entry):
@@ -583,40 +667,41 @@ class EntryFormatter(Formatter):
             text = f'{entry.get_type()} data sized {size_str}>'
         return self.wrap_paragraph(text, prefix='<')
 
-    def get_question(self, entry):
-        try:
-            return entry.get_question()
-        except KeyError:
-            return None
+    def get_entry_title(self, entry):
+        return entry.get_title()
 
-    def wrap_question(self, question):
+    def wrap_entry_title(self, entry, title):
+        return self.center_paragraph(title)
+
+    def get_question(self, entry):
+        return entry.get_attribute('question', '')
+
+    def wrap_question(self, entry, question):
         return self.wrap_paragraph(question, prefix='(Q) ')
 
+    def get_caption(self, entry):
+        return entry.get_attribute('caption', '')
 
-for name, default in dict(
-        # None for displaying ABSOLUTE paths
-        base_dir=None,
-        # None for displaying every time zone offset
-        time_zone=None,
-        coerce_time_zone=False,
+    def wrap_caption(self, entry, caption):
+        lines = []
+        prefix = 'Caption: '
+        for par in caption.splitlines():
+            wrapped = self.wrap_paragraph(par, prefix=prefix)
+            lines.extend(wrapped)
+            # len('Caption: ') equals 9
+            prefix = ' ' * 9
+        return lines
 
-        date_time_sep='  ',
-        entry_title_attr_sep='  ',
+    def get_transcription(self, entry):
+        return entry.get_attribute('transcription', '')
 
-        label_insight=False,
-        content_indent='  ',
-        question_content_vsep=1,
-    ).items():
-    EntryFormatter.add_option(name, default)
-
-def time_format_checker(_self, _name, tm_format):
-    if tm_format not in {'12 hour', '24 hour'}:
-        raise ValueError("the time_format option should be one of "
-                         "'12 hour' and '24 hour', not {tm_format!r}")
-    return tm_format
-
-EntryFormatter.add_option('time_format', '12 hour', time_format_checker)
-del name, default, time_format_checker
+    def wrap_transcription(self, entry, transcription):
+        lines = self.wrap_paragraph('Transcription:')
+        with self.indented(self.get_option('transcription_indent')):
+            for par in transcription.splitlines():
+                wrapped = self.wrap_paragraph(par)
+                lines.extend(wrapped)
+        return lines
 
 
 # =====================
