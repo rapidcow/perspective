@@ -11,11 +11,8 @@ build/
 *.egg
 
 # Environment
-.env
+.env*
 .venv
-
-# Sphinx documentation
-docs/_build/
 
 # Translations
 *.mo
