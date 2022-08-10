@@ -16,11 +16,11 @@ if sys.version_info < (3, 5):
     raise RuntimeError('Python 3.5+ is required to run psp as __main__')
 import importlib.util
 
+from . import __version__
+from . import util
 from .stringify import PanelFormatter
 from .processors.json_processor import JSONLoader, JSONDumper
 from .processors.json_processor import LoadError
-from .timeutil import parse_date
-from . import util
 
 __all__ = ['main']
 
@@ -47,14 +47,6 @@ def load_config_from_file(file):
     return config
 
 
-def get_date(s):
-    if s.strip().lower() == 'today':
-        return datetime.date.today()
-    if s.strip().lower() == 'yesterday':
-        return datetime.date.today() - datetime.timedelta(1)
-    return parse_date(s)
-
-
 def print_line(text, wrapper, *, file=sys.stderr, add_space=False):
     lines = wrapper.wrap(text)
     print('\n'.join(lines), file=file)
@@ -72,7 +64,7 @@ def main():
     parser = argparse.ArgumentParser(
         prog='psp', description='psp library main program')
     parser.add_argument('--version', '-V', action='version',
-                        version='%(prog)s 0.1.1')
+                        version=f'%(prog)s {__version__}')
     parser.add_argument('--config', '-c',
         help='path to the Python configuration script')
     parser.add_argument('--wlevel', '-W', action='count', default=0,
@@ -83,7 +75,9 @@ def main():
         help=("encoding used to read and write JSON backup files "
               "(default 'utf-8')"))
 
-    subparsers = parser.add_subparsers(required=True, dest='subname')
+    # The required keyword argument was only added in Python 3.7...
+    # could that be an issue?
+    subparsers = parser.add_subparsers(dest='subname', required=True)
 
     # Options shared across 'print' and 'synopsis'
     # (See: https://stackoverflow.com/q/7498595)
@@ -101,7 +95,9 @@ def main():
     # The 'print' subcommand
     parser_print = subparsers.add_parser(
         'print', help='print a panel', parents=[parser_file])
-    parser_print.add_argument('--date', '-d', type=get_date, help=
+    # date is a str here and we expect BackupLoader.load_single()
+    # to deal with it
+    parser_print.add_argument('--date', '-d', help=
         'date of the panel to load (if you omit this, psp-print will '
         'prompt you to enter one progressively)')
     parser_print.add_argument('--width', '-w', type=int,
@@ -117,7 +113,8 @@ def main():
 
     # The 'merge' subcommand
     parser_merge = subparsers.add_parser(
-        'merge', help='merge two or more backup files', parents=[parser_file])
+        'merge', help='merge two or more backup files',
+        parents=[parser_file])
     parser_merge.add_argument('out', help='output directory')
 
     # The 'interact' subcommand
@@ -142,15 +139,11 @@ def main():
             def configure(self, **kwargs):
                 super().configure(**kwargs)
 
-            def load_json(self, file, encoding):
-                with open(file, encoding=encoding) as fp:
-                    return json.load(fp)
+            def load_all(self, file, encoding):
+                return super().load(file, encoding=encoding)
 
-            def load_all(self, data):
-                return super().load_data(data)
-
-            def load_single(self, data, date):
-                return super().load_data(data, date=date)
+            def load_single(self, file, encoding, date):
+                return super().load(file, date=date, encoding=encoding)
 
     # Get backup dumper class
     try:
@@ -159,7 +152,8 @@ def main():
         class Dumper(JSONDumper):
             __slots__ = ()
 
-            # The configure() method is not needed (I think)
+            def configure(self, **kwargs):
+                super().configure(**kwargs)
 
             def dump(self, panels, dirname, encoding):
                 super().dump(panels, dirname, encoding=encoding)
@@ -173,12 +167,12 @@ def main():
 
             def __init__(self, width):
                 self.formatter = PanelFormatter(width)
-                self.formatter.configure(base_dir=os.getcwd())
+                self.formatter.configure(base_dir='.')
 
             def print(self, panel, file):
                 print(self.formatter.format(panel), file=file)
 
-    # First weekday
+    # First weekday (for printing calendars)
     firstweekday = getattr(config, 'firstweekday', calendar.MONDAY)
 
     if args.subname in {'print', 'synopsis', 'merge', 'interact'}:
@@ -224,8 +218,8 @@ def main():
             rpath = os.path.relpath(file, cwd)
             print(f'info {rpath!r}:')
             loader.configure(base_dir=os.path.dirname(file))
-            data = loader.load_json(file, args.encoding)
-            panels = loader.load_all(data)
+            panels = loader.load_all(file, args.encoding)
+            data = loader.load_file(file, args.encoding)
             if any(data.get('desc', '')):
                 print('  description:')
                 desc = (data['desc'] if isinstance(data['desc'], str)
@@ -271,8 +265,7 @@ def main():
               flush=True)
         for file in files:
             loader.configure(base_dir=os.path.dirname(file))
-            data = loader.load_json(file, args.encoding)
-            panels = loader.load_all(data)
+            panels = loader.load_all(file, args.encoding)
             rpath = os.path.relpath(file, cwd)
             for panel in panels:
                 panel_map[panel.date].append((panel, rpath))
@@ -289,6 +282,7 @@ def main():
         print('done')
 
     elif args.subname == 'interact':
+        import pprint
         loader = Loader()
         set_warning_level(loader, args.wlevel)
         cwd = os.getcwd()
@@ -296,8 +290,8 @@ def main():
         panels = []
         for file in files:
             loader.configure(base_dir=os.path.dirname(file))
-            data = loader.load_json(file, args.encoding)
-            p1, p2 = loader.load_all(data), loader.load_all(data)
+            p1, p2 = (loader.load_all(file, args.encoding),
+                      loader.load_all(file, args.encoding))
             rpath = os.path.relpath(file, cwd)
             for panel in p1:
                 panel_map[panel.date].append((panel, rpath))
@@ -312,6 +306,10 @@ def main():
                 'BackupLoader': Loader,
                 'BackupDumper': Dumper,
                 'PanelPrinter': Printer,
+                # These are very useful to me so idc about you but
+                # I'm putting these here >_>
+                'pp': pprint.pprint,
+                'pprint': pprint.pprint,
             })
 
     else:
@@ -346,8 +344,7 @@ def request_date_from_user(loader, wrapper, encoding, files, firstweekday):
     for file in files:
         loader.configure(base_dir=os.path.dirname(file))
         try:
-            data = loader.load_json(file, encoding)
-            panel_objects = loader.load_all(data)
+            panel_objects = loader.load_all(file, encoding)
         except (ValueError, LoadError) as exc:
             raise RuntimeError(f'failed to load {file!r}') from exc
         panels.update((p.date, p) for p in panel_objects)
@@ -556,18 +553,17 @@ def format_calendar(year, month, days, panels, firstweekday):
         this_date = datetime.date(year, month, day)
         panel = panels[this_date]
         try:
-            rating = panel.get_attribute('rating')
+            rating = panel.get_rating()
         except KeyError:
-            pass
-        else:
-            color = ('31' if rating == ':(' else    # Red
-                     '33' if rating == ':|' else    # Yellow
-                     '32' if rating == ':)' else    # Green
-                     '30')                          # Black
-            # right-padded number of width 2
-            day_str = format(day, '2')
-            subs_str = f'\033[1;{color}m{day_str}\033[0m'
-            subs_list.append((body.index(day_str), subs_str))
+            rating = None
+        color = ('31' if rating == ':(' else    # Red
+                 '33' if rating == ':|' else    # Yellow
+                 '32' if rating == ':)' else    # Green
+                 '30')                          # Black
+        # right-padded number of width 2
+        day_str = format(day, '2')
+        subs_str = f'\033[1;{color}m{day_str}\033[0m'
+        subs_list.append((body.index(day_str), subs_str))
     subs_list.sort()
     buf = []
     start = 0
@@ -620,9 +616,8 @@ def load_panel_with_date(loader, encoding, files, date, wlevel):
     cwd = os.getcwd()
     for file in files:
         loader.configure(base_dir=os.path.dirname(file))
-        data = loader.load_json(file, encoding)
         try:
-            panel = loader.load_single(data, date)
+            panel = loader.load_single(file, encoding, date)
         except LookupError:
             continue
         except Exception as exc:
@@ -645,8 +640,8 @@ def check_panels_equal(date, panels, sources, wlevel):
     # Pick any combination of two panels and check if they have the
     # exact same attributes; if not then throw a warning
     for (p1, s1), (p2, s2) in itertools.combinations(zip(panels, sources), 2):
-        d1 = p1.get_attribute_dict()
-        d2 = p2.get_attribute_dict()
+        d1 = p1.get_attributes()
+        d2 = p2.get_attributes()
         for key in d1.keys() | d2.keys():
             msg = None
             if not p2.has_attribute(key):
