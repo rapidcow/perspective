@@ -1,5 +1,7 @@
 """Test the psp.types module."""
 from datetime import date, datetime, timezone, timedelta
+import os
+import tempfile
 import unittest
 
 from psp.types import Entry, Panel
@@ -11,7 +13,7 @@ class TestPanel(unittest.TestCase):
         panel = Panel(panel_date)
         self.assertEqual(repr(panel), f'<Panel object on {panel_date}>')
 
-    def test_entries(self):
+    def test_entry_protocol(self):
         panel = Panel(date(2021, 12, 17))
 
         tz = timezone(timedelta(hours=-8))
@@ -34,13 +36,21 @@ class TestPanel(unittest.TestCase):
         self.assertEqual(panel.count(), 0)
         for i in range(24):
             tz = timezone(timedelta(hours=-i))
-            entry1 = Entry(datetime(2022, 2, 2, i, 0, tzinfo=tz))
-            panel.add_entry(entry1)
+            entry = Entry(datetime(2022, 2, 2, i, tzinfo=tz))
+            panel.add_entry(entry)
         self.assertEqual(panel.count(), 24)
 
-    def test_subclassing(self):
-        # Test if from_panel() properly sets the attributes
-        pass
+    def test_from_panel(self):
+        panel = Panel(date(2022, 2, 22))
+        tz = timezone.utc
+        for i in range(12):
+            entry = Entry(datetime(2022, 2, 22, i, tzinfo=tz))
+            panel.add_entry(entry)
+        panel_ii = Panel.from_panel(panel)
+        self.assertEqual(panel_ii.date, panel.date)
+        self.assertEqual(panel_ii.get_attributes(), panel.get_attributes())
+        self.assertEqual(panel_ii.count(), 0)
+        self.assertFalse(panel_ii.has_entries())
 
 
 class TestEntry(unittest.TestCase):
@@ -56,7 +66,7 @@ class TestEntry(unittest.TestCase):
     def test_validation(self):
         panel_date = date(2019, 8, 25)
         panel = Panel(panel_date)
-        msg = 'date_time should be an aware datetime object'
+        msg = 'time should be an aware datetime object'
         with self.assertRaises(TypeError, msg=msg):
             Entry(datetime(2019, 8, 25, 10))
 
@@ -66,7 +76,7 @@ class TestEntry(unittest.TestCase):
                'panel ({}) in local time').format(entry_time, panel_date)
         with self.assertRaises(ValueError, msg=msg):
             panel.add_entry(entry)
-        entry.date_time += timedelta(minutes=1)
+        entry.time += timedelta(minutes=1)
         panel.add_entry(entry)
 
         entry_time += timedelta(days=2)
@@ -76,7 +86,7 @@ class TestEntry(unittest.TestCase):
                '({}) in local time').format(entry_time, panel_date)
         with self.assertRaises(ValueError, msg=msg):
             panel.add_entry(entry)
-        entry.date_time += timedelta(minutes=1)
+        entry.time += timedelta(minutes=1)
         panel.add_entry(entry)
 
     def test_setting_panel(self):
@@ -102,7 +112,7 @@ class TestEntry(unittest.TestCase):
         self.assertFalse(entry_1.has_panel())
         self.assertEqual(panel_1.get_entries(), [])
 
-        entry_1.date_time += timedelta(minutes=1)
+        entry_1.time += timedelta(minutes=1)
         panel_2.add_entry(entry_1)
 
         self.assertIs(entry_1.panel, panel_2)
@@ -120,7 +130,7 @@ class TestEntry(unittest.TestCase):
         self.assertFalse(entry_1.has_panel())
         self.assertEqual(panel_1.get_entries(), [])
 
-        entry_2.date_time += timedelta(minutes=1)
+        entry_2.time += timedelta(minutes=1)
         panel_2.add_entry(entry_2)
 
         self.assertEqual(panel_1.get_entries(), [])
@@ -128,10 +138,54 @@ class TestEntry(unittest.TestCase):
         panel_2.add_entry(entry_1)
         self.assertEqual(panel_2.get_entries(), [entry_2, entry_1])
 
-    def test_metadata(self):
-        # metadata validation (created, posted, filename, ...)
-        pass
+    def test_raw_data_and_source(self):
+        entry = Entry(datetime(2022, 6, 15, tzinfo=timezone.utc))
+        self.assertEqual(entry.get_raw_data(), b'')
+        self.assertIs(entry.get_source(), None)
+        self.assertFalse(entry.has_source())
 
-    def test_subclassing(self):
-        # Test if from_entry() properly sets the attributes
-        pass
+        fp = tempfile.NamedTemporaryFile(delete=False)
+        try:
+            with fp:
+                fp.write(b'amogus')
+            entry.set_source(fp.name)
+            self.assertEqual(entry.get_raw_data(), b'amogus')
+            self.assertTrue(entry.has_source())
+            self.assertEqual(entry.get_source(), fp.name)
+        finally:
+            os.unlink(fp.name)
+
+        entry.set_raw_data(b'hi')
+        self.assertEqual(entry.get_raw_data(), b'hi')
+        self.assertFalse(entry.has_source())
+        self.assertIs(entry.get_source(), None)
+
+        with self.assertRaises(TypeError):
+            entry.set_raw_data(None)
+        with self.assertRaises(TypeError):
+            entry.set_source(None)
+
+    def test_equality(self):
+        e1 = Entry(datetime(2022, 6, 18, 10, 40, tzinfo=timezone.utc))
+        e2 = Entry(datetime(2022, 6, 18, 10, 40, tzinfo=timezone.utc))
+        e1.set_data('na\u00efve', encoding='utf-8')
+        e2.set_data('na\u00efve', encoding='latin')
+        self.assertTrue(e1.is_text())
+        self.assertTrue(e2.is_text())
+        self.assertEqual(e1, e2)
+        e1.set_encoding('binary')
+        e2.set_encoding('binary')
+        self.assertFalse(e1.is_text())
+        self.assertFalse(e2.is_text())
+        self.assertNotEqual(e1, e2)
+
+    def test_from_entry(self):
+        entry = Entry(datetime(2022, 2, 2, 9, tzinfo=timezone.utc))
+        entry.insight = True
+        entry.set_data('i set insight to True for no reason and '
+                       'i hate myself')
+        entry_ii = Entry.from_entry(entry)
+        self.assertEqual(entry, entry_ii)
+        self.assertEqual(entry.get_raw_data(), entry_ii.get_raw_data())
+        self.assertEqual(entry.get_source(), entry_ii.get_source())
+        self.assertEqual(entry.get_encoding(), entry_ii.get_encoding())
