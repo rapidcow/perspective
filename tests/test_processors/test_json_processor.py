@@ -1,5 +1,5 @@
 """Test the psp.processors.json_processor module."""
-import copy
+
 from datetime import date, time, datetime, timedelta, timezone
 import io
 import json
@@ -8,10 +8,9 @@ from pathlib import Path
 import shutil
 import tempfile
 import unittest
-
-from psp import filetypes
+from psp import Panel, Entry
 from psp.processors import json_processor as processor
-from psp.types import Panel, Entry
+from psp.util import panels_equal
 
 
 def setUpModule():
@@ -102,6 +101,45 @@ def read_file(file, binary=False):
         return fp.read()
 
 
+# Attributes from panels and entries
+# (for compactness I'm breaking PEP 8 temporarily)
+def get_rating(panel):
+    return panel.get_attribute('rating')
+
+def has_rating(panel):
+    return panel.has_attribute(panel)
+
+def set_rating(panel, rating):
+    panel.set_attribute('rating', rating)
+
+def get_question(entry):
+    return entry.get_attribute('question')
+
+def has_question(entry):
+    return entry.has_attribute('question')
+
+def set_question(entry, question):
+    entry.set_attribute('question', question)
+
+def get_caption(entry):
+    return entry.get_attribute('caption')
+
+def has_caption(entry):
+    return entry.has_attribute('caption')
+
+def set_caption(entry, caption):
+    entry.set_attribute('caption', caption)
+
+def get_transcription(entry):
+    return entry.get_attribute('transcription')
+
+def has_transcription(entry):
+    return entry.has_attribute('transcription')
+
+def set_transcription(entry, text):
+    entry.set_attribute('transcription', text)
+
+
 class TestLoader(unittest.TestCase):
 # TODO:
 # test
@@ -168,41 +206,41 @@ class TestLoader(unittest.TestCase):
         (p1, p2) = panels
         self.assertEqual(p1.date, d1)
         self.assertEqual(p2.date, d2)
-        self.assertEqual(p1.has_rating(), False)
-        self.assertEqual(p2.get_rating(), ':(')
+        self.assertEqual(get_rating(p1), None)
+        self.assertEqual(get_rating(p2), ':(')
         e1, e2 = p1.get_entries()
         e3, e4 = p2.get_entries()
 
-        self.assertEqual(e1.time.date(), date(2020, 2, 4))
-        self.assertEqual(e1.time.time(), time(1))
-        self.assertEqual(e1.time.utcoffset(), timedelta(hours=8))
+        self.assertEqual(e1.date_time.date(), date(2020, 2, 4))
+        self.assertEqual(e1.date_time.time(), time(1))
+        self.assertEqual(e1.date_time.utcoffset(), timedelta(hours=8))
         self.assertEqual(e1.insight, False)
         self.assertEqual(e1.get_data(), 'First example')
         self.assertEqual(e1.get_raw_data(), b'First example')
 
         text = 'Flareons are like too fluffy IMO'
-        self.assertEqual(e2.time.date(), date(2022, 2, 5))
-        self.assertEqual(e2.time.time(), time(2))
-        self.assertEqual(e2.time.utcoffset(), timedelta(hours=-8))
+        self.assertEqual(e2.date_time.date(), date(2022, 2, 5))
+        self.assertEqual(e2.date_time.time(), time(2))
+        self.assertEqual(e2.date_time.utcoffset(), timedelta(hours=-8))
         self.assertEqual(e2.insight, True)
         self.assertEqual(e2.get_data(), text)
         self.assertEqual(e2.get_raw_data(), text.encode('ascii'))
 
-        self.assertEqual(e3.time.date(), d2)
-        self.assertEqual(e3.time.time(), time(2, 2))
-        self.assertEqual(e3.time.utcoffset(), timedelta(0))
+        self.assertEqual(e3.date_time.date(), d2)
+        self.assertEqual(e3.date_time.time(), time(2, 2))
+        self.assertEqual(e3.date_time.utcoffset(), timedelta(0))
         self.assertEqual(e3.insight, False)
         self.assertEqual(e3.get_data(), 'Second example')
         self.assertEqual(e3.get_raw_data(), b'Second example')
 
-        self.assertEqual(e4.time.date(), d2)
-        self.assertEqual(e4.time.time(), time(12, 34, 56))
-        self.assertEqual(e4.time.utcoffset(), timedelta(0))
+        self.assertEqual(e4.date_time.date(), d2)
+        self.assertEqual(e4.date_time.time(), time(12, 34, 56))
+        self.assertEqual(e4.date_time.utcoffset(), timedelta(0))
         self.assertEqual(e4.insight, False)
         self.assertEqual(e4.get_data(), 'Vaporeons are great')
         self.assertEqual(e4.get_raw_data(), b'Vaporeons are great')
-        f.unlink()
-        flareon.unlink()
+        os.unlink(f)
+        os.unlink(flareon)
 
     def test_entry_time(self):
         pass
@@ -210,6 +248,7 @@ class TestLoader(unittest.TestCase):
     def test_attributes(self):
         d1 = date(2021, 8, 10)
         obj = make_backup([d1], tz='+08:00')
+        obj['paths'] = ['fig']
         add_entries(
             obj,
             [[
@@ -220,22 +259,60 @@ class TestLoader(unittest.TestCase):
                 },
                 {
                     'time': '10:00',
-                    'type': 'tex',
+                    'type': 'markdown',
+                    'title': 'The most beautiful equation ever',
                     'data': '$e^{i\\pi} + 1 = 0$'
                 },
+                {
+                    'time': '10:00',
+                    'caption': 'A beautiful diagram',
+                    'input': 'fig1.jpg'
+                },
+                {
+                    'time': '12:00',
+                    'transcription': 'Transcription of something',
+                    'input': 'fig2.jpg'
+                }
             ]])
         f = ROOT / '0.json'
+        figs = ROOT / 'fig'
+        fig1 = figs / 'fig1.jpg'
+        fig2 = figs / 'fig2.jpg'
         write_json(f, obj)
+        os.mkdir(figs)
+        write_file(fig1, b'not really jpeg hehe')
+        write_file(fig2, b'again not jpeg')
 
         (p1,) = processor.load_json(f, base_dir=ROOT)
-        e1, e2 = p1.entries()
+        e1, e2, e3, e4 = p1.entries()
 
-        # Question (None by default)
-        self.assertTrue(e1.has_question())
-        self.assertEqual(e1.get_question(), 'Are you sus?')
-        self.assertFalse(e2.has_question())
+        # Question (unset by default)
+        self.assertTrue(has_question(e1))
+        self.assertEqual(get_question(e1), 'Are you sus?')
+        for e in e2, e3, e4:
+            self.assertFalse(e.has_attribute('question'))
 
-        f.unlink()
+        # Title (defaults to None)
+        self.assertTrue(e2.has_title())
+        self.assertEqual(e2.get_title(), 'The most beautiful equation ever')
+        for e in e1, e3, e4:
+            self.assertFalse(e.has_title())
+            self.assertIs(e.get_title(), None)
+
+        # Caption (unset by default)
+        self.assertTrue(has_caption(e3))
+        self.assertEqual(get_caption(e3), 'A beautiful diagram')
+        for e in e1, e2, e4:
+            self.assertFalse(has_caption(e))
+
+        # Transcription (unset by default)
+        self.assertTrue(has_transcription(e4))
+        self.assertEqual(get_transcription(e4), 'Transcription of something')
+        for e in e1, e2, e3:
+            self.assertFalse(has_transcription(e))
+
+        os.unlink(f)
+        shutil.rmtree(figs)
 
     def test_lookup_paths(self):
         #
@@ -274,13 +351,13 @@ class TestLoader(unittest.TestCase):
         add_entries(obj, [[edict]])
         f = ROOT / '0.json'
         write_json(f, obj)
-        a.mkdir()
+        os.mkdir(a)
         write_file(a1, 'a1')
-        b.mkdir()
+        os.mkdir(b)
         write_file(b1, 'b1')
         write_file(b2, 'b2')
-        n1.mkdir()
-        n2.mkdir()
+        os.mkdir(n1)
+        os.mkdir(n2)
         write_file(b3, 'b3')
         write_file(b4, 'b4')
 
@@ -302,56 +379,50 @@ class TestLoader(unittest.TestCase):
         self.assertEqual(entry.get_source(), str(b2))
         self.assertEqual(entry.get_data(), 'b2')
 
-        # Option removed
+        other_paths = [paths.pop(), 'b/n*']
+        obj = make_backup([d1, d2])
+        add_entries(
+            obj,
+            [[
+                {
+                    'time': '04:00',
+                    'input': '2.txt'
+                },
+                {
+                    'time': '05:00',
+                    'input': '3.txt'
+                },
+                {
+                    'time': '06:00',
+                    'input': '4.txt'
+                }
+            ]])
+        write_json(f, obj)
+        p1, _ = processor.load_json(f, base_dir=ROOT, paths=other_paths)
+        for entry, filepath, content in zip(
+                p1.entries(),
+                (b2, b3, b4),
+                ('b2', 'b3', 'b4')):
+            self.assertEqual(entry.get_source(), str(filepath))
+            self.assertEqual(entry.get_data(), content)
 
-        # other_paths = [paths.pop(), 'b/n*']
-        # obj = make_backup([d1, d2])
-        # add_entries(
-        #     obj,
-        #     [[
-        #         {
-        #             'time': '04:00',
-        #             'input': '2.txt'
-        #         },
-        #         {
-        #             'time': '05:00',
-        #             'input': '3.txt'
-        #         },
-        #         {
-        #             'time': '06:00',
-        #             'input': '4.txt'
-        #         }
-        #     ]])
-        # write_json(f, obj)
-        # p1, _ = processor.load_json(f, base_dir=ROOT, paths=other_paths)
-        # for entry, filepath, content in zip(
-        #         p1.entries(),
-        #         (b2, b3, b4),
-        #         ('b2', 'b3', 'b4')):
-        #     self.assertEqual(entry.get_source(), str(filepath))
-        #     self.assertEqual(entry.get_data(), content)
+        obj['data'][0]['entries'][0]['input'] = 'b/2.txt'
+        write_json(f, obj)
+        with self.assertRaises(processor.LoadError):
+            processor.load_json(f, base_dir=ROOT, paths=other_paths)
+        other_paths.append('.')
+        processor.load_json(f, base_dir=ROOT, paths=other_paths)
 
-        # obj['data'][0]['entries'][0]['input'] = 'b/2.txt'
-        # write_json(f, obj)
-        # with self.assertRaises(processor.LoadError):
-        #     processor.load_json(f, base_dir=ROOT, paths=other_paths)
-        # other_paths.append('.')
-        # processor.load_json(f, base_dir=ROOT, paths=other_paths)
-
-        f.unlink()
+        os.unlink(f)
         shutil.rmtree(a)
         shutil.rmtree(b)
 
     def test_path_searching(self):
         pass
 
-    def test_load_data(self):
-        # TODO:
-        # Test if load_data() would change the dict in any way
-        obj = make_backup(['2021-12-17'])
-        saved = copy.deepcopy(obj)
-        # Test if setting time zone in panel would change the time zone
-        # Test if
+    def test_meta_attributes(self):
+        # Test whether time modified can be inferred from created time
+        pass
 
 
 class TestDumper(unittest.TestCase):
@@ -370,7 +441,7 @@ class TestDumper(unittest.TestCase):
         tz = timezone(timedelta(hours=8))
         p1 = Panel(date(2021, 12, 16))
         p2 = Panel(date(2021, 12, 17))
-        p2.set_rating('QAQ')
+        set_rating(p2, 'QAQ')
         e1 = Entry(datetime(2021, 12, 16, 16, 42, tzinfo=tz))
         e1.set_type('png')
         e1.set_source(e1_file)
@@ -384,28 +455,22 @@ class TestDumper(unittest.TestCase):
         p1.add_entry(e2)
         p2.add_entry(e3)
 
-        outdir.mkdir()
-        # to mimic the old JSONDumper behavior we have to explicitly
-        # provide the paths to be ['assets']
-        processor.dump_json([p1, p2], outdir / 'backup.json', base_dir=outdir,
-                            paths=['assets'])
-
+        processor.dump_json([p1, p2], outdir)
         data = read_json(outdir / 'backup.json')
         (p1_json, p2_json), attrs = split_data(data)
-        # self.assertRegex(attrs['desc'],
-        #                  r'\AThis is a backup file exported at .*\.\Z')
-        # attrs.pop('desc')
+        self.assertRegex(attrs['desc'],
+                         r'\AThis is a backup file exported at .*\.\Z')
+        attrs.pop('desc')
         self.assertEqual(attrs, {'paths': ['assets']})
 
         e1_json, e2_json = p1_json.pop('entries')
-        e1_path = Path('assets', '2021-12-16_16-42-00')
+        e1_path = Path('assets', '2021-12-16_16-42-00_1.png')
         self.assertEqual(b'a.png', read_file(outdir / e1_path, True))
         self.assertEqual(p1_json, {'date': '2021-12-16'})
         self.assertEqual(
             e1_json, {
                 'time': '16:42+08:00',
                 'input': str(e1_path.name),
-                'type': 'png'
             })
         self.assertEqual(
             e2_json, {
@@ -433,8 +498,8 @@ class TestDumper(unittest.TestCase):
 
         loaded = processor.load_json(outdir / 'backup.json',
                                      base_dir=outdir)
-        self.assertTrue(p1 == loaded[0])
-        self.assertTrue(p2 == loaded[1])
+        self.assertTrue(panels_equal(p1, loaded[0]))
+        self.assertTrue(panels_equal(p2, loaded[1]))
         e3_file.unlink()
         e3_file.parent.rmdir()
         e1_file.unlink()
@@ -492,4 +557,9 @@ class TestDumper(unittest.TestCase):
 #
 #     (check for alike cases for ? and []??  Or is it unnecessary...?)
 #
+        pass
+
+    def test_meta_attributes(self):
+        # Test whether the inferred modified attribute is ignored
+        # when exporting
         pass
