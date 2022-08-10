@@ -7,15 +7,17 @@
 .. module:: psp.stringify
    :synopsis: Formatter stuff
 
+.. TODO Examples --- we know what classes are in here okay
+
 This module defines classes :class:`PanelFormatter` and
-:class:`EntryFormatter` for printing panels that mimics the interface
-from the app Perspective.
+:class:`EntryFormatter` for formatting panels and entries as strings
+that mimics the interface from the app Perspective.
 
----------
-Formatter
----------
+----------
+Base class
+----------
 
-.. class:: Formatter
+.. class:: Formatter(abc.ABC)
 
    An `abstract base class`_ for formatter classes.
 
@@ -86,11 +88,11 @@ Formatter
 
       Low-level wrapping.
 
-   .. method:: wrap_paragraph(text, *, prefix='', fillchar=' ', return_empty=False)
+   .. method:: wrap_paragraph(text, *, prefix='', fillchar=' ')
 
       Wrap left-aligned text.
 
-   .. method:: center_paragraph(text, *, fillchar=' ', return_empty=False)
+   .. method:: center_paragraph(text, *, fillchar=' ')
 
       Wrap centered text.
 
@@ -101,9 +103,9 @@ Formatter
 .. TODO: Give subclass examples
 
 
----------------
-Implementations
----------------
+-------------------------
+Formatter implementations
+-------------------------
 
 .. class:: PanelFormatter(Formatter)
 
@@ -166,8 +168,8 @@ Convenience Interface
 
 .. function:: print_panel(panel, file=None, **kwargs)
 
-   Calls ``print(format_panel(panel, **kwargs), file=file)
+   Calls ``print(format_panel(panel, **kwargs), file=file)``
 
 .. function:: print_entry(entry, file=None, **kwargs)
 
-   Calls ``print(format_entry(entry, **kwargs), file=file)
+   Calls ``print(format_entry(entry, **kwargs), file=file)``

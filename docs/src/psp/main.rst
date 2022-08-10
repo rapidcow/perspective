@@ -26,15 +26,11 @@ Default configuration::
         def configure(self, **kwargs):
             super().configure(**kwargs)
 
-        def load_json(self, file, encoding):
-            with open(file, encoding=encoding) as fp:
-                return json.load(fp)
+        def load_all(self, file, encoding):
+            return super().load(file, encoding=encoding)
 
-        def load_all(self, data):
-            return super().load_data(data)
-
-        def load_single(self, data, date):
-            return super().load_data(data, date=date)
+        def load_single(self, file, encoding, date):
+            return super().load(file, date=date, encoding=encoding)
 
 
     # TODO: add explanation and stuff
@@ -52,7 +48,7 @@ Default configuration::
 
         def __init__(self, width):
             self.formatter = PanelFormatter(width)
-            self.formatter.configure(base_dir=os.getcwd())
+            self.formatter.configure(base_dir='.')
 
         def print(self, panel, file):
             print(self.formatter.format(panel), file=file)
@@ -60,3 +56,6 @@ Default configuration::
 
     # The 'calendar' command would use this
     firstweekday = calendar.MONDAY
+
+.. TODO base_dir doesn't have to be os.getcwd() ("." would do!)
+        no need to import os either
