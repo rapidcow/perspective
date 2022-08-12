@@ -1,0 +1,32 @@
+# https://setuptools.pypa.io/en/latest/userguide/pyproject_config.html
+# https://flit.pypa.io/en/latest/pyproject_toml.html
+# https://packaging.python.org/en/latest/tutorials/packaging-projects/#creating-pyproject-toml
+[build-system]
+requires = ["setuptools>=61.0", "setuptools-scm"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "perspe"
+description = "A Python package for backing up entries in the iOS app Perspective"
+readme = "README.md"
+requires-python = ">=3.8"
+authors = [
+    { name="rapidcow", email="thegentlecow@gmail.com" },
+]
+classifiers = [
+    "Programming Language :: Python :: 3",
+]
+# XXX: What do I write here? O.o
+# https://python-poetry.org/docs/pyproject/
+license = {text="GPL-3.0-or-later"}
+dynamic = ["version"]
+
+[project.urls]
+Documentation = "https://perspe.readthedocs.io/"
+Source = "https://github.com/rapidcow/perspective/"
+
+[tool.setuptools]
+packages = ["psp", "psp.processors", "psp.extensions"]
+
+[tool.setuptools.dynamic]
+version = { attr="psp.__version__" }

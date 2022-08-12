@@ -1,3 +1,6 @@
+<!-- TODO: copy the installation procedure to keep things in one place
+and DON'T address basicproc.py!!! -->
+
 # `psp` --- A rework of the `basicproc.py` program
 
 (Go to [perspective](https://github.com/rapidcow/perspective/) for
