@@ -439,6 +439,7 @@ class TestJSONLoader(unittest.TestCase):
                         d = {}
                         JSONDumper().write_entry_time(d, base)
                         s = d['time']
+                        break
                 return super().parse_time(s, tzinfo, fold)
 
         good_naive_time.extend(['08:00 AM', '04:00 PM'])
@@ -699,7 +700,7 @@ class TestJSONLoader(unittest.TestCase):
 
 
 class TestJSONDumper(unittest.TestCase):
-    pass
+    """Test the JSONDumper class."""
 
 
 class TestInferenceManager(unittest.TestCase):

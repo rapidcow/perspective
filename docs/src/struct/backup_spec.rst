@@ -4,9 +4,9 @@
 :Author: rapidcow
 :Date: Nov 29, 2021?
 
-.. contents::
-   :local:
-   :depth: 1
+.. .. contents::
+..    :local:
+..    :depth: 1
 
 --------
 Abstract

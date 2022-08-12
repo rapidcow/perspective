@@ -1110,8 +1110,7 @@ class JSONDumper(Configurable):
             if not isinstance(input_path, str):
                 raise TypeError(f'input path should be a str, not '
                                 f'{input_path!r}')
-            # even if we don't export, we still gotta make sure the
-            # one we claim to have exported is good
+            # ensure the input path get_input_path() gave was ok
             candidates = find_paths(input_path, base_dir, paths)
             try:
                 first = next(candidates)
