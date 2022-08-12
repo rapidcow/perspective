@@ -31,9 +31,9 @@ because i don't have time to write a new one UGHH DX)
    from psp.processors.json_processor import *
 
 
-.. contents::
-   :local:
-   :depth: 2
+.. .. contents::
+..    :local:
+..    :depth: 2
 
 
 -----------
@@ -281,12 +281,15 @@ two things (opening a file and processing).
 
    .. method:: split_data(data)
 
-      Split the data and returns a tuple of ``(panels, attrs)``.
-      If *data* doesn't have ``panels``, the *panels* list is returned as
-      ``[]``.
+      Split the data and returns a tuple of ``(panels, attrs)``, the former
+      being a list under the `panel` key and the latter being a *dict*
+      constructed keys other than `panel`.  If *data* doesn't have
+      ``panels``, *panels* is returned as ``[]``.
 
       The two attributes :meth:`split_data` guarantees to be set in
-      *attrs* are the ``tz`` and ``paths`` attributes.
+      *attrs* are the ``tz`` and ``paths`` attributes.  Validation is
+      performed on them if they were present in *data* before splitting
+      according to the following rules:
 
       *  ``tz`` must be a *str*, otherwise defaults to None
       *  ``paths`` must be a *list* of *str*, otherwise defaults to ``[.]``
@@ -1483,8 +1486,8 @@ representations.
 
 .. _json_dumper_options:
 
-Options
-^^^^^^^
+Dumper Options
+^^^^^^^^^^^^^^
 
 ``base_dir`` (dumper)
 '''''''''''''''''''''

@@ -14,8 +14,8 @@ The :mod:`basicproc` Module
    <https://gist.github.com/rapidcow/a0490a57965061ae06e5c43b2c97e46c>`__
 
 
-.. contents::
-   :local:
+.. .. contents::
+..    :local:
 
 
 --------

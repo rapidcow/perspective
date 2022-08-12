@@ -9,7 +9,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: The Perspective Library \n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2022-06-04 03:52+0800\n"
+"POT-Creation-Date: 2022-08-13 05:49+0800\n"
 "PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
 "Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
 "Language-Team: LANGUAGE <LL@li.org>\n"
@@ -18,469 +18,1738 @@ msgstr ""
 "Content-Transfer-Encoding: 8bit\n"
 "Generated-By: Babel 2.10.1\n"
 
-#: ../../psp/bigentry.rst:5
+#: ../../src/psp/exts/bigentry.rst:5
 msgid ":mod:`extensions.bigentry` --- Blog-style entries"
 msgstr ""
 
-#: ../../psp/bigentry.rst:10
+#: ../../src/psp/exts/bigentry.rst:10
 msgid ""
 "This module provides support for writing entries that include multiple "
 "files!"
 msgstr ""
 
-#: ../../psp/bigentry.rst:15
+#: ../../src/psp/exts/bigentry.rst:12
+msgid ""
+"Big entries are a subset of binary entries---entries whose encoding is "
+"``binary``.  The type of a big entry must be one of the registered "
+"*archive formats*.  (Note that despite the name \"archive *format*\", it "
+"is not an entry format, so you must use get_type() and set_type() and not"
+" their counterparts for format.)"
+msgstr ""
+
+#: ../../src/psp/exts/bigentry.rst:18
+msgid ""
+"While a normal entry has a str or a list for its *data* field, a big "
+"entry has a dict instead. That dict must provide the data of the archive "
+"and the archive path to the *main file*. The main file is a text file "
+"located in the archive that represents the main content of the entry."
+msgstr ""
+
+#: ../../src/psp/exts/bigentry.rst:26
+msgid "Abstract base class for big entry archive type manager."
+msgstr ""
+
+#: ../../src/psp/exts/bigentry.rst:30
 msgid ":class:`Entry <psp.types.Entry>` subclass that uses an archive format."
 msgstr ""
 
-#: ../../psp/bigentry.rst:19
+#: ../../src/psp/exts/bigentry.rst:34
 msgid ""
 ":class:`JSONLoader <psp.processors.json_processor.JSONLoader>` subclass "
 "that reads big entries."
 msgstr ""
 
-#: ../../psp/bigentry.rst:24
+#: ../../src/psp/exts/bigentry.rst:39
 msgid ""
 ":class:`JSONDumper <psp.processors.json_processor.JSONDumper>` subclass "
 "that writes big entries."
 msgstr ""
 
-#: ../../psp/dtypes.rst:5
-msgid ":mod:`datatypes` --- File type and extension inference"
+#: ../../src/psp/exts/captions.rst:5
+msgid ":mod:`extensions.captions` --- Entries with captions and stuff"
 msgstr ""
 
-#: ../../psp/dtypes.rst:11
+#: ../../src/psp/exts/captions.rst:10
 msgid ""
-"The main purpose of this module is to handle type inferences.  For "
-"example, if you write"
+"I don't know about you, but whenever I see *this* with stringify it "
+"always throws me off:"
 msgstr ""
 
-#: ../../psp/dtypes.rst:22
+#: ../../src/psp/exts/captions.rst:22
 msgid ""
-"in your entry of a backup file, you would want the loader to know that "
-"this is text and not pure binary data is stored, whereas if you write"
+"It says nothing about what the file contains!  If only there was a way to"
+" add alt text or something so that at least I know what it says..."
 msgstr ""
 
-#: ../../psp/dtypes.rst:32
+#: ../../src/psp/exts/captions.rst:25
 msgid ""
-"you would want the loader to know that this is pure binary data and is "
-"also a JPEG file.  This module helps to do exactly that, but the exact "
-"implementation inference rules are written in the "
-":mod:`psp.processors.json_processor` module.  Here I will only describe "
-"the functionalities of this module."
+"Well that's what this module does precisely.  With this extension added, "
+"you can write"
 msgstr ""
 
-#: ../../psp/dtypes.rst:46
-msgid "Registration"
+#: ../../src/psp/exts/captions.rst:36
+msgid "in your backup file, which will produce this!"
 msgstr ""
 
-#: ../../psp/dtypes.rst:48
+#: ../../src/psp/exts/captions.rst:50
 msgid ""
-"Lots and lots of names, common or whatnot, and you can check them by "
-"running the :func:`has_type()` function."
+"This module defines three attributes at panel level: *caption* (as I've "
+"just shown), *transcription*, and *title*.  Transcription may be used for"
+" a plain text representation of binary files like images and audios.  And"
+" as for titles, well, sometimes I like to title my entries, sort of like "
+"vignettes and blog posts so... that's why."
 msgstr ""
 
-#: ../../psp/dtypes.rst:53
+#: ../../src/psp/exts/index.rst:5
 msgid ""
-"Register a data type of with *name*, a string that has underscore-"
-"separated names (like ``stuff_xml`` and ``big_cow``)."
+":mod:`extensions` --- Extensions that may or may not be so useful to "
+"everyone"
 msgstr ""
 
-#: ../../psp/dtypes.rst:59
+#: ../../src/psp/exts/index.rst:7
 msgid ""
-"Delete the data type with *name*.  ``ValueError`` is raised if the name "
-"was not registered."
+"This module stores various additional functionalities beyond the basic "
+"needs of backing up Perspective entries.  Since not everyone wants all of"
+" these functionalities overloaded by default, these are broken down into "
+"optional plugins so you only have to pick what you want!"
 msgstr ""
 
-#: ../../psp/dtypes.rst:65
-msgid "Lookup Functions"
+#: ../../src/psp/exts/index.rst:12
+msgid "See the :ref:`Extensions tutorial <exttut>` to get started."
 msgstr ""
 
-#: ../../psp/dtypes.rst:67
+#: ../../src/psp/exts/metadata.rst:5
+msgid ":mod:`extensions.metadata` --- Entries with metadata"
+msgstr ""
+
+#: ../../src/psp/exts/metadata.rst:10
 msgid ""
-"On a technical note, most of the lookup functions here are cached with "
-"``functools.lru_cache()``."
+"This module defines entries with meta attributes!  The *meta* attribute "
+"at entry level is used by the JSON loader and dumper class for processing"
+" these attributes."
 msgstr ""
 
-#: ../../psp/dtypes.rst:72
-msgid "Return whether the given type ``name`` has been registered."
+#: ../../src/psp/ftypes.rst:5
+msgid ":mod:`filetypes` --- Defining file types"
 msgstr ""
 
-#: ../../psp/dtypes.rst:74
-msgid "Example:"
+#: ../../src/psp/ftypes.rst:15
+msgid ""
+"Set the current file type context.  *context* be a "
+":class:`FileTypeContext` instance."
 msgstr ""
 
-#: ../../psp/index.rst:3
-msgid "The :mod:`psp` Library"
+#: ../../src/psp/ftypes.rst:20
+msgid ""
+"Get the current file type context.  If no context was set for this thread"
+" (?), a new :class:`FileTypeContext` is created, set, and returned."
+msgstr ""
+
+#: ../../src/psp/ftypes.rst:25
+msgid ""
+"A context manager that temporarily sets the file type context. If "
+"*context* is None, the context is retrieved from :func:`get_context`. "
+"Return the current context on ``__enter__``."
+msgstr ""
+
+#: ../../src/psp/ftypes.rst:31
+msgid ""
+"Cool context objects wow (*totally* not a ripoff of "
+":class:`decimal.Context`!!1!)"
+msgstr ""
+
+#: ../../src/psp/ftypes.rst:36
+msgid "Return a copy of the current context instance."
+msgstr ""
+
+#: ../../src/psp/index.rst:3
+msgid "The :mod:`psp` Package"
 msgstr ":mod:`psp` 库"
 
-#: ../../psp/index.rst:5
+#: ../../src/psp/index.rst:5
 msgid "Modules!"
 msgstr ""
 
-#: ../../psp/json_proc.rst:5
+#: ../../src/psp/index.rst:7
+msgid ""
+"also please don't blame me for writing some too technically or "
+"informally, i've already spent weeks on this and i'm going insane already"
+msgstr ""
+
+#: ../../src/psp/json_proc.rst:5
 msgid ":mod:`processors.json_processor` --- JSON backup file processors"
 msgstr ""
 
-#: ../../psp/json_proc.rst:10
+#: ../../src/psp/json_proc.rst
+msgid "Author"
+msgstr ""
+
+#: ../../src/psp/json_proc.rst:7
+msgid "rapidcow <thegentlecow@gmail.com>"
+msgstr ""
+
+#: ../../src/psp/json_proc.rst:12
 msgid ""
-"Most of these classes and functions are imported into ``processors``, so "
-"practically you can just write::"
+"Some of the classes and functions are imported into the :mod:`processors`"
+" module.  Specifically::"
 msgstr ""
 
-#: ../../psp/json_proc.rst:17
-msgid "instead of the whole long name..."
+#: ../../src/psp/json_proc.rst:18
+msgid ""
+"can be used instead of the whole long name. Also for the examples below I"
+" used ::"
 msgstr ""
 
-#: ../../psp/json_proc.rst:26
+#: ../../src/psp/json_proc.rst:23
+msgid "to pollute the public namespace.  You're welcome!"
+msgstr ""
+
+#: ../../src/psp/json_proc.rst:25
+msgid ""
+"Also, if you're new to backup files, please read the \"Backup File "
+"Structure\" section from :ref:`basicproc` for my *awesome* explanation!  "
+"(jk it's there because i don't have time to write a new one UGHH DX)"
+msgstr ""
+
+#: ../../src/psp/json_proc.rst:41
+msgid "An Overview"
+msgstr ""
+
+#: ../../src/psp/json_proc.rst:43
+msgid ""
+"The loading and dumping processes are unironically similar to, or even "
+"dare I say entirely inspired by, :func:`json.load()` and "
+":func:`json.dump()`. The biggest difference being that instead of just "
+"loading from a file into a Python *dict*, we process it and return a "
+"stream of |Panel| objects.  Similarly, instead of taking a Python object "
+"and dumping it to a file, we accept a stream of |Panel| objects, convert "
+"them back to panel *dict*\\ s, and dump it to a file.  These operations "
+"are, at the highest level, publicly exposed as the "
+":meth:`JSONLoader.load` and :meth:`JSONDumper.dump` methods, though in "
+"case you don't want too much nuances then we also have :func:`load_json` "
+"and :func:`dump_json`, for convenience, and only convenience, really.  (I"
+" was glad to learn the other day that the :mod:`json` module called its "
+"counterparts :class:`~json.JSONDecoder` and :class:`~json.JSONEncoder`, "
+"so... that's a relief for me now that I'm not confusing anyone here!)"
+msgstr ""
+
+#: ../../src/psp/json_proc.rst:59
+msgid ""
+"Okay, but seriously, I might write a longer overview here in the future. "
+"But right now, just use the examples I gave elsewhere please..."
+msgstr ""
+
+#: ../../src/psp/json_proc.rst:65
 msgid "Loading"
 msgstr ""
 
-#: ../../psp/json_proc.rst:30
-msgid "Exception raised by :class:`JSONLoader`."
+#: ../../src/psp/json_proc.rst:67
+msgid "Usually you want to use a loader like this::"
 msgstr ""
 
-#: ../../psp/json_proc.rst:34
-msgid "Warning warned or raised by :class:`JSONLoader`."
+#: ../../src/psp/json_proc.rst:74
+msgid ""
+"But, well, ``base_dir`` totally depends on where you store external files"
+" that ``input`` paths refer to.  Sometimes you might skip this as long as"
+" you're fine with the default value (being the current working "
+"directory)."
 msgstr ""
 
-#: ../../psp/json_proc.rst:38
-msgid "The JSON backup file loader class."
+#: ../../src/psp/json_proc.rst:78
+msgid ""
+"Now take heed of my words... **always use an encoding**.  I learned it "
+"the hard way, but not providing an encoding could lead to issues since "
+"not every computer in this world has UTF-8 as its default.  This is also "
+"why I made it so that :meth:`JSONLoader.load` only takes a file object, "
+"otherwise things will get clustered and we're making the method perform "
+"two things (opening a file and processing)."
 msgstr ""
 
-#: ../../psp/json_proc.rst:40
+#: ../../src/psp/json_proc.rst:89
+msgid ""
+"Error that occured while dumping a JSON file; subclass of "
+":class:`ValueError`."
+msgstr ""
+
+#: ../../src/psp/json_proc.rst:94
+msgid "Warning that occured while dumping a JSON file."
+msgstr ""
+
+#: ../../src/psp/json_proc.rst:98
+msgid ""
+"The JSON backup file loader class.  This class inherits from "
+":class:`~psp.types.Configurable`, so you can technically use all the "
+"options there, although we will stick to the |Configurable.configure| "
+"method in all the following examples since that has stuck around for a "
+"while."
+msgstr ""
+
+#: ../../src/psp/json_proc.rst:104
 msgid ""
 "The constructor takes no positional arguments, and all keyword arguments "
-"are passed to the :meth:`configure()` method."
+"are passed to the :meth:`configure` method."
 msgstr ""
 
-#: ../../psp/json_proc.rst:45
-msgid "Configure options.  The following are a table of all options."
+#: ../../src/psp/json_proc.rst:109 ../../src/psp/json_proc.rst:934
+msgid ""
+"Configure options. This is inherited from "
+":class:`~psp.types.Configurable`."
 msgstr ""
 
-#: ../../psp/json_proc.rst:48 ../../psp/stringify.rst:37
+#: ../../src/psp/json_proc.rst:112 ../../src/psp/json_proc.rst:937
+msgid "The following is a table of all options."
+msgstr ""
+
+#: ../../src/psp/json_proc.rst:115 ../../src/psp/json_proc.rst:940
+#: ../../src/psp/stringify.rst:39
 msgid "Option"
 msgstr ""
 
-#: ../../psp/json_proc.rst:48 ../../psp/stringify.rst:37
+#: ../../src/psp/json_proc.rst:115 ../../src/psp/json_proc.rst:940
+#: ../../src/psp/stringify.rst:39
 msgid "Description"
 msgstr ""
 
-#: ../../psp/json_proc.rst:48 ../../psp/stringify.rst:37
+#: ../../src/psp/json_proc.rst:115 ../../src/psp/json_proc.rst:940
+#: ../../src/psp/stringify.rst:39
 msgid "Type"
 msgstr ""
 
-#: ../../psp/json_proc.rst:48 ../../psp/stringify.rst:37
+#: ../../src/psp/json_proc.rst:115 ../../src/psp/json_proc.rst:940
+#: ../../src/psp/stringify.rst:39
 msgid "Default"
 msgstr ""
 
-#: ../../psp/json_proc.rst:50
-msgid "``check_panel_order``"
-msgstr ""
-
-#: ../../psp/json_proc.rst:50
-msgid "If true, warn on panel dates that are not strictly increasing. (1)"
-msgstr ""
-
-#: ../../psp/json_proc.rst:50 ../../psp/json_proc.rst:55
-#: ../../psp/json_proc.rst:60 ../../psp/json_proc.rst:64
-#: ../../psp/json_proc.rst:68 ../../psp/json_proc.rst:77
-msgid "*bool*"
-msgstr ""
-
-#: ../../psp/json_proc.rst:50 ../../psp/json_proc.rst:55
-#: ../../psp/json_proc.rst:77
-msgid "``True``"
-msgstr ""
-
-#: ../../psp/json_proc.rst:55
-msgid "``check_entry_order``"
-msgstr ""
-
-#: ../../psp/json_proc.rst:55
-msgid "If true, warn on entry times that are not consistently increasing. (2)"
-msgstr ""
-
-#: ../../psp/json_proc.rst:60
-msgid "``check_panel_duplicates``"
-msgstr ""
-
-#: ../../psp/json_proc.rst:60
-msgid "If true, warn on panels that have repeated dates. (3)"
-msgstr ""
-
-#: ../../psp/json_proc.rst:60 ../../psp/json_proc.rst:64
-#: ../../psp/json_proc.rst:68
-msgid "``False``"
-msgstr ""
-
-#: ../../psp/json_proc.rst:64
-msgid "``suppress_warnings``"
-msgstr ""
-
-#: ../../psp/json_proc.rst:64
-msgid "If true, all :exc:`LoadWarning` is suppressed."
-msgstr ""
-
-#: ../../psp/json_proc.rst:68
-msgid "``error_on_warning``"
-msgstr ""
-
-#: ../../psp/json_proc.rst:68
-msgid "If true, all :exc:`LoadWarning` is raised as exceptions. (4)"
-msgstr ""
-
-#: ../../psp/json_proc.rst:73
-msgid "``paths``"
-msgstr ""
-
-#: ../../psp/json_proc.rst:73
-msgid "Extra lookup paths for parsing the *input* field for entries."
-msgstr ""
-
-#: ../../psp/json_proc.rst:73
-msgid "iter\\ able"
-msgstr ""
-
-#: ../../psp/json_proc.rst:73
-msgid "``()``"
-msgstr ""
-
-#: ../../psp/json_proc.rst:77
-msgid "``warn_ambiguous_paths``"
-msgstr ""
-
-#: ../../psp/json_proc.rst:77
-msgid "If true, warn for paths are found more than once."
-msgstr ""
-
-#: ../../psp/json_proc.rst:81
+#: ../../src/psp/json_proc.rst:117 ../../src/psp/json_proc.rst:942
 msgid "``base_dir``"
 msgstr ""
 
-#: ../../psp/json_proc.rst:81
-msgid "Base directory for relative *input* paths"
+#: ../../src/psp/json_proc.rst:117
+msgid "Base directory for relative *input* paths."
 msgstr ""
 
-#: ../../psp/json_proc.rst:81
-msgid "*str* or ``os.PathLike``"
+#: ../../src/psp/json_proc.rst:117 ../../src/psp/json_proc.rst:942
+msgid "*str* or :class:`os.PathLike`"
 msgstr ""
 
-#: ../../psp/json_proc.rst:81
-msgid "``os.getcwd()``"
+#: ../../src/psp/json_proc.rst:117 ../../src/psp/json_proc.rst:942
+msgid "``'.'``"
 msgstr ""
 
-#: ../../psp/json_proc.rst:84
+#: ../../src/psp/json_proc.rst:120 ../../src/psp/json_proc.rst:726
+#: ../../src/psp/json_proc.rst:946
 msgid "``json_options``"
 msgstr ""
 
-#: ../../psp/json_proc.rst:84
-msgid "Keyword arguments to pass to ``json.loads()``"
+#: ../../src/psp/json_proc.rst:120
+msgid "Keyword arguments to pass to ``json.loads()``."
 msgstr ""
 
-#: ../../psp/json_proc.rst:84
+#: ../../src/psp/json_proc.rst:120 ../../src/psp/json_proc.rst:145
+#: ../../src/psp/json_proc.rst:946
 msgid "*dict*"
 msgstr ""
 
-#: ../../psp/json_proc.rst:84
+#: ../../src/psp/json_proc.rst:120 ../../src/psp/json_proc.rst:946
 msgid "``{}``"
 msgstr ""
 
-#: ../../psp/json_proc.rst:88
+#: ../../src/psp/json_proc.rst:123 ../../src/psp/json_proc.rst:491
+msgid "``check_panel_order``"
+msgstr ""
+
+#: ../../src/psp/json_proc.rst:123
+msgid "If true, warn on panel dates that are not strictly increasing. (1)"
+msgstr ""
+
+#: ../../src/psp/json_proc.rst:123 ../../src/psp/json_proc.rst:128
+#: ../../src/psp/json_proc.rst:132 ../../src/psp/json_proc.rst:136
+#: ../../src/psp/json_proc.rst:141 ../../src/psp/json_proc.rst:967
+#: ../../src/psp/json_proc.rst:971
+msgid "*bool*"
+msgstr ""
+
+#: ../../src/psp/json_proc.rst:123 ../../src/psp/json_proc.rst:128
+#: ../../src/psp/json_proc.rst:141
+msgid "``True``"
+msgstr ""
+
+#: ../../src/psp/json_proc.rst:128 ../../src/psp/json_proc.rst:515
+msgid "``check_entry_order``"
+msgstr ""
+
+#: ../../src/psp/json_proc.rst:128
+msgid "If true, warn on entry times that are not increasing. (2)"
+msgstr ""
+
+#: ../../src/psp/json_proc.rst:132 ../../src/psp/json_proc.rst:967
+msgid "``suppress_warnings``"
+msgstr ""
+
+#: ../../src/psp/json_proc.rst:132
+msgid "If true, all :exc:`LoadWarning` is suppressed."
+msgstr ""
+
+#: ../../src/psp/json_proc.rst:132 ../../src/psp/json_proc.rst:136
+#: ../../src/psp/json_proc.rst:967 ../../src/psp/json_proc.rst:971
+msgid "``False``"
+msgstr ""
+
+#: ../../src/psp/json_proc.rst:136 ../../src/psp/json_proc.rst:971
+msgid "``error_on_warning``"
+msgstr ""
+
+#: ../../src/psp/json_proc.rst:136
+msgid "If true, all :exc:`LoadWarning` is raised as exceptions. (3)"
+msgstr ""
+
+#: ../../src/psp/json_proc.rst:141 ../../src/psp/json_proc.rst:621
+msgid "``warn_ambiguous_paths``"
+msgstr ""
+
+#: ../../src/psp/json_proc.rst:141
+msgid "If true, warn for paths are found more than once."
+msgstr ""
+
+#: ../../src/psp/json_proc.rst:145
+msgid "``data_decoders``"
+msgstr ""
+
+#: ../../src/psp/json_proc.rst:145
+msgid "Mapping for decoders of ``data-decoding``."
+msgstr ""
+
+#: ../../src/psp/json_proc.rst:145
+msgid "\\(4)"
+msgstr ""
+
+#: ../../src/psp/json_proc.rst:149 ../../src/psp/json_proc.rst:977
 msgid "Notes:"
 msgstr ""
 
-#: ../../psp/json_proc.rst:91
+#: ../../src/psp/json_proc.rst:152
 msgid ""
 "A warning is issued if ``d1 >= d2`` for any two consecutive panels of "
 "dates ``d1`` and ``d2``."
 msgstr ""
 
-#: ../../psp/json_proc.rst:95
+#: ../../src/psp/json_proc.rst:156
 msgid ""
-"A warning is issued if ``t1 > t2`` for any two consecutive panels of "
-"aware date time ``t1`` and ``t2``.  Note that two entries may have the "
-"same aware date time, but the latter must not be earlier than the former."
+"A warning is issued if ``t1 > t2`` for any two consecutive entries of "
+"times ``t1 and t2`` (converted to UTC).  In particular, main entries and "
+"insight entries (entries whose :attr:`insight` attribute is False and "
+"True respectively) should be ordered *separately* according to the above "
+"rule: either all insight entries follow main entries, or all main entries"
+" follow insight entries.  But if a transition from insight to main or "
+"vice versa occurred more than once, then a warning is issued."
 msgstr ""
 
-#: ../../psp/json_proc.rst:101
-msgid "This has no effect if ``check_panel_order`` is true."
-msgstr ""
-
-#: ../../psp/json_proc.rst:104
+#: ../../src/psp/json_proc.rst:166 ../../src/psp/json_proc.rst:996
 msgid "This has no effect if ``suppress_warnings`` is true."
 msgstr ""
 
-#: ../../psp/json_proc.rst:109
-msgid "Load an archive from *file*."
+#: ../../src/psp/json_proc.rst:169
+msgid "Default value is set to::"
 msgstr ""
 
-#: ../../psp/json_proc.rst:113
+#: ../../src/psp/json_proc.rst:180
 msgid ""
-"These methods are responsible for parsing time-related and can be "
-"overridden.  Default implementation calls their corresponding functions "
-"in :mod:`psp.timeutil`."
+"More on the usage of these options in the :ref:`Options "
+"<json_loader_options>` section."
 msgstr ""
 
-#: ../../psp/json_proc.rst:119
+#: ../../src/psp/json_proc.rst:183
+msgid ""
+"There are two high-level methods used to load an archive: the "
+":meth:`load` method directly loads from a file, and the :meth:`load_data`"
+" method loads from a *dict*.  Note that :meth:`load` ultimately calls "
+":meth:`load_data`, so oftentimes overriding :meth:`load_data` is enough."
+msgstr ""
+
+#: ../../src/psp/json_proc.rst:191
+msgid ""
+"Load an archive from *file*.  The content of the archive is read as a "
+"*dict* and then passed onto :meth:`load_data` with the *date* argument."
+msgstr ""
+
+#: ../../src/psp/json_proc.rst:195
+msgid "Here's the definition of :meth:`load`, precisely::"
+msgstr ""
+
+#: ../../src/psp/json_proc.rst ../../src/psp/types.rst
+msgid "Parameters"
+msgstr ""
+
+#: ../../src/psp/json_proc.rst:201
+msgid "A file-like object that implements a ``read()`` method."
+msgstr ""
+
+#: ../../src/psp/json_proc.rst
+msgid "Returns"
+msgstr ""
+
+#: ../../src/psp/json_proc.rst:202
+msgid "A generator from :meth:`load_data`."
+msgstr ""
+
+#: ../../src/psp/json_proc.rst:206
+msgid ""
+"Load a JSON archive from a file object and return a *dict*. The *fp* "
+"argument is the same as that from :meth:`load`."
+msgstr ""
+
+#: ../../src/psp/json_proc.rst:211
+msgid ""
+"Load an archive from a *dict*, returning a list of panels if *date* is "
+"not given or a single panel if *date* is given. :meth:`load` calls this "
+"method."
+msgstr ""
+
+#: ../../src/psp/json_proc.rst:215
+msgid "The JSON archive."
+msgstr ""
+
+#: ../../src/psp/json_proc.rst:216
+msgid ""
+"A *generator* that yields |Panel| objects from the JSON archive, until "
+"there is none left."
+msgstr ""
+
+#: ../../src/psp/json_proc.rst
+msgid "Raises"
+msgstr ""
+
+#: ../../src/psp/json_proc.rst:218
+msgid ""
+"Missing attribute (like not providing ``date``) or conflicting attributes"
+" (such as ``data`` and ``input``)"
+msgstr ""
+
+#: ../../src/psp/json_proc.rst:221
+msgid ""
+"Non-fatal issues (such as extraneous panel/entry attributes or finding "
+"more than one path for ``input``); only raised when ``error_on_warning`` "
+"is True"
+msgstr ""
+
+#: ../../src/psp/json_proc.rst:225
+msgid "Type mismatch (like providing an *int* for ``date``)"
+msgstr ""
+
+#: ../../src/psp/json_proc.rst:227
+msgid "Invalid value for time zone, date, datetime, time, etc."
+msgstr ""
+
+#: ../../src/psp/json_proc.rst:234
+msgid ""
+"As of version 0.2, :meth:`load` and :meth:`load_data` return a "
+"*generator*, not a fully loaded *list*.  This can get a bit risky "
+"considering the state may change while you're loading.  For example "
+"(slightly modified from my lazy code to be more practical for more you "
+"well-witted coders) if you overrode :meth:`load_data` like so::"
+msgstr ""
+
+#: ../../src/psp/json_proc.rst:247
+msgid ""
+"then when you try to use the generator, the cleanup code has already run "
+"and that is a problem.  But actually there is an easy way to solve it!  "
+"Instead of writing ``return``, you can ``yield from`` the other generator"
+" so the code waits before it runs the cleanup code."
+msgstr ""
+
+#: ../../src/psp/json_proc.rst:253
+msgid "Still, look out instances where the state *could* be changed::"
+msgstr ""
+
+#: ../../src/psp/json_proc.rst ../../src/psp/types.rst
+msgid "example"
+msgstr ""
+
+#: ../../src/psp/json_proc.rst:273
+msgid ""
+"You shouldn't need more than these three methods to enjoy everything this"
+" class has to offer, but if you care about more customization, allow me "
+"to first explain how :meth:`load_data` works..."
+msgstr ""
+
+#: ../../src/psp/json_proc.rst:277
+msgid ""
+"Inside :meth:`load_data`, the loader splits *data* into two parts: the "
+"*panels* and the *attrs*.  *panels* is a list of *dict*\\ s obtained from"
+" the ``data`` key, and *attrs* is everything else.  This splitting "
+"process is implemented in the :meth:`split_data` method."
+msgstr ""
+
+#: ../../src/psp/json_proc.rst:284
+msgid ""
+"Split the data and returns a tuple of ``(panels, attrs)``, the former "
+"being a list under the `panel` key and the latter being a *dict* "
+"constructed keys other than `panel`.  If *data* doesn't have ``panels``, "
+"*panels* is returned as ``[]``."
+msgstr ""
+
+#: ../../src/psp/json_proc.rst:289
+msgid ""
+"The two attributes :meth:`split_data` guarantees to be set in *attrs* are"
+" the ``tz`` and ``paths`` attributes.  Validation is performed on them if"
+" they were present in *data* before splitting according to the following "
+"rules:"
+msgstr ""
+
+#: ../../src/psp/json_proc.rst:294
+msgid "``tz`` must be a *str*, otherwise defaults to None"
+msgstr ""
+
+#: ../../src/psp/json_proc.rst:295
+msgid "``paths`` must be a *list* of *str*, otherwise defaults to ``[.]``"
+msgstr ""
+
+#: ../../src/psp/json_proc.rst:297
+msgid ""
+"For each panel in the *panels* list, :meth:`load_data` calls "
+":meth:`process_panel` with a shallow copy of the panel (as a *dict*) and "
+"a reference to *attrs* (**not a copy**).  It first creates a |Panel| "
+"object with no entries attached to it, then for each entry in the "
+"*entries* list, it calls :meth:`process_entry` with the newly created "
+"panel object, a shallow copy of the entry (as a *dict*) and a reference "
+"to *attrs* (again, not a copy), which returns an |Entry| object.  Each "
+"entry object is added to the panel with :meth:`Panel.add_entry () "
+"<psp.types.Panel.add_entry>` and finally the panel object is returned by "
+":meth:`process_panel` and yielded by :meth:`load_data`."
+msgstr ""
+
+#: ../../src/psp/json_proc.rst:308
+msgid ""
+"Very windy, I know, right?  Well I probably could have phrased it better,"
+" but essentially :meth:`load_data` calls :meth:`process_panel` to get "
+"every panel, and :meth:`process_panel` calls :meth:`process_entry` to get"
+" every entry.  The chained relations here are what's most important for "
+"you to understand here."
+msgstr ""
+
+#: ../../src/psp/json_proc.rst:316
+msgid "Process a JSON object representing a panel."
+msgstr ""
+
+#: ../../src/psp/json_proc.rst:318
+msgid "A shallow copy of the panel *dict* to be processed."
+msgstr ""
+
+#: ../../src/psp/json_proc.rst:319 ../../src/psp/json_proc.rst:341
+msgid "Top-level attributes, as described above."
+msgstr ""
+
+#: ../../src/psp/json_proc.rst:320
+msgid ""
+"A |Panel| object, or None, in which case :meth:`load_data()` will either "
+"return None if *date* is passed to it or skip the panel if *date* is not "
+"passed to it."
+msgstr ""
+
+#: ../../src/psp/json_proc.rst:327
+msgid ""
+"In some cases, :meth:`process_panel` makes a copy of *attrs* before "
+"passing onto :meth:`process_entry`: when an attribute is overridden, to "
+"be exact.  Currently the only possibility is when the ``tz`` attribute is"
+" provided at panel-level. In any case, don't rely on the fact that "
+"*attrs* is passed as a direct reference and only *sometimes* copied."
+msgstr ""
+
+#: ../../src/psp/json_proc.rst:336
+msgid "Process a JSON object representing an entry."
+msgstr ""
+
+#: ../../src/psp/json_proc.rst:338
+msgid "The panel this entry belongs to."
+msgstr ""
+
+#: ../../src/psp/json_proc.rst:340
+msgid "A shallow copy of the entry *dict* to be processed."
+msgstr ""
+
+#: ../../src/psp/json_proc.rst:342
+msgid ""
+"An |Entry| object, or None, in which case :meth:`process_panel()` will "
+"not add the entry to the panel."
+msgstr ""
+
+#: ../../src/psp/json_proc.rst:348
+msgid ""
+"Since *attrs* is passed as a reference, :meth:`process_panel` copies it, "
+"but only when a top-level attribute is being overridden locally "
+"(specifically, when ``tz`` is provided as a panel-level attribute).  "
+"Expect the same reference to be passed to :meth:`process_entry` when no "
+"top-level attribute is provided at panel-level."
+msgstr ""
+
+#: ../../src/psp/json_proc.rst:355
+msgid ""
+"This feature, however, is *not* meant for you to mutate the attribute "
+"outside the panel/entry scope in a way it changes the entire loading "
+"process.  Technically I should make a copy for every panel and every "
+"entry to limit the scope, but I didn't do so to prevent redundant "
+"copying.  Just remember that if you're overriding :meth:`process_panel` "
+"or :meth:`process_entry` and you want to *mutate* something in *attrs* "
+"(not just *accessing*, but adding or removing or re-assigning certain "
+"attributes), **always make a shallow copy**, or you're probably writing "
+"inconsistent code."
+msgstr ""
+
+#: ../../src/psp/json_proc.rst:365
+msgid ""
+"The following methods are responsible for parsing time-related. Default "
+"implementation calls their corresponding functions in :mod:`timeutil "
+"<psp.timeutil>`."
+msgstr ""
+
+#: ../../src/psp/json_proc.rst:371
 msgid ""
 "Parses the ``tz`` field, both at top-level and inside an entry. This "
-"calls :func:`psp.timeutil.parse_timezone`."
+"calls :func:`timeutil.parse_timezone() <psp.timeutil.parse_timezone>`."
 msgstr ""
 
-#: ../../psp/json_proc.rst:124
+#: ../../src/psp/json_proc.rst:377
 msgid ""
-"Parses the ``date-time`` field in entry and time fields in meta "
-"attributes.  The keyword arguments are ``None`` unless they are known.  "
-"This calls :func:`psp.timeutil.parse_datetime`."
+"Parses the ``date`` field, both in panel and in entry.  This calls "
+":func:`timeutil.parse_date() <psp.timeutil.parse_date>`."
 msgstr ""
 
-#: ../../psp/json_proc.rst:130
+#: ../../src/psp/json_proc.rst:380
 msgid ""
-"Parses the ``date`` field, both in panel and in entry. This calls "
-":func:`psp.timeutil.parse_date`."
+"Although the next two methods can be called as positional or keyword "
+"arguments, it is recommended to use keyword arguments as I'm not sure "
+"whether there will be more in the future..."
 msgstr ""
 
-#: ../../psp/json_proc.rst:135
-msgid "Protected Methods"
+#: ../../src/psp/json_proc.rst:386
+msgid ""
+"Parses the ``date-time`` field in entry.  *tzinfo* and *fold* are "
+"``None`` unless they are known.  This calls "
+":func:`timeutil.parse_datetime() <psp.timeutil.parse_datetime>`."
 msgstr ""
 
-#: ../../psp/json_proc.rst:139
-msgid "This is the lookup algorithm used on the *input* field of entries."
+#: ../../src/psp/json_proc.rst:392
+msgid ""
+"Parses the ``time`` field in entry.  *tzinfo* and *fold* are ``None`` "
+"unless they are known.  This calls :func:`timeutil.parse_time() "
+"<psp.timeutil.parse_time>`."
 msgstr ""
 
-#: ../../psp/json_proc.rst:145
+#: ../../src/psp/json_proc.rst:400
+msgid "Loader Options"
+msgstr ""
+
+#: ../../src/psp/json_proc.rst:403
+msgid "``base_dir`` (loader)"
+msgstr ""
+
+#: ../../src/psp/json_proc.rst:405
+msgid ""
+"One option you should always set when working with external ``input`` "
+"files is ``base_dir``, which determines the base directory all relative "
+"``input`` paths start from.  The default value is the current working "
+"directory, which may vary depending on where you run your interpreter. "
+"Typically when you are loading from a file path stored under a variable "
+"named ``file``, you might want to write something like this::"
+msgstr ""
+
+#: ../../src/psp/json_proc.rst:418
+msgid "``error_on_warning`` + ``suppress_warning``"
+msgstr ""
+
+#: ../../src/psp/json_proc.rst:420
+msgid ""
+"Typically, a warning is issued in place of an error if the problem "
+"encountered by the loader isn't detrimental to the output, like this "
+"(warning message truncated):"
+msgstr ""
+
+#: ../../src/psp/json_proc.rst:461
+msgid ""
+"To make debugging easier you can turn on the ``error_on_warning`` option "
+"as it prints a useful stack trace that can help locate the problem:"
+msgstr ""
+
+#: ../../src/psp/json_proc.rst:485
+msgid ""
+"On the other hand, if you want all warnings to be ignored, set the "
+"``suppress_warning`` option to True.  This always overrides "
+"``error_on_warning`` regardless of its value."
+msgstr ""
+
+#: ../../src/psp/json_proc.rst:493
+msgid ""
+"The ``check_panel_order`` option is True by default in order to more "
+"easily pick up wrong dates that is helpful for backing up entries by "
+"hand:"
+msgstr ""
+
+#: ../../src/psp/json_proc.rst:517
+msgid ""
+"The ``check_entry_order`` option is True by default for a similar purpose"
+" as ``check_panel_order``, except entries only have to be increasing and "
+"may have equal time (with time zone taken into account, that is):"
+msgstr ""
+
+#: ../../src/psp/json_proc.rst:545
+msgid ""
+"Note that when stepping through the generator, only the panel being "
+"yielded is checked for:"
+msgstr ""
+
+#: ../../src/psp/json_proc.rst:556
+msgid ""
+"Aside from the time being in increasing order, main entries (not "
+"insights) must always come before insight entries, if there are any at "
+"all. Within the main and insight entries, an increasing order must be "
+"maintained, completely analogous to the example I gave above.  Below are "
+"an example of good entry order and two examples of bad entry order:"
+msgstr ""
+
+#: ../../src/psp/json_proc.rst:623
+msgid ""
+"When :class:`JSONLoader` (specifically the :meth:`JSONLoader._find_path` "
+"method) finds more than one possible resolution for an ``input`` path, it"
+" either returns the first match if ``warn_ambiguous_paths`` is False or "
+"completes the iteration first and warns when there is more than one path "
+"found if it is True (default)."
+msgstr ""
+
+#: ../../src/psp/json_proc.rst:629
+msgid "To give a simple example, consider a directory like this:"
+msgstr ""
+
+#: ../../src/psp/json_proc.rst:643
+msgid "where in ``backup.json`` we have this:"
+msgstr ""
+
+#: ../../src/psp/json_proc.rst:662
+msgid ""
+"There are two paths that ``a.txt`` could be resolved into: ``a/a.txt``, "
+"by prepending the first path in ``paths``, or ``b/a.txt``, by prepending "
+"the second path in ``paths``.  By default, where ``warn_ambiguous_paths``"
+" is True, :class:`LoadError` will issue a warning:"
+msgstr ""
+
+#: ../../src/psp/json_proc.rst:714
+msgid ""
+"(The three dots in the exception message are a mere placeholder.  What's "
+"actually printed is whatever the absolute path *root* has.)"
+msgstr ""
+
+#: ../../src/psp/json_proc.rst:719
+msgid ""
+"Note that you won't have this awkward issue if you wrote overlapping "
+"patterns, like ``['a', 'a']`` (see :func:`get_lookup_paths` for how the "
+"lookup paths are actually determined.)  This is because there could be "
+"inevitable overlapping glob patterns in the ``paths`` attribute."
+msgstr ""
+
+#: ../../src/psp/json_proc.rst:728
+msgid ""
+"The ``json_options`` option is only used when a file path is passed to "
+":meth:`JSONLoader.load`.  It's kind of pointless but maybe some people "
+"will find this useful (perhaps better than subclassing and overriding "
+":meth:`JSONLoader.load_json`, I don't know???)"
+msgstr ""
+
+#: ../../src/psp/json_proc.rst:755
+msgid "Extensions"
+msgstr ""
+
+#: ../../src/psp/json_proc.rst:757
+msgid ""
+"This section is rather advanced IMO so I put it as the last part of the "
+"Loading section.  Basically, to add support for panel and entry "
+"extensions, :meth:`process_panel` and :meth:`process_entry` are broken "
+"down into three methods:"
+msgstr ""
+
+#: ../../src/psp/json_proc.rst:762
+msgid ""
+"``get_*_extensions()`` receives all arguments from ``process_*()`` and "
+"returns a list of extensions (subclasses of |Panel| or |Entry|)."
+msgstr ""
+
+#: ../../src/psp/json_proc.rst:765
+msgid ""
+"``make_*_class()`` then gets the list of extensions and creates a new "
+"class based on the extensions."
+msgstr ""
+
+#: ../../src/psp/json_proc.rst:767
+msgid ""
+"Finally, ``make_*()`` is called with the entry class and all the "
+"arguments from ``process_*()``."
+msgstr ""
+
+#: ../../src/psp/json_proc.rst:770
+msgid ""
+"For reference, the source code definitions for the two methods are "
+"precisely the following::"
+msgstr ""
+
+#: ../../src/psp/json_proc.rst:786
+msgid ""
+"Get a list of |Panel| subclasses, with the first base class coming last "
+"in the list.  The parameters are precisely those from "
+":meth:`process_panel`."
+msgstr ""
+
+#: ../../src/psp/json_proc.rst:790 ../../src/psp/json_proc.rst:823
+msgid "Default implementation always returns ``[]``."
+msgstr ""
+
+#: ../../src/psp/json_proc.rst:794
+msgid ""
+"Create a panel class from the list of extensions returned by "
+":meth:`get_panel_extensions`.  The list of extensions is reversed and "
+"|Panel| itself is appended to it.  The only time a new class isn't "
+"created is when ``extensions`` is an empty list, in which case |Panel| is"
+" returned.  Otherwise, a newly created class is returned: if we denote "
+"*extensions* with ``e[0], e[1], ..., e[n-1]`` where ``n = "
+"len(list(extensions))`` is at least 1, then the class is created in a way"
+" analogous to ::"
+msgstr ""
+
+#: ../../src/psp/json_proc.rst:809
+msgid "where ``b[i]`` denotes the *extension name* of the panel."
+msgstr ""
+
+#: ../../src/psp/json_proc.rst:813
+msgid ""
+"Create a panel object from *panel*.  This implements most of "
+":meth:`process_panel`.  *panel_class* is from :meth:`make_panel_class` "
+"and the rest of the arguments are from :meth:`process_panel`."
+msgstr ""
+
+#: ../../src/psp/json_proc.rst:819
+msgid ""
+"Get a list of |Entry| subclasses, with the first base class coming last "
+"in the list.  The parameters are precisely those from "
+":meth:`process_entry`."
+msgstr ""
+
+#: ../../src/psp/json_proc.rst:827
+msgid ""
+"Create an entry class from the list of extensions returned by "
+":meth:`get_entry_extensions`.  The list of extensions is reversed and "
+"|Entry| itself is appended to it.  The only time a new class isn't "
+"created is when ``extensions`` is an empty list, in which case |Entry| is"
+" returned.  Otherwise a new class is created with a similar algorithm to "
+":meth:`make_panel_class`."
+msgstr ""
+
+#: ../../src/psp/json_proc.rst:836
+msgid ""
+"Create an entry object from *entry*.  This implements most of "
+":meth:`process_entry`.  *entry_class* is from :meth:`make_entry_class` "
+"and the rest of the arguments are from :meth:`process_entry`."
+msgstr ""
+
+#: ../../src/psp/json_proc.rst:843
 msgid "Dumping"
 msgstr ""
 
-#: ../../psp/json_proc.rst:149
-msgid "Error raised by :class:`JSONDumper`."
-msgstr ""
-
-#: ../../psp/json_proc.rst:153
-msgid "The JSON backup file dumper class."
-msgstr ""
-
-#: ../../psp/json_proc.rst:157
-msgid "Configure options."
-msgstr ""
-
-#: ../../psp/json_proc.rst:161
+#: ../../src/psp/json_proc.rst:845
 msgid ""
-"Dump panels to a directory.  *dirname* should be a path-like object to "
-"the path of the directory.  If the directory already exists, a "
-"``FileExistsError`` will be raised by |mkdir|_."
+"There isn't one definitive way to generate a unique backup file from a "
+"stream of panels; the easiest way would be to not rely on any sort of "
+"inference and provide every piece of information explicitly, however that"
+" would make the exported output an eyesore.  The goal of "
+":class:`JSONDumper`, therefore, is to provide a sensible *default* way to"
+" export panels that *tries* to produce a minimal output by excluding "
+"information that could be inferred by :class:`JSONLoader`, given a proper"
+" (ideally identical) file context and inference manager, while at the "
+"same time create an interface as flexible and customizable as possible to"
+" get everyone's desired output."
 msgstr ""
 
-#: ../../psp/json_proc.rst:171
-msgid "Convenience Interface"
-msgstr ""
-
-#: ../../psp/json_proc.rst:175
-msgid "Convenience interface to loading JSON archives."
-msgstr ""
-
-#: ../../psp/json_proc.rst:179
-msgid "Convenience interface to dumping JSON archives."
-msgstr ""
-
-#: ../../psp/main.rst:5
-msgid ":mod:`main` --- Main Program"
-msgstr ""
-
-#: ../../psp/main.rst:7
-msgid "Configuration"
-msgstr ""
-
-#: ../../psp/main.rst:8
-msgid "Date"
-msgstr ""
-
-#: ../../psp/main.rst:10
-msgid "Default configuration::"
-msgstr ""
-
-#: ../../psp/stringify.rst:5
-msgid ":mod:`stringify` --- Format panels and entries"
-msgstr ""
-
-#: ../../psp/stringify.rst:10
+#: ../../src/psp/json_proc.rst:855
 msgid ""
-"This module defines classes :class:`PanelFormatter` and "
-":class:`EntryFormatter` for printing panels that mimics the interface "
-"from the app Perspective."
+"It's hard to say there is a best way to reverse the process of loading, "
+"but it's fair to say it comes down to two things: the JSON file we are "
+"dumping to, and a base directory where ``input`` paths are read from. "
+"That is, with a loading process that looks like this::"
 msgstr ""
 
-#: ../../psp/stringify.rst:16
-msgid "Formatter"
+#: ../../src/psp/json_proc.rst:865
+msgid "The dumping process should look like this, nothing more, nothing less::"
 msgstr ""
 
-#: ../../psp/stringify.rst:20
-msgid "An `abstract base class`_ for formatter classes."
+#: ../../src/psp/json_proc.rst:872
+msgid ""
+"The only difference is that we're *writing* now instead of *reading*! So,"
+" do expect ``base_dir`` to be polluted with files, because while we won't"
+" override any existing files, we might create a mess given how "
+"directories will be implicitly created!  (The ``assets`` directory "
+"relative to ``base_dir`` is the only one created by default, by the way.)"
 msgstr ""
 
-#: ../../psp/stringify.rst:26
-msgid "Initialize formatter."
+#: ../../src/psp/json_proc.rst:878
+msgid ""
+"Ideally (assuming a perfect lack of bugs), if ``panel`` is a list of "
+"|Panel| objects, then ::"
 msgstr ""
 
-#: ../../psp/stringify.rst:30
-msgid "The options are passed on to :meth:`configure`."
+#: ../../src/psp/json_proc.rst:883
+msgid ""
+"will *always* hold regardless of what ``panel`` is.  (This equality "
+"assumes Python's item-wise comparison for :class:`list` objects and the "
+":meth:`Panel.__eq__() <psp.types.Panel.__eq__>` method for panel "
+"equality.) For a proper pair of loader and dumper like this, I recommend "
+"making sure that:"
 msgstr ""
 
-#: ../../psp/stringify.rst:34
-msgid "Configure options.  The following is a table of all options:"
+#: ../../src/psp/json_proc.rst:888
+msgid ""
+"their ``base_dir`` options point to the same directory path (unless all "
+"data is encapsulated within the backup and no entries are exported),"
 msgstr ""
 
-#: ../../psp/stringify.rst:39
-msgid "``indent``"
+#: ../../src/psp/json_proc.rst:891
+msgid "their inference managers are identical, and"
 msgstr ""
 
-#: ../../psp/stringify.rst:39
-msgid "String to prepend to each line."
+#: ../../src/psp/json_proc.rst:892
+msgid "their file type contexts are the same."
 msgstr ""
 
-#: ../../psp/stringify.rst:39
-msgid "*str*"
+#: ../../src/psp/json_proc.rst:894
+msgid "Although if ``data`` is a JSON archive as a *dict*, then ::"
 msgstr ""
 
-#: ../../psp/stringify.rst:39
-msgid "``''``"
+#: ../../src/psp/json_proc.rst:898
+msgid ""
+"isn't necessarily true, since there are infinitely many JSON "
+"representations."
 msgstr ""
 
-#: ../../psp/stringify.rst:41
-msgid "``strlen``"
+#: ../../src/psp/json_proc.rst:906
+msgid ""
+"Error that occured while loading a JSON file; subclass of "
+":class:`ValueError`."
 msgstr ""
 
-#: ../../psp/stringify.rst:41
-msgid "Function that takes a *str* and returns it length."
+#: ../../src/psp/json_proc.rst:911
+msgid "Warning that occured while loading a JSON file."
 msgstr ""
 
-#: ../../psp/stringify.rst:41 ../../psp/stringify.rst:44
+#: ../../src/psp/json_proc.rst:915
+msgid ""
+"The JSON backup file dumper class.  This class inherits from "
+":class:`~psp.types.Configurable` just like :class:`JSONLoader`, though "
+"same as before, we will only use the |Configurable.configure| method in "
+"the examples that are to follow."
+msgstr ""
+
+#: ../../src/psp/json_proc.rst:922
+msgid ""
+"Since the default option for ``base_dir`` is ``'.'``, i.e. the current "
+"working directory, be cautious when you don't explicitly provide one!  "
+"With default implementation of :meth:`get_input_path`, and "
+":meth:`use_inline_text`, entries whose |is_text| method returns False are"
+" always exported to the ``assets`` directory relative to ``base_dir``.  "
+"So make sure all entries have their |is_text| method return True when you"
+" choose to omit the ``base_dir``!"
+msgstr ""
+
+#: ../../src/psp/json_proc.rst:942
+msgid "Base directory that files will be exported relative to."
+msgstr ""
+
+#: ../../src/psp/json_proc.rst:946
+msgid "Keyword arguments to pass to ``json.dump()``."
+msgstr ""
+
+#: ../../src/psp/json_proc.rst:951
+msgid "``data_encoder``"
+msgstr ""
+
+#: ../../src/psp/json_proc.rst:951
+msgid "Function that is used to write inline binary entries."
+msgstr ""
+
+#: ../../src/psp/json_proc.rst:951 ../../src/psp/stringify.rst:43
+#: ../../src/psp/stringify.rst:46
 msgid "callable"
 msgstr ""
 
-#: ../../psp/stringify.rst:41
+#: ../../src/psp/json_proc.rst:951
+msgid "\\(1)"
+msgstr ""
+
+#: ../../src/psp/json_proc.rst:955
+msgid "``paths``"
+msgstr ""
+
+#: ../../src/psp/json_proc.rst:955
+msgid "Lookup paths; used as the JSON top-level attribute ``paths``."
+msgstr ""
+
+#: ../../src/psp/json_proc.rst:955
+msgid "*list* of path-like objects (2)"
+msgstr ""
+
+#: ../../src/psp/json_proc.rst:955
+msgid "``['.']``"
+msgstr ""
+
+#: ../../src/psp/json_proc.rst:960
+msgid "``time_zone``"
+msgstr ""
+
+#: ../../src/psp/json_proc.rst:960
+msgid ""
+"Time zone; used as the top-level attribute ``tz`` and is converted into "
+"the JSON top-level attribute ``tz`` using :meth:`format_timezone`."
+msgstr ""
+
+#: ../../src/psp/json_proc.rst:960
+msgid "``datetime.tzinfo`` instance or ``None``"
+msgstr ""
+
+#: ../../src/psp/json_proc.rst:960
+msgid "``None``"
+msgstr ""
+
+#: ../../src/psp/json_proc.rst:967
+msgid "If true, all :exc:`DumpWarning` is suppressed."
+msgstr ""
+
+#: ../../src/psp/json_proc.rst:971
+msgid "If true, all :exc:`DumpWarning` is raised as exceptions. (3)"
+msgstr ""
+
+#: ../../src/psp/json_proc.rst:980
+msgid ""
+"The function in the ``data_encoder`` option should take the entry being "
+"written and return a tuple ``(data_encoding, data)``, where the two "
+"values are strings that will be written to the ``data-encoding`` and "
+"``data`` attributes by :meth:`write_entry_binary_data`."
+msgstr ""
+
+#: ../../src/psp/json_proc.rst:986
+msgid "Default value::"
+msgstr ""
+
+#: ../../src/psp/json_proc.rst:992
+msgid ""
+"The list of paths is always converted to strings by calling "
+"``os.fspath()`` on each item."
+msgstr ""
+
+#: ../../src/psp/json_proc.rst:998
+msgid ""
+"More on the usage of these options in the :ref:`Options "
+"<json_dumper_options>` section."
+msgstr ""
+
+#: ../../src/psp/json_proc.rst:1001
+msgid ""
+"The :meth:`dump` and :meth:`dump_data` are the two high-level methods "
+"used to dump an archive, completely analogous to :meth:`load() "
+"<JSONLoader.load>` and :meth:`load_data() <JSONLoader.load_data>`.  The "
+":meth:`dump` method writes panels to a file, while the :meth:`dump_data` "
+"method dumps to a *dict*.  Again, :meth:`dump` calls :meth:`dump_data` to"
+" create a *dict* and :meth:`dump_json` to write to the JSON file. The "
+"implementation of :meth:`dump` is precisely the following::"
+msgstr ""
+
+#: ../../src/psp/json_proc.rst:1016
+msgid "Dump an iterable of panels to a file."
+msgstr ""
+
+#: ../../src/psp/json_proc.rst:1018
+msgid ""
+"Any iterable of |Panel| objects.  This includes a sequence (*list* and "
+"*tuple*), a generator, or an iterator."
+msgstr ""
+
+#: ../../src/psp/json_proc.rst:1021
+msgid ""
+"A file-like object implementing the ``write()`` method that accepts a "
+"*str*."
+msgstr ""
+
+#: ../../src/psp/json_proc.rst:1024
+msgid ""
+"With default implementation, the iterable is only consumed once, where in"
+" each iteration a panel *dict* is created."
+msgstr ""
+
+#: ../../src/psp/json_proc.rst:1029
+msgid "Dump a *dict* as a JSON object to a file."
+msgstr ""
+
+#: ../../src/psp/json_proc.rst:1031
+msgid "The *dict* to dump."
+msgstr ""
+
+#: ../../src/psp/json_proc.rst:1032
+msgid "A file object, same as that from :meth:`dump`."
+msgstr ""
+
+#: ../../src/psp/json_proc.rst:1036
+msgid "Dump an iterable of panels to a *dict*."
+msgstr ""
+
+#: ../../src/psp/json_proc.rst:1038
+msgid "An iterable of panels, same as that from :meth:`dump`."
+msgstr ""
+
+#: ../../src/psp/json_proc.rst:1039
+msgid "The JSON archive as a *dict*."
+msgstr ""
+
+#: ../../src/psp/json_proc.rst:1041
+msgid ""
+"The dumping process continues with the creation of top-level attributes, "
+"analogous to the separation of top-level attributes and panels in "
+":meth:`~JSONLoader.split_data`.  To make it easier for processing in the "
+"future, :class:`JSONDumper` distinguishes two kinds of top-level "
+"attributes: the top-level attributes as Python objects, referred to as "
+"the TL attributes, and the *JSON* top-level attributes, referred to as "
+"the JTL attributes.  They both represent the top-level attributes --- "
+"``tz`` and ``paths`` specifically --- but one is used for further method "
+"calls inside Python and one is used for actual output."
+msgstr ""
+
+#: ../../src/psp/json_proc.rst:1051
+msgid ""
+"The TL attributes are created by :meth:`get_top_level_attributes`, and by"
+" default, ``tz`` and ``paths`` are always set.  The JTL attributes are "
+"created from the TL attributes by :meth:`prepare_backup`, and by default,"
+" ``tz`` and ``paths`` are set only if they differ from their default "
+"values, None and ``['.']``.  Note that if there is a JTL attribute named "
+"``data``, it would be overridden by :meth:`dump_data` without a warning, "
+"since that is used for the panel *dict*\\ s."
+msgstr ""
+
+#: ../../src/psp/json_proc.rst:1059
+msgid "So, what :meth:`dump_data` does is the following:"
+msgstr ""
+
+#: ../../src/psp/json_proc.rst:1061
+msgid ""
+"Call :meth:`get_top_level_attributes` with the *panels* argument to get "
+"the TL attributes.  (This argument is untouched, but I'll talk about why "
+"in the method.)"
+msgstr ""
+
+#: ../../src/psp/json_proc.rst:1065
+msgid ""
+"Call :meth:`prepare_backup` with the TL attributes acquired from step 1 "
+"to get the JTL attributes, which is used directly as a basis for the "
+"returned *dict*."
+msgstr ""
+
+#: ../../src/psp/json_proc.rst:1069
+msgid "Set a new list in the *dict* from step 2 under the key ``'data'``."
+msgstr ""
+
+#: ../../src/psp/json_proc.rst:1071
+msgid ""
+"For each panel in *panels*, call :meth:`wrap_panel` with the panel and "
+"the TL attribute from step 1 and append the returned *dict* to the list "
+"in step 3."
+msgstr ""
+
+#: ../../src/psp/json_proc.rst:1075
+msgid ""
+"Return the *dict*, optionally removing the ``'data'`` attribute in case "
+"it's just an empty list."
+msgstr ""
+
+#: ../../src/psp/json_proc.rst:1078
+msgid ""
+"Or for those of you who prefer reading Python (count me in!) here's the "
+"source code copied for your convenience::"
+msgstr ""
+
+#: ../../src/psp/json_proc.rst:1094
+msgid ""
+"Get top-level attributes of Python objects as a *dict*.  These will be "
+"used to call :meth:`wrap_panel`.  As I said above, ``tz`` and ``paths`` "
+"are always be guaranteed to be set."
+msgstr ""
+
+#: ../../src/psp/json_proc.rst:1098
+msgid "The default implementation derives its values directly from the options::"
+msgstr ""
+
+#: ../../src/psp/json_proc.rst:1105
+msgid ""
+"The *panels* argument is the same as that from :meth:`dump_data`, "
+"although the default implementation doesn't use it at all (as seen in the"
+" code).  It was added for subclasses, which I will explain in the "
+"following note:"
+msgstr ""
+
+#: ../../src/psp/json_proc.rst:1112
+msgid ""
+"It is impossible to make use of the ``panels`` argument since user may "
+"pass an iterator and using it would consume it before :meth:`dump_data` "
+"tries to use it.  However it is still passed as an argument because you "
+"may decide to always convert ``panels`` to a list first so that you can "
+"iterate over it. For example, here's a subclass that adds a top-level "
+"attribute, ``count``, which tallies up the entry count in every panel::"
+msgstr ""
+
+#: ../../src/psp/json_proc.rst:1131
+msgid ""
+"Take the top-level attributes from :meth:`get_top_level_attributes` as "
+"the *attrs* argument and return the corresponding JSON top-level "
+"attributes as a JSON-serializable *dict*.  This will be directly used by "
+":meth:`dump_json` to construct its return value.  As mentioned above, "
+"``tz`` and ``paths`` are only added when they differ from their "
+"respective default values."
+msgstr ""
+
+#: ../../src/psp/json_proc.rst:1140
+msgid ""
+"The ``'data'`` key will be overridden if you include it in the return "
+"value of this method!"
+msgstr ""
+
+#: ../../src/psp/json_proc.rst:1143
+msgid ""
+"After top-level attributes are set, we begin the reverse process of "
+":meth:`JSONLoader.process_panel` and :meth:`JSONLoader.process_entry`! "
+"Keep in mind that the top-level attributes *attrs* come from "
+":meth:`get_top_level_attributes`."
+msgstr ""
+
+#: ../../src/psp/json_proc.rst:1150
+msgid "Convert a |Panel| object into a *dict*."
+msgstr ""
+
+#: ../../src/psp/json_proc.rst:1152
+msgid "The panel to convert"
+msgstr ""
+
+#: ../../src/psp/json_proc.rst:1154
+msgid "Top-level attributes"
+msgstr ""
+
+#: ../../src/psp/json_proc.rst:1155
+msgid "A JSON-serializable *dict* representation of the panel."
+msgstr ""
+
+#: ../../src/psp/json_proc.rst:1159
+msgid "Convert an |Entry| object into a dict."
+msgstr ""
+
+#: ../../src/psp/json_proc.rst:1161
+msgid "The entry to convert."
+msgstr ""
+
+#: ../../src/psp/json_proc.rst:1163
+msgid "Top-level attributes."
+msgstr ""
+
+#: ../../src/psp/json_proc.rst:1164
+msgid "A JSON-serializable *dict* representation of the entry."
+msgstr ""
+
+#: ../../src/psp/json_proc.rst:1166
+msgid ""
+"Note that *entry* in the arguments can be unlinked, in which case "
+":meth:`wrap_entry` never tries to omit the date:"
+msgstr ""
+
+#: ../../src/psp/json_proc.rst:1196
+msgid ""
+"The *attrs dict* is never copied in the above two methods, so make sure "
+"to make a copy and pass that copy down when you need to change something,"
+" similar to what is mentioned in the note after "
+":meth:`JSONLoader.process_entry`."
+msgstr ""
+
+#: ../../src/psp/json_proc.rst:1201
+msgid ""
+"Next we need to address something... tricky.  You see, there are up to "
+"three ways to represent an entry.  One way is using *inline text*:"
+msgstr ""
+
+#: ../../src/psp/json_proc.rst:1221
+msgid ""
+"Though this is exclusive to text entries that can be fully represented by"
+" the return value of their :meth:`~psp.types.Entry.get_data` method, "
+"which, for instance, wouldn't work for images and big entries.  Another "
+"way that works for *both* text and binary entries is to link the binary "
+"stream of data from an external file:"
+msgstr ""
+
+#: ../../src/psp/json_proc.rst:1244
+msgid ""
+"(Note that because :mod:`~psp.filetypes` by default associates the "
+"``.txt`` extension with ``plain``-type entries, :class:`JSONDumper` drops"
+" information about the type (and encoding too since it can be inferred "
+"from the type).)  A third way is to use *inline binary*, which encodes "
+"the binary stream of data inside the backup file:"
+msgstr ""
+
+#: ../../src/psp/json_proc.rst:1269
+msgid ""
+"(Note that only the encoding is provided since the ``plain`` type can be "
+"inferred from any non-``binary`` encoding.)"
+msgstr ""
+
+#: ../../src/psp/json_proc.rst:1320
+msgid ""
+"The last two representations work on any entry, but the first one, namely"
+" *inline text*, only works on a specific subset of entries. When an entry"
+" is not being exported, whether inline text is used is controlled by "
+":meth:`use_inline_text`: it takes the entry as input and returns True for"
+" inline text or False for inline binary."
+msgstr ""
+
+#: ../../src/psp/json_proc.rst:1328
+msgid ""
+"Return whether an entry can and will be fully represented with inline "
+"text.  This method is only called when an entry is *not* being exported."
+"  Default implementation returns ``entry.is_text()``."
+msgstr ""
+
+#: ../../src/psp/json_proc.rst:1332
+msgid "Note that returning False is always applicable, but returning True isn't."
+msgstr ""
+
+#: ../../src/psp/json_proc.rst:1334
+msgid ""
+"Whether an entry is exported is controlled by :meth:`get_input_path`, "
+"which receives the same arguments as :meth:`wrap_entry` and either "
+"returns a *str* to be used in the ``input`` attribute (after the file it "
+"refers to exists) or None, which would fall back to inline text or inline"
+" binary, determined by :meth:`use_inline_text` mentioned before."
+msgstr ""
+
+#: ../../src/psp/json_proc.rst:1340
+msgid ""
+"The :meth:`get_input_path` has side effects as a file could be created in"
+" ``base_dir`` when it is called.  This is because the method actually "
+"does two things when an entry is \"exported\": generating a potentially "
+"valid input path and creating the file it refers to or finding an "
+"existing file with matching what :meth:`~psp.types.Entry.get_raw_data` "
+"returns; the default implementation always exports to a new path, a "
+"three-digit suffix (like ``name_001.txt``) whenever necessary. However, "
+"if an entry is not exported and None is being returned, "
+":meth:`get_input_path` should not create any files."
+msgstr ""
+
+#: ../../src/psp/json_proc.rst:1352
+msgid ""
+"Get an input path for the entry.  The arguments passed are the exact same"
+" from :meth:`wrap_entry`.  Return a *str* for using ``input`` to include "
+"an external path or None for using inline text/binary."
+msgstr ""
+
+#: ../../src/psp/json_proc.rst:1357
+msgid ""
+"By default :meth:`get_input_path` always exports to the ``assets`` "
+"directory, which can be seen in the default implementation::"
+msgstr ""
+
+#: ../../src/psp/json_proc.rst:1373
+msgid ""
+"First off, the use of :meth:`use_inline_text` here is merely "
+"conventional.  Generally :class:`JSONDumper` prefers exporting to inline "
+"binary, so only entries that can be fully represented with inline text "
+"(determined by :meth:`use_inline_text` returning True) cause "
+":meth:`get_input_path` to return None (that is, they are kept inside the "
+"backup).  The next two lines call :meth:`get_export_path_name` and "
+":meth:`get_export_path_extension` to form an appropriate file name for "
+"the entry."
+msgstr ""
+
+#: ../../src/psp/json_proc.rst:1382
+msgid ""
+"The next three method calls are what I'm going to explain in depth: "
+":meth:`generate_export_path`, :meth:`export_entry`, and "
+":meth:`compute_input_path`.  Before I do that, let me list out some "
+"seriously belated terminology here:"
+msgstr ""
+
+#: ../../src/psp/json_proc.rst:1387
+msgid ""
+"An *input path* is any \"sub-path\" of a *relative path* --- a file's "
+"path relative to ``base_dir``.  For example, for a relative path "
+"``img/a/1.jpg``, the strings ``1.jpg``, ``a/1.jpg``, and ``img/a/1.jpg`` "
+"itself are all its valid input paths."
+msgstr ""
+
+#: ../../src/psp/json_proc.rst:1392
+msgid ""
+"We say an input path is *reachable* when an existing file path equals "
+"some *lookup path* joined with the input path.  A lookup path in this "
+"sense is a concrete directory path matching a pattern in the ``paths`` "
+"attribute (see :func:`get_lookup_paths`).  For example, the "
+"``img/a/1.jpg`` relative path is reachable with the ``img/`` lookup path "
+"and ``a/1.jpg`` input path."
+msgstr ""
+
+#: ../../src/psp/json_proc.rst:1399
+msgid ""
+"We say a reachable input path is *unambiguous* when it is reachable with "
+"precisely one lookup path; a reachable input path is ambiguous otherwise "
+"(reachable with more than one lookup path).  For example, with lookup "
+"paths ``./``, ``img/``, and ``assets/``, the input path ``a/1.jpg`` is "
+"only unambiguous when precisely one of the three relative paths exists:"
+msgstr ""
+
+#: ../../src/psp/json_proc.rst:1412
+msgid ""
+"The square brackets will be used to denote the input path in a relative "
+"path.  The above relative paths are collectively called the *candidate "
+"paths*, which need not exist, but it's convenient to refer to these later"
+" on."
+msgstr ""
+
+#: ../../src/psp/json_proc.rst:1417
+msgid ""
+"To keep things short, I will be using ``join(a, b, c, ...)`` to denote "
+"path concatenation using :func:`os.path.join`."
+msgstr ""
+
+#: ../../src/psp/json_proc.rst:1420
+msgid "So what do the three methods do here?  Well, briefly:"
+msgstr ""
+
+#: ../../src/psp/json_proc.rst:1422
+msgid ""
+":meth:`generate_export_path` essentially returns ``base + ext`` but "
+"modifies ``base`` appropriately to avoid the creation of ambiguous input "
+"paths."
+msgstr ""
+
+#: ../../src/psp/json_proc.rst:1426
+msgid ""
+":meth:`export_entry` writes the content of an entry to a relative path, "
+"creating intermediary directories without warnings."
+msgstr ""
+
+#: ../../src/psp/json_proc.rst:1429
+msgid ""
+":meth:`compute_input_path` returns the *shortest unambiguous* input path "
+"that can reach ``join(dirname, name)``.  If that is impossible, return "
+"``join(dirname, name)``."
+msgstr ""
+
+#: ../../src/psp/json_proc.rst:1435
+msgid ""
+"Currently ``dirname`` in :meth:`generate_export_path` and "
+":meth:`compute_input_path` is always normalized, so if you pass "
+"``'assets/./../img'`` it is simply treated as ``'img'``."
+msgstr ""
+
+#: ../../src/psp/json_proc.rst:1439
+msgid ""
+"I haven't tested with ``base`` in :meth:`generate_export_path` though "
+"(since like I said with the ``base + ext`` analogy, it only does a simple"
+" string concatenation and doesn't normalize the path), but I can't "
+"guarantee non-normalized paths work there."
+msgstr ""
+
+#: ../../src/psp/json_proc.rst:1446
+msgid ""
+"Generate a file name for exporting by combining ``base`` and ``ext`` in a"
+" way the file name doesn't collide with any existing file."
+msgstr ""
+
+#: ../../src/psp/json_proc.rst:1449
+msgid "Raise :class:`ValueError` when candidates are exhausted"
+msgstr ""
+
+#: ../../src/psp/json_proc.rst:1451
+msgid "EXAMPLE"
+msgstr ""
+
+#: ../../src/psp/json_proc.rst:1463
+msgid "secondary"
+msgstr ""
+
+#: ../../src/psp/json_proc.rst:1490
+msgid "Dumper Options"
+msgstr ""
+
+#: ../../src/psp/json_proc.rst:1493
+msgid "``base_dir`` (dumper)"
+msgstr ""
+
+#: ../../src/psp/json_proc.rst:1498
+msgid "Functions"
+msgstr ""
+
+#: ../../src/psp/json_proc.rst:1502
+msgid "Generator for stuff"
+msgstr ""
+
+#: ../../src/psp/json_proc.rst:1506
+msgid "What :func:`find_paths` also uses"
+msgstr ""
+
+#: ../../src/psp/json_proc.rst:1508
+msgid ""
+"for example, if ``'a*'`` and ``'*b'`` in a file system where ``ab/`` and "
+"``ac/`` and ``bc/`` exist, then only ``ab`` and ``ac`` are lookup paths"
+msgstr ""
+
+#: ../../src/psp/json_proc.rst:1515
+msgid "Inference Managers"
+msgstr ""
+
+#: ../../src/psp/json_proc.rst:1519
+msgid "stuff"
+msgstr ""
+
+#: ../../src/psp/json_proc.rst:1524 ../../src/psp/stringify.rst:155
+msgid "Convenience Interface"
+msgstr ""
+
+#: ../../src/psp/json_proc.rst:1528
+msgid ""
+"We arrive at last... the nasty does-it-all functions.  Just the obnoxious"
+" number of optional arguments should tell you that something nasty is "
+"going on.  But I thought, maybe, just *maybe*, people will be less "
+"intimidated if they see just one line of code magically doing everything "
+"they need! So here we go..."
+msgstr ""
+
+#: ../../src/psp/json_proc.rst:1536
+msgid "Convenience interface to loading JSON archives."
+msgstr ""
+
+#: ../../src/psp/json_proc.rst:1538 ../../src/psp/json_proc.rst:1553
+msgid "File"
+msgstr ""
+
+#: ../../src/psp/json_proc.rst:1539
+msgid ""
+"The date of the panel to load or None.  Can either be a "
+":class:`datetime.date` object or a *str*, which will then converted with "
+"the :meth:`parse_date` method."
+msgstr ""
+
+#: ../../src/psp/json_proc.rst:1542 ../../src/psp/json_proc.rst:1543
+#: ../../src/psp/json_proc.rst:1554 ../../src/psp/json_proc.rst:1555
+msgid "Argument for :func:`io.open`"
+msgstr ""
+
+#: ../../src/psp/json_proc.rst:1544
+msgid "Loader class to use; can be any subclass of :class:`JSONLoader`."
+msgstr ""
+
+#: ../../src/psp/json_proc.rst:1546
+msgid "A *list* of panel (note: not a generator)"
+msgstr ""
+
+#: ../../src/psp/json_proc.rst:1550
+msgid "Convenience interface to dumping JSON archives."
+msgstr ""
+
+#: ../../src/psp/json_proc.rst:1552
+msgid "Iterable of panels"
+msgstr ""
+
+#: ../../src/psp/json_proc.rst:1556
+msgid "Dumper class to use; can be any subclass of :class:`JSONDumper`."
+msgstr ""
+
+#: ../../src/psp/main.rst:5
+msgid ":mod:`main` --- Main Program"
+msgstr ""
+
+#: ../../src/psp/main.rst:7
+msgid "Configuration"
+msgstr ""
+
+#: ../../src/psp/main.rst:8
+msgid "Date"
+msgstr ""
+
+#: ../../src/psp/main.rst:10
+msgid "Default configuration::"
+msgstr ""
+
+#: ../../src/psp/stringify.rst:5
+msgid ":mod:`stringify` --- Format panels and entries"
+msgstr ""
+
+#: ../../src/psp/stringify.rst:12
+msgid ""
+"This module defines classes :class:`PanelFormatter` and "
+":class:`EntryFormatter` for formatting panels and entries as strings that"
+" mimics the interface from the app Perspective."
+msgstr ""
+
+#: ../../src/psp/stringify.rst:18
+msgid "Base class"
+msgstr ""
+
+#: ../../src/psp/stringify.rst:22
+msgid "An `abstract base class`_ for formatter classes."
+msgstr ""
+
+#: ../../src/psp/stringify.rst:28
+msgid "Initialize formatter."
+msgstr ""
+
+#: ../../src/psp/stringify.rst:32
+msgid "The options are passed on to :meth:`configure`."
+msgstr ""
+
+#: ../../src/psp/stringify.rst:36
+msgid "Configure options.  The following is a table of all options:"
+msgstr ""
+
+#: ../../src/psp/stringify.rst:41
+msgid "``indent``"
+msgstr ""
+
+#: ../../src/psp/stringify.rst:41
+msgid "String to prepend to each line."
+msgstr ""
+
+#: ../../src/psp/stringify.rst:41
+msgid "*str*"
+msgstr ""
+
+#: ../../src/psp/stringify.rst:41
+msgid "``''``"
+msgstr ""
+
+#: ../../src/psp/stringify.rst:43
+msgid "``strlen``"
+msgstr ""
+
+#: ../../src/psp/stringify.rst:43
+msgid "Function that takes a *str* and returns it length."
+msgstr ""
+
+#: ../../src/psp/stringify.rst:43
 msgid "``len``"
 msgstr ""
 
-#: ../../psp/stringify.rst:44
+#: ../../src/psp/stringify.rst:46
 msgid "``line_callback``"
 msgstr ""
 
-#: ../../psp/stringify.rst:44
+#: ../../src/psp/stringify.rst:46
 msgid "Function that is called on each line."
 msgstr ""
 
-#: ../../psp/stringify.rst:44
+#: ../../src/psp/stringify.rst:46
 msgid "``str.rstrip``"
 msgstr ""
 
-#: ../../psp/stringify.rst:51
+#: ../../src/psp/stringify.rst:53
 msgid ""
 "Takes an object as an argument and returns a formatted string "
 "representation of that object."
 msgstr ""
 
-#: ../../psp/stringify.rst:56
+#: ../../src/psp/stringify.rst:58
 msgid ""
 "A wrapper object that implements a ``wrap()`` method and has a writable "
 "attribute ``width``.  The ``wrap()`` method takes a string and returns a "
@@ -488,278 +1757,1332 @@ msgid ""
 "``None`` to disable line wrapping."
 msgstr ""
 
-#: ../../psp/stringify.rst:63
+#: ../../src/psp/stringify.rst:65
 msgid ""
 "An *int* representing the maximum width of each line.  Must be no less "
 "than 0."
 msgstr ""
 
-#: ../../psp/stringify.rst:66
+#: ../../src/psp/stringify.rst:68
 msgid "Protected attributes for subclassing:"
 msgstr ""
 
-#: ../../psp/stringify.rst:70
+#: ../../src/psp/stringify.rst:72
 msgid ""
 "A *set* of all option names.  Subclasses should update this so that "
 ":meth:`configure` knows what options are valid and what aren't."
 msgstr ""
 
-#: ../../psp/stringify.rst:75
+#: ../../src/psp/stringify.rst:77
 msgid "A *dict* of the option names and values."
 msgstr ""
 
-#: ../../psp/stringify.rst:77
+#: ../../src/psp/stringify.rst:79
 msgid "Protected methods:"
 msgstr ""
 
-#: ../../psp/stringify.rst:83
+#: ../../src/psp/stringify.rst:85
 msgid "Return whether text wrapping will be used."
 msgstr ""
 
-#: ../../psp/stringify.rst:87
+#: ../../src/psp/stringify.rst:89
 msgid "Low-level wrapping."
 msgstr ""
 
-#: ../../psp/stringify.rst:91
+#: ../../src/psp/stringify.rst:93
 msgid "Wrap left-aligned text."
 msgstr ""
 
-#: ../../psp/stringify.rst:95
+#: ../../src/psp/stringify.rst:97
 msgid "Wrap centered text."
 msgstr ""
 
-#: ../../psp/stringify.rst:106
-msgid "Implementations"
+#: ../../src/psp/stringify.rst:108
+msgid "Formatter implementations"
 msgstr ""
 
-#: ../../psp/stringify.rst:110
+#: ../../src/psp/stringify.rst:112
 msgid "Formatter for :class:`Panel <psp.types.Panel>` objects."
 msgstr ""
 
-#: ../../psp/stringify.rst:117
+#: ../../src/psp/stringify.rst:119
 msgid "Format a panel."
 msgstr ""
 
-#: ../../psp/stringify.rst:121
+#: ../../src/psp/stringify.rst:123
 msgid "Set the entry formatter for :meth:`format` to use."
 msgstr ""
 
-#: ../../psp/stringify.rst:125
+#: ../../src/psp/stringify.rst:127
 msgid ""
 "Get the entry formatter for :meth:`format` to use. If "
 ":meth:`set_entry_formatter` was never called, an :class:`EntryFormatter` "
 "instance is automatically created."
 msgstr ""
 
-#: ../../psp/stringify.rst:131
+#: ../../src/psp/stringify.rst:133
 msgid ""
 "When :meth:`format` is called, its argument ``panel`` as well as the "
 "entry formatter are passed to this function. Options to keep the entry "
 "formatter consistent with the panel are set by default."
 msgstr ""
 
-#: ../../psp/stringify.rst:141
+#: ../../src/psp/stringify.rst:143
 msgid "Formatter for :class:`Entry <psp.types.Entry>` objects."
 msgstr ""
 
-#: ../../psp/stringify.rst:148
+#: ../../src/psp/stringify.rst:150
 msgid "Format an entry."
 msgstr ""
 
-#: ../../psp/timeutil.rst:5
+#: ../../src/psp/stringify.rst:159
+msgid ""
+"Format a panel.  This calls :meth:`PanelFormatter.format`.  If "
+"``entry_formatter`` is provided, it is set by calling "
+":meth:`PanelFormatter.set_entry_formatter`.  The options are passed to "
+"the constructor of :class:`PanelFormatter`."
+msgstr ""
+
+#: ../../src/psp/stringify.rst:166
+msgid ""
+"Format an entry.  This calls :meth:`EntryFormatter.format`. The options "
+"are passed to the constructor of :class:`EntryFormatter`."
+msgstr ""
+
+#: ../../src/psp/stringify.rst:171
+msgid "Calls ``print(format_panel(panel, **kwargs), file=file)``"
+msgstr ""
+
+#: ../../src/psp/stringify.rst:175
+msgid "Calls ``print(format_entry(entry, **kwargs), file=file)``"
+msgstr ""
+
+#: ../../src/psp/timeutil.rst:5
 msgid ":mod:`timeutil` --- Time utility functions"
 msgstr ""
 
-#: ../../psp/timeutil.rst:20
-msgid "Parse a time zone string such as ``+08:00`` and ``-07:00``."
+#: ../../src/psp/timeutil.rst:20
+msgid "Parsers"
 msgstr ""
 
-#: ../../psp/timeutil.rst:22
+#: ../../src/psp/timeutil.rst:24
+msgid "Parse a fixed time zone string."
+msgstr ""
+
+#: ../../src/psp/timeutil.rst:26
 msgid ""
-"Strings that match against the following regex that are guaranteed to "
-"work:"
+"Strings that match against the following regex, as well as ``UTC`` and "
+"``GMT`` themselves, work in general:"
 msgstr ""
 
-#: ../../psp/timeutil.rst:37
+#: ../../src/psp/timeutil.rst:41
 msgid ""
-"In addition, for Python 3.9 and above, if ``tzdata`` is installed, the "
-"string will be passed to ``zoneinfo.ZoneInfo()`` to create a ``ZoneInfo``"
-" object."
+"Note that sign is a mandatory part of the string, so ``08:00`` and "
+"``UTC08:00`` won't work.  And of course, even if the regex matches, don't"
+" expect something like ``+69:42`` or ``-11:69`` to work.  Offset also "
+"needs to be strictly between ``-timedelta(hours=24)`` and "
+"``timedelta(hours=24)``, so ``+24:00`` wouldn't work either, even if it "
+"is a valid offset."
 msgstr ""
 
-#: ../../psp/timeutil.rst:44
+#: ../../src/psp/timeutil.rst:48
 msgid "Examples:"
 msgstr ""
 
-#: ../../psp/timeutil.rst:55
+#: ../../src/psp/timeutil.rst:65
+msgid "Parse a date string.  This calls |date_fif|."
+msgstr ""
+
+#: ../../src/psp/timeutil.rst:69
 msgid ""
-"Parse a date time string.  If the parsed date time has no ``tzinfo`` and "
-"``tzinfo`` is provided (not ``None``), the provided ``tzinfo`` will be "
-"used.  In addition, if ``fold`` is not ``None``, the ``fold`` will be "
+"Parse a date time string.  This calls |time_fif| to get a base "
+"aware/naive date time to work on.  If the parsed date time has no "
+"*tzinfo* and *tzinfo* is provided (not *None*), the provided *tzinfo* "
+"will be used.  In addition, if *fold* is not *None*, the *fold* will be "
 "used too."
 msgstr ""
 
-#: ../../psp/timeutil.rst:62
+#: ../../src/psp/timeutil.rst:77
 msgid ""
-"Parse a date string.  ISO strings of the form ``YYYY-MM-DD`` are always "
-"valid as they are passed to |fromisoformat|_.  If that fails, a list of "
-"formats :attr:`DATE_FORMATS` are tried before a ``ValueError`` is raised."
+"Parse a time string.  This calls |datetime_fif| to get a base aware/naive"
+" time to work on.  If the parsed time has no *tzinfo* and *tzinfo* is "
+"provided (not None), the provided *tzinfo* will be used. In addition, if "
+"*fold* is not None, the *fold* will be used too."
 msgstr ""
 
-#: ../../psp/timeutil.rst:75
-msgid "Global Attributes"
+#: ../../src/psp/timeutil.rst:89
+msgid "String formatters"
 msgstr ""
 
-#: ../../psp/timeutil.rst:77
+#: ../../src/psp/timeutil.rst:93
 msgid ""
-"Don't punch me for doing this okay...?  I know I'm not supposed to do "
-"this... but hey, you are probably not supposed to change this either?  I "
-"made it so that you can subclass :class:`JSONLoader` and override the "
-"methods, y'know..."
+"Format a :class:`~datetime.timedelta` offset as returned by "
+":meth:`~datetime.tzinfo.utcoffset`."
 msgstr ""
 
-#: ../../psp/timeutil.rst:83
-msgid "The constant that defines the list of date formats to try::"
+#: ../../src/psp/timeutil.rst:98
+msgid "Format a :class:`~datetime.date` object."
 msgstr ""
 
-#: ../../psp/types.rst:5
+#: ../../src/psp/timeutil.rst:102
+msgid ""
+"Format a :class:`~datetime.datetime` object and return a *str* suitable "
+"for the ``time`` entry-level attribute."
+msgstr ""
+
+#: ../../src/psp/timeutil.rst:107
+msgid ""
+"Format a :class:`~datetime.datetime` object and return a *str* suitable "
+"for the ``date-time`` entry-level attribute."
+msgstr ""
+
+#: ../../src/psp/timeutil.rst:113
+msgid "Miscellaneous"
+msgstr ""
+
+#: ../../src/psp/timeutil.rst:117
+msgid ""
+"Determine whether a datetime is naive. According to the `documentation`_,"
+" a datetime object *dt* is naive when:"
+msgstr ""
+
+#: ../../src/psp/timeutil.rst:120
+msgid "``dt.tzinfo is None``; or"
+msgstr ""
+
+#: ../../src/psp/timeutil.rst:121
+msgid "``dt.tzinfo.utcoffset(dt) is None``."
+msgstr ""
+
+#: ../../src/psp/timeutil.rst:125
+msgid "The function returns True when any of the above criteria meets."
+msgstr ""
+
+#: ../../src/psp/types.rst:5
 msgid ":mod:`types` --- Important objects"
 msgstr ""
 
-#: ../../psp/types.rst:10
+#: ../../src/psp/types.rst:14
 msgid ""
-"This module defines the :class:`Panel` and :class:`Entry` classes. They "
-"are automatically imported into the ``psp`` package:"
+"This module defines the :class:`Panel` and :class:`Entry` classes, as "
+"well as a :class:`Configurable` class that is... just there, it exists, "
+"y'know? Like I don't know where else to put it either."
 msgstr ""
 
-#: ../../psp/types.rst:23
-msgid "The :class:`Panel` Class"
+#: ../../src/psp/types.rst:26
+msgid "Attribute Protocol"
 msgstr ""
 
-#: ../../psp/types.rst:25
+#: ../../src/psp/types.rst:28
 msgid ""
-"A panel is a pretty much just a list of entries, with the exception that "
-"it has a date and can hold attributes."
+"There is a class that :class:`Panel` and :class:`Entry` both inherit from"
+" which defines the attribute protocol, and although this is not to be "
+"directly used, keep in mind that you can expect these functionalities "
+"from *both* :class:`Panel` and :class:`Entry`!"
 msgstr ""
 
-#: ../../psp/types.rst:30
-msgid "The ``Panel`` class."
+#: ../../src/psp/types.rst:35
+msgid ""
+"Private base class for :class:`Panel` and :class:`Entry`. The constructor"
+" takes no positional or keyword argument."
 msgstr ""
 
-#: ../../psp/types.rst:34
+#: ../../src/psp/types.rst:38
+msgid ""
+"These are to provide a namespace for panel/entry subclasses to use; users"
+" should not need to call any of these methods directly.  All of these "
+"methods are provided to mimic a similar interface to Python's built-in "
+":class:`dict` type."
+msgstr ""
+
+#: ../../src/psp/types.rst:43
+msgid ""
+"(Why didn't I just use ``__dict__`` you ask?  Well... I guess I just "
+"don't like exploiting Python's internal attribute representation that "
+"much.  I would have to teach users to use :func:`getattr` and "
+":func:`setattr` to get and set attributes, and then somehow use "
+"``__dict__.keys()`` to get a list of all attribute names, and probably if"
+" that doesn't work I'd have to use even more dunder magic and---it's too "
+"complicated is what I'm saying.  Plus I can't use the descriptor protocol"
+" for validating other attributes like :attr:`Panel.date` and "
+":attr:`Entry.time` if they shared the same big namespace!)"
+msgstr ""
+
+#: ../../src/psp/types.rst:55
+msgid ""
+"Get the attribute with *name*. Raise :class:`KeyError` if *name* is not "
+"an attribute. When *default* is provided, either as a positional or "
+"keyword argument, return *default* instead of raising :class:`KeyError`. "
+"*default* may be provided as either a positional argument or a keyword "
+"argument."
+msgstr ""
+
+#: ../../src/psp/types.rst:64
+msgid "Set the attribute to *value* with *name*."
+msgstr ""
+
+#: ../../src/psp/types.rst:68
+msgid ""
+"Delete the attribute with *name*, returning the original value of the "
+"attribute.  Raise :class:`KeyError` if *name* is not an attribute."
+msgstr ""
+
+#: ../../src/psp/types.rst:73
+msgid "Return whether the current object has an attribute with *name*."
+msgstr ""
+
+#: ../../src/psp/types.rst:77
+msgid ""
+"Return a set of all attribute names; specifically, a new view of the "
+"internal *dict*'s keys, similar to what :meth:`dict.keys` returns."
+msgstr ""
+
+#: ../../src/psp/types.rst:83
+msgid ""
+"Return an iterator of name-value pairs of all attributes; specifically, a"
+" new view of the internal *dict*'s items, similar to what "
+":meth:`dict.items` returns."
+msgstr ""
+
+#: ../../src/psp/types.rst:89
+msgid ""
+"Return a *dict* of the attributes; namely, making a shallow copy of the "
+"internal *dict*."
+msgstr ""
+
+#: ../../src/psp/types.rst:94
+msgid "Use :meth:`dict.update` to set attributes for the current object."
+msgstr ""
+
+#: ../../src/psp/types.rst:97
+msgid "Example:"
+msgstr ""
+
+#: ../../src/psp/types.rst:115
+msgid ""
+"Attributes are *not* guaranteed to be sorted, so I'm using ``sorted()`` "
+"to make these examples reproducible:"
+msgstr ""
+
+#: ../../src/psp/types.rst:137
+msgid "The ``Panel`` Class"
+msgstr ""
+
+#: ../../src/psp/types.rst:139
+msgid ""
+"A panel, in essence, is a container of entries.  Each panel has a date "
+"that cannot be changed once it is constructed."
+msgstr ""
+
+#: ../../src/psp/types.rst:144
+msgid ""
+"The panel class.  Inherits methods from the attribute protocol as "
+"described in :ref:`attr_protocol`."
+msgstr ""
+
+#: ../../src/psp/types.rst:147
+msgid ""
+"Date of the panel as a ``datetime.date`` object. Will be accessible from "
+"the :attr:`date` property."
+msgstr ""
+
+#: ../../src/psp/types.rst:161
 msgid "Date of the panel.  This is an immutable property."
 msgstr ""
 
-#: ../../psp/types.rst:38
+#: ../../src/psp/types.rst:165
 msgid ""
-"Create a new ``Panel`` object from attributes of ``panel``. Note that the"
-" new panel will hold no entries from ``panel``."
+"Create a new panel object from the date and attributes of *panel*. Note "
+"that the new panel will hold no entries from *panel*."
 msgstr ""
 
-#: ../../psp/types.rst:44
+#: ../../src/psp/types.rst:170
+msgid ""
+"Return a copy of this panel with no entries.  Equivalent to "
+"``self.from_panel(panel)``."
+msgstr ""
+
+#: ../../src/psp/types.rst:175
+msgid ""
+"Because :attr:`date` is immutable, if you want to create a new panel with"
+" a changed date, you'll have to manually do that like this::"
+msgstr ""
+
+#: ../../src/psp/types.rst:181
+msgid ""
+"It's a bit awkward since we don't have a method like "
+":meth:`datetime.datetime.replace`, but... I'm not sure if that's worth "
+"adding in yet."
+msgstr ""
+
+#: ../../src/psp/types.rst:185
+msgid ""
+"Since a panel is a container of entries, of course we have a ton of "
+"methods for accessing and modifying these entries!"
+msgstr ""
+
+#: ../../src/psp/types.rst:188
+msgid ""
+"Here are the two important methods to know, although you'll probably use "
+":meth:`add_entry()` most of the time."
+msgstr ""
+
+#: ../../src/psp/types.rst:193
+msgid ""
+"Add *entry* to the current panel.  The :attr:`~Entry.panel` attribute of "
+"*entry* will also be (magically) set to the current panel (``self``). If "
+"the entry belongs to a different entry, :meth:`remove_entry` is called to"
+" remove that entry from it."
+msgstr ""
+
+#: ../../src/psp/types.rst:198
+msgid "This is a :class:`ValueError` if *entry* is already added."
+msgstr ""
+
+#: ../../src/psp/types.rst:202
+msgid ""
+"Remove *entry* from this panel.  A :class:`ValueError` is raised if the "
+"entry is not in this panel."
+msgstr ""
+
+#: ../../src/psp/types.rst:207
+msgid ""
+"Remove an entry from the current entry by *index* and return it. An "
+":class:`IndexError` will be raised by :meth:`list.pop` if *index* is out "
+"of bounds.  By default, pop the last entry."
+msgstr ""
+
+#: ../../src/psp/types.rst:211
+msgid ""
+"The idea is that we don't want multiple panels own the same entry, so an "
+"entry is automatically removed from its previous panel if it has one to "
+"begin with.  This is so that the ``panel`` property of entries makes "
+"sense, since we don't want that to be \"potentially\" many panels!"
+msgstr ""
+
+#: ../../src/psp/types.rst:216
+msgid "Now, moving on to some accessor methods:"
+msgstr ""
+
+#: ../../src/psp/types.rst:220
 msgid "Return an iterator of entries."
 msgstr ""
 
-#: ../../psp/types.rst:48
+#: ../../src/psp/types.rst:224
+msgid ""
+"Return an entry at *index*.  Works completely as "
+"``self.get_entries()[index]`` (so negative indices start from the end)."
+msgstr ""
+
+#: ../../src/psp/types.rst:230
 msgid "Return a *list* copy of the entries."
 msgstr ""
 
-#: ../../psp/types.rst:52
+#: ../../src/psp/types.rst:234
 msgid ""
-"Add an entry to the current panel.  The ``panel`` attribute of ``entry`` "
-"will also be set to the current panel (``self``).  If the entry belongs "
-"to a different entry, :meth:`Panel.remove_entry()` is called to remove "
-"that entry from it."
+"Return whether ``obj`` is an entry of this panel. Note that this is "
+"different from ``obj in panel.get_entries()`` since Python's ``in`` "
+"operator compares equality and not identity."
 msgstr ""
 
-#: ../../psp/types.rst:57
-msgid "This is a no-op if ``entry`` is already added."
-msgstr ""
-
-#: ../../psp/types.rst:61
-msgid ""
-"Remove an entry from this panel.  A ``ValueError`` is raised if the entry"
-" is not in this panel."
-msgstr ""
-
-#: ../../psp/types.rst:66
-msgid "Return whether ``entry`` is an entry of this panel."
-msgstr ""
-
-#: ../../psp/types.rst:70
+#: ../../src/psp/types.rst:240
 msgid "Return the number of entries in this panel."
 msgstr ""
 
-#: ../../psp/types.rst:74
+#: ../../src/psp/types.rst:244
 msgid "Return whether this panel has at least one entry."
 msgstr ""
 
-#: ../../psp/types.rst:78
-msgid "Sort the entries using ``list.sort()``."
+#: ../../src/psp/types.rst:246
+msgid "Sometimes sorting can be convenient, hmm... who knows?"
 msgstr ""
 
-#: ../../psp/types.rst:82
-msgid "Attributes"
-msgstr ""
-
-#: ../../psp/types.rst:86
-msgid "Set panel attribute to ``value`` under the name ``key``."
-msgstr ""
-
-#: ../../psp/types.rst:91
-msgid "The :class:`Entry` Class"
-msgstr ""
-
-#: ../../psp/types.rst:93
-msgid "An entry... can do a lot of things."
-msgstr ""
-
-#: ../../psp/types.rst:95
-msgid "There are two types of entries: text and binary."
-msgstr ""
-
-#: ../../psp/types.rst:97
+#: ../../src/psp/types.rst:250
 msgid ""
-"And there are two ways data for an entry is stored: in memory or as a "
-"file."
+"Sort the entries using :meth:`list.sort`.  As Python 3 guarantees, this "
+"method always performs a *stable* sort."
 msgstr ""
 
-#: ../../psp/types.rst:101
-msgid "The ``Entry`` class."
-msgstr ""
-
-#: ../../psp/types.rst:103
+#: ../../src/psp/types.rst:253
 msgid ""
-"In addition to that the :class:`Entry` class also comes with some useful "
-"methods."
+"Similar to comparing a list to another list, it is possible to compare a "
+"panel to another panel!"
 msgstr ""
 
-#: ../../psp/types.rst:108
-msgid "Return ``True`` if this entry can be decoded into ``str``, else ``False``."
-msgstr ""
-
-#: ../../psp/types.rst:111
+#: ../../src/psp/types.rst:259
 msgid ""
-"There are two ways to get the underlying raw binary data, though the "
-"method :meth:`Entry.load_data()` does it one step further by loading the "
-"data into the object, which might be useful if you want to access the "
-"data without reading a file every time."
+"Compare two panels and return if their date, attributes (from the "
+"attribute protocol), and their entries are equal (order matters)."
 msgstr ""
 
-#: ../../psp/types.rst:118
+#: ../../src/psp/types.rst:264
+msgid ":meth:`Entry.__eq__` (``e1 == e2``)"
+msgstr ""
+
+#: ../../src/psp/types.rst:265
+msgid "Info on entry equality rules"
+msgstr ""
+
+#: ../../src/psp/types.rst:267
 msgid ""
-"Load the source file into memory if it isn't loaded. Return the raw "
-"binary data of this entry."
+"Finally, as a nod to the daily ratings in the Perspective app, the "
+"following methods are added for accessing and modifying the *rating* "
+"attribute.  Although the name ``rating`` is used for the attribute name, "
+"you should be using these methods instead of the attribute protocol "
+"directly (this goes every other extension too)."
 msgstr ""
 
-#: ../../psp/types.rst:123
-msgid "Return the raw binary data of this entry without loading the source."
+#: ../../src/psp/types.rst:275
+msgid ""
+"Get the rating for this panel.  Under the hood, this returns "
+"``self.get_attribute('rating')`` where all the arguments and keyword "
+"arguments are passed to :meth:`~_AttributeHolder.get_attribute`. Raise "
+":class:`KeyError` if the current panel has no rating, unless a default is"
+" provided, in which case that default is returned."
 msgstr ""
 
-#: ../../psp/util.rst:5
+#: ../../src/psp/types.rst:285 ../../src/psp/types.rst:711
+msgid "Usage without a default value:"
+msgstr ""
+
+#: ../../src/psp/types.rst:293 ../../src/psp/types.rst:719
+msgid "Usage with a default value:"
+msgstr ""
+
+#: ../../src/psp/types.rst:310
+msgid ""
+"Set the rating for this panel.  Under the hood, this calls "
+":meth:`~_AttributeHolder.set_attribute` with arguments ``('rating', "
+"rating)``. A :class:`TypeError` is raised if *rating* is not a *str*."
+msgstr ""
+
+#: ../../src/psp/types.rst:317
+msgid ""
+"Delete the rating for this panel and return it.  Under the hood, this "
+"returns :meth:`~_AttributeHolder.delete_attribute` with argument "
+"``('rating',)``. Raise :class:`KeyError` if the current panel has no "
+"rating."
+msgstr ""
+
+#: ../../src/psp/types.rst:324
+msgid ""
+"Return whether this panel has a rating.  Under the hood, this returns "
+":meth:`~_AttributeHolder.has_attribute` with argument ``('rating',)``."
+msgstr ""
+
+#: ../../src/psp/types.rst:331
+msgid "The ``Entry`` Class"
+msgstr ""
+
+#: ../../src/psp/types.rst:333
+msgid ""
+"An entry is either a body of text or an image in Perspective, but in the "
+":class:`Entry` class we generalize this to any binary file.  An entry "
+"uses five *data attributes* (not to be confused with attributes described"
+" in :ref:`attr_protocol`) to represent both text and binary data: *type*,"
+" *format*, *encoding*, *raw*, and *source*.  Here's brief description of "
+"each data attribute (sorry if they don't make sense yet):"
+msgstr ""
+
+#: ../../src/psp/types.rst:340
+msgid "*type* is a *str* representing the type of the entry."
+msgstr ""
+
+#: ../../src/psp/types.rst:341
+msgid "*format* is a *str* representing the type of the entry."
+msgstr ""
+
+#: ../../src/psp/types.rst:342
+msgid "*encoding* is a *str* for the encoding of raw data."
+msgstr ""
+
+#: ../../src/psp/types.rst:343
+msgid "*raw* is a *bytes* representing the encoded text or raw binary data."
+msgstr ""
+
+#: ../../src/psp/types.rst:344
+msgid ""
+"*source* is a path-like object for the file that stores the encoded text "
+"data or raw binary data."
+msgstr ""
+
+#: ../../src/psp/types.rst:347
+msgid ""
+"The *encoding* and *raw* work in tandem to represent *text "
+"entries*---entries that store a Unicode string.  Any entry whose "
+"*encoding* is not ``'binary'`` is a text entry, and :meth:`bytes.decode` "
+"will be used to decode *bytes* to *str*.  If the *encoding* of an entry "
+"is ``'binary'``, then it is a *binary entry*.  (This does not necessarily"
+" have to hold for subclasses, but we'll get to that later.)"
+msgstr ""
+
+#: ../../src/psp/types.rst:354
+msgid ""
+"It would really suck if we had to store megabytes of images in memory, "
+"so... aside from *raw* we also have *source*!  An entry either has *raw* "
+"or *source*, but never both.  And when the *source* is set, "
+":class:`Entry` would read binary data from *source* and process it the "
+"same way it processes *raw*."
+msgstr ""
+
+#: ../../src/psp/types.rst:360
+msgid ""
+"*type* and *format* don't really do anything.  Yes, really!  They are "
+"completely useless---jk by that I mean it's up to you to decide what "
+"meaning they hold.  To work with file type contexts in :mod:`filetypes "
+"<psp.filetypes>` though, you should use the ``'plain'`` type for text "
+"entries and ``'binary'`` for binary entries (unless you register new file"
+" types there)."
+msgstr ""
+
+#: ../../src/psp/types.rst:369
+msgid ""
+"The entry class.  Inherits methods from the attribute protocol as "
+"described in :ref:`attr_protocol`."
+msgstr ""
+
+#: ../../src/psp/types.rst:372
+msgid ""
+"Time of entry as an aware datetime object. Will be assigned to the "
+":attr:`time` property."
+msgstr ""
+
+#: ../../src/psp/types.rst:375
+msgid ""
+"Boolean for whether this entry is an insight. Will be assigned to the "
+":attr:`insight` property."
+msgstr ""
+
+#: ../../src/psp/types.rst:378
+msgid ""
+"There are not any constraints on the values of *time* and *insight* when "
+"an entry is created.  However, once it is added to a panel by calling "
+":meth:`Panel.add_entry`, a validation is performed with the panel's date "
+"(call it ``panel_date``), the :attr:`time` property called with the "
+":meth:`~datetime.datetime.date` method (call it ``entry_date``), and the "
+":attr:`insight` property (call it ``insight``) with the following rules:"
+msgstr ""
+
+#: ../../src/psp/types.rst:386
+msgid "``entry_date`` must be no less than ``panel_date``; and"
+msgstr ""
+
+#: ../../src/psp/types.rst:387
+msgid ""
+"If ``insight``, then ``entry_date`` must be no less than ``panel_date + "
+"timedelta(days=2)``."
+msgstr ""
+
+#: ../../src/psp/types.rst:390
+msgid ""
+"When ``entry_date`` is a Sunday though, ``panel_date`` could be any one "
+"of the seven days before that Sunday.  (This is because Perspective lets "
+"you do weekly evaluation on every Sunday, so in a rare case it is "
+"possible to make an insight in less than two days (when you comment on "
+"the Saturday right before the Sunday).)"
+msgstr ""
+
+#: ../../src/psp/types.rst:396
+msgid ""
+"**Implementation detail**: A :class:`ValueError` is raised only if the "
+"following expression is True::"
+msgstr ""
+
+#: ../../src/psp/types.rst:404
+msgid ""
+"FYI the :meth:`date.weekday() <datetime.date.weekday>` method returns "
+"``6`` for Saturday.  This ``entry_date != panel_date`` part is a bit "
+"cheap and relies on the previous validation ensuring that ``entry_date >="
+" panel_date``.  The case of ``panel_date`` being on Sunday makes way for "
+"our exception, and the case of it being Monday and on is simply valid "
+"because they're at least two days apart."
+msgstr ""
+
+#: ../../src/psp/types.rst:412
+msgid ""
+"In layman's terms, the entry's date (in local time) should never be less "
+"than its panel's date.  And on top of that, if the entry is an insight "
+"entry, then the entry's date should never be less than two days after its"
+" panel's date (unless the entry is on a Sunday, then only one day is "
+"enough)."
+msgstr ""
+
+#: ../../src/psp/types.rst:418
+msgid ""
+"The same validation is performed when either one of :attr:`time` or "
+":attr:`insight` is assigned while the entry has a panel.  It is also "
+"performed whenever an entry is added to a new panel using "
+":meth:`Panel.add_entry`."
+msgstr ""
+
+#: ../../src/psp/types.rst:423
+msgid ""
+"Here's an example of the first rule.  Since the panel's date is February "
+"2, the entry's date must be February 2 or later:"
+msgstr ""
+
+#: ../../src/psp/types.rst:440
+msgid ""
+"Note that the time zone makes no difference here.  Only the date is "
+"compared."
+msgstr ""
+
+#: ../../src/psp/types.rst:443
+msgid ""
+"And now here's an example of the second rule.  The entry's date now must "
+"be February 4 or later (not Feburary 3 because it is not a Sunday):"
+msgstr ""
+
+#: ../../src/psp/types.rst:456
+msgid ""
+"Now suppose the panel's date is a Saturday, say Dec 7, 2019, and you're "
+"commenting an insight on Sunday on that panel.  :class:`Entry` makes an "
+"exception for this case, allowing just one day of gap:"
+msgstr ""
+
+#: ../../src/psp/types.rst:466
+msgid ""
+"There are no other parameters for the data attributes.  Instead, set them"
+" with ``set_*()`` methods as I will describe in a bit.  Here are their "
+"default values for reference:"
+msgstr ""
+
+#: ../../src/psp/types.rst:470
+msgid "type: ``'binary'``"
+msgstr ""
+
+#: ../../src/psp/types.rst:471
+msgid "format: ``None``"
+msgstr ""
+
+#: ../../src/psp/types.rst:472
+msgid "encoding: ``'binary'``"
+msgstr ""
+
+#: ../../src/psp/types.rst:473
+msgid "raw: ``b''``"
+msgstr ""
+
+#: ../../src/psp/types.rst:474
+msgid "source: ``None``"
+msgstr ""
+
+#: ../../src/psp/types.rst:476
+msgid ""
+"Although the lack of *source* is represented as a ``None``, which you can"
+" obtain from :meth:`get_source` too, you cannot explicitly set it to None"
+" using :meth:`set_source`.  This is because as mentioned earlier, you "
+"have to decide to store entry data either using *raw* or using *source*, "
+"but not both.  That way, :meth:`get_raw_data` knows where to obtain the "
+"data and doesn't have to choose between two sources.  Therefore, if you "
+"want to unset *source*, you must use :meth:`set_raw_data` to set the raw "
+"data to something else.  ``entry.set_raw_data(entry.get_raw_data())`` "
+"loads all data into *raw* and unsets the *source*, as stupid as it looks."
+"  The same thing goes for unsetting *raw* --- just set *source* to "
+"something else."
+msgstr ""
+
+#: ../../src/psp/types.rst:489
+msgid ""
+"Time of the entry.  This is always an aware datetime object. This is a "
+"writable property, though no changes will be made if the validation "
+"fails."
+msgstr ""
+
+#: ../../src/psp/types.rst:495
+msgid ""
+"Boolean for whether this entry is an insight. This is a writable "
+"property, though no changes will be made if the validation fails."
+msgstr ""
+
+#: ../../src/psp/types.rst:501
+msgid ""
+"The panel this entry belongs to; None if this entry does not belong to a "
+"panel.  This is an immutable property."
+msgstr ""
+
+#: ../../src/psp/types.rst:506
+msgid ""
+"Return ``self.panel is not None`` --- that is, True only when this entry "
+"belongs to a panel."
+msgstr ""
+
+#: ../../src/psp/types.rst:511
+msgid ""
+"Create a new entry object from the time, insight, data attributes and "
+"attributes of *entry*."
+msgstr ""
+
+#: ../../src/psp/types.rst:516
+msgid ""
+"Return a deep copy of this entry.  Equivalent to "
+"``self.from_entry(self)``."
+msgstr ""
+
+#: ../../src/psp/types.rst:519
+msgid "Now, here are the getters for and related to data attributes:"
+msgstr ""
+
+#: ../../src/psp/types.rst:523
+msgid "Get the *type* of this entry."
+msgstr ""
+
+#: ../../src/psp/types.rst:527
+msgid ""
+"Get the *format* of this entry.  None is returned if there is no format "
+"for this entry."
+msgstr ""
+
+#: ../../src/psp/types.rst:532
+msgid ""
+"Return whether this entry has *format*.  Equivalent to "
+"``self.get_format() is not None``."
+msgstr ""
+
+#: ../../src/psp/types.rst:537
+msgid "Get the *encoding* of this entry."
+msgstr ""
+
+#: ../../src/psp/types.rst:541
+msgid ""
+"Get the *source* of this entry.  None is returned if there is no source "
+"for this entry."
+msgstr ""
+
+#: ../../src/psp/types.rst:546
+msgid ""
+"Return whether this entry has *source*.  Equivalent to "
+"``self.get_source() is not None``."
+msgstr ""
+
+#: ../../src/psp/types.rst:549
+msgid ""
+"You might have realized that we are missing a getter for raw data. Well, "
+"that's because I didn't write one!  Instead here's something better:"
+msgstr ""
+
+#: ../../src/psp/types.rst:555
+msgid ""
+"Get raw data of this entry as a *bytes*.  If data is stored in *raw*, "
+"then *raw* is returned.  Otherwise, the data is read from *source* and "
+"returned."
+msgstr ""
+
+#: ../../src/psp/types.rst:559
+msgid ""
+"So basically, it doesn't matter whether we are using *raw* or *source*. "
+"You can always count on :meth:`get_raw_data` to return the binary data "
+"for the entry!"
+msgstr ""
+
+#: ../../src/psp/types.rst:563
+msgid ""
+"More often than not, however, we want to decode the raw data to retrieve "
+"text instead of encoded binary bytes.  Well good for you, here's another "
+"method that'll make your life easier!"
+msgstr ""
+
+#: ../../src/psp/types.rst:569
+msgid ""
+"Get text/binary data of this entry.  If this entry is a text entry, raw "
+"data is decoded to a string and returned.  Otherwise this is equivalent "
+"to :meth:`get_raw_data`."
+msgstr ""
+
+#: ../../src/psp/types.rst:573
+msgid ""
+"Whether an entry is considered a \"text\" entry is determined by the "
+"following method."
+msgstr ""
+
+#: ../../src/psp/types.rst:578
+msgid ""
+"Return ``True`` if this entry can be decoded into *str*, else ``False``."
+"  In default implementation, this is equivalent to ``self.get_encoding() "
+"!= 'binary'``."
+msgstr ""
+
+#: ../../src/psp/types.rst:584
+msgid ""
+"Subclasses should ensure that :meth:`get_data` returns a *str* whenever "
+":meth:`is_text` is True and returns a *bytes* whenever :meth:`is_text` is"
+" False."
+msgstr ""
+
+#: ../../src/psp/types.rst:588
+msgid "For retrieving the size of an entry:"
+msgstr ""
+
+#: ../../src/psp/types.rst:592
+msgid "Return the number of bytes of the raw data."
+msgstr ""
+
+#: ../../src/psp/types.rst:594
+msgid "Entry equality comparison:"
+msgstr ""
+
+#: ../../src/psp/types.rst:599
+msgid "Compare two entries and return True if all of the following are equal:"
+msgstr ""
+
+#: ../../src/psp/types.rst:602
+msgid ":attr:`time` (converted to UTC first)"
+msgstr ""
+
+#: ../../src/psp/types.rst:603
+msgid ":attr:`insight`"
+msgstr ""
+
+#: ../../src/psp/types.rst:604
+msgid "*type* (obtained from :meth:`get_type`)"
+msgstr ""
+
+#: ../../src/psp/types.rst:605
+msgid "*format* (obtained from :meth:`get_format`)"
+msgstr ""
+
+#: ../../src/psp/types.rst:606
+msgid ":meth:`is_text`"
+msgstr ""
+
+#: ../../src/psp/types.rst:607
+msgid "text or binary data (obtained from :meth:`get_data`)"
+msgstr ""
+
+#: ../../src/psp/types.rst:608
+msgid "attributes (from the attribute protocol)"
+msgstr ""
+
+#: ../../src/psp/types.rst:610
+msgid ""
+"Note that even if two entries have different encodings, they will still "
+"compare equal as long as their decoded strings match:"
+msgstr ""
+
+#: ../../src/psp/types.rst:628
+msgid ""
+"Note that rich comparison is not implemented since I prefer the more "
+"specific comparison directly using two entries' :attr:`time` property.  "
+"Converting to UTC time is strongly recommended as implicitly time zone "
+"conversion only takes place when two datetime objects from different time"
+" zones are compared (i.e. intrazone comparison)."
+msgstr ""
+
+#: ../../src/psp/types.rst:634
+msgid ""
+"Now that we've gone through the getters related to data attributes, here "
+"are the setters:"
+msgstr ""
+
+#: ../../src/psp/types.rst:639
+msgid "Set the *type* of this entry.  *type* must be a *str*."
+msgstr ""
+
+#: ../../src/psp/types.rst:643
+msgid ""
+"Set the *format* of this entry.  *format* must be a *str* or None (which "
+"serves the same purpose as \"deleting\" the *format*)."
+msgstr ""
+
+#: ../../src/psp/types.rst:648
+msgid "Set the *encoding* of this entry.  *encoding* must be a *str*."
+msgstr ""
+
+#: ../../src/psp/types.rst:652
+msgid ""
+"Unlike :meth:`get_raw_data`, :meth:`set_raw_data` actually sets *raw* to "
+"this value!  *raw* must be a *bytes*, and *source* is immediately set to "
+"None upon successfully setting *raw*."
+msgstr ""
+
+#: ../../src/psp/types.rst:658
+msgid ""
+"Set the *source* of this entry.  *path* must be a path-like object. *raw*"
+" is immediately set to None upon successfully setting *source*."
+msgstr ""
+
+#: ../../src/psp/types.rst:663
+msgid ""
+":meth:`set_source` does not check for the existence of *path*, so make "
+"sure to check for potential :class:`OSError` (by trying to open the file "
+"in advance for example), or otherwise :meth:`get_data` or "
+":meth:`get_raw_data` (and streaming methods too) might not work by the "
+"time you call them!"
+msgstr ""
+
+#: ../../src/psp/types.rst:669
+msgid ""
+"Note that these two methods are the only way to set *raw* or *source* to "
+"None (assuming you're not trickily mutating private variables directly). "
+"This is to ensure that at least *raw* or *source* is set all the time."
+msgstr ""
+
+#: ../../src/psp/types.rst:673
+msgid ""
+"In addition to all this, we have yet another convenience method that goes"
+" by the name :meth:`set_data` that lets you create text entries within "
+"Python more easily!"
+msgstr ""
+
+#: ../../src/psp/types.rst:679
+msgid "Convenience method for setting this entry's data to some text."
+msgstr ""
+
+#: ../../src/psp/types.rst:681
+msgid "The text data to set for this entry."
+msgstr ""
+
+#: ../../src/psp/types.rst:682
+msgid "The type to set for this entry."
+msgstr ""
+
+#: ../../src/psp/types.rst:683
+msgid ""
+"The encoding to encode the text with and set this entry to using "
+":meth:`set_encoding`."
+msgstr ""
+
+#: ../../src/psp/types.rst:696
+msgid ""
+"Finally, the following methods are used to access and modify the question"
+" for an entry in the Perspective app under the name ``'question'``:"
+msgstr ""
+
+#: ../../src/psp/types.rst:702
+msgid ""
+"Get the question for this entry.  Under the hood, this returns "
+"``self.get_attribute('question')`` and all the arguments and keyword "
+"arguments are passed to :meth:`~_AttributeHolder.get_attribute`. Raise "
+":class:`KeyError` if the current entry has no question, unless a default "
+"is provided, in which case the default is returned."
+msgstr ""
+
+#: ../../src/psp/types.rst:736
+msgid ""
+"Set the question for this entry.  Under the hood, this calls "
+":meth:`~_AttributeHolder.set_attribute` with arguments ``('question', "
+"question)``. A :class:`TypeError` is raised if *question* is not a *str*."
+msgstr ""
+
+#: ../../src/psp/types.rst:743
+msgid ""
+"Delete the question for this entry and return it.  Under the hood, this "
+"returns :meth:`~_AttributeHolder.delete_attribute` with argument "
+"``('question',)``.  Raise :class:`KeyError` if the current entry has no "
+"question."
+msgstr ""
+
+#: ../../src/psp/types.rst:750
+msgid ""
+"Return whether this entry has a question.  Under the hood, this returns "
+":meth:`~_AttributeHolder.has_attribute` with argument ``('question',)``."
+msgstr ""
+
+#: ../../src/psp/types.rst:756
+msgid "Streaming Interface"
+msgstr ""
+
+#: ../../src/psp/types.rst:758
+msgid ""
+":class:`Entry` also offers two alternative methods to "
+":meth:`get_raw_data` and :meth:`get_data` in case data only needs to be "
+"processed in chunks. Instead of returning *bytes* or *str*, these methods"
+" return file-like objects whose ``read()`` method returns them."
+msgstr ""
+
+#: ../../src/psp/types.rst:765
+msgid ""
+"Similar to :meth:`get_raw_data`, return a file-like object whose "
+"``read()`` method returns *bytes* of the raw data."
+msgstr ""
+
+#: ../../src/psp/types.rst:770
+msgid ""
+"Similar to :meth:`get_data`, return a file-like object whose ``read()`` "
+"method returns the same type as what :meth:`get_data` returns."
+msgstr ""
+
+#: ../../src/psp/types.rst:774
+msgid ""
+"Here are some examples of how :meth:`stream_raw_data` and "
+":meth:`stream_data` can be used.  Note that when the whole buffer is "
+"read, the result is identical to :meth:`get_raw_data` and "
+":meth:`get_data`."
+msgstr ""
+
+#: ../../src/psp/types.rst:790
+msgid ""
+"These file objects do not close on their own, so remember to close them "
+"when you're done with them!  Preferably, use a context manager to ensure "
+"the file objects are always closed::"
+msgstr ""
+
+#: ../../src/psp/types.rst:800
+msgid ""
+"See :ref:`this section <0.2_panel_and_entry>` in changelog of release 0.2"
+" for a guide on how to export entries to a file."
+msgstr ""
+
+#: ../../src/psp/types.rst:806
+msgid "Extension Support"
+msgstr ""
+
+#: ../../src/psp/types.rst:808
+msgid ""
+"Panel and entry can be extended by simply subclassing :class:`Panel` or "
+":class:`Entry`.  No registration is required, though you can define an "
+"*extension name* to make introspection easier by providing the "
+"``extname``, like this::"
+msgstr ""
+
+#: ../../src/psp/types.rst:819
+msgid ""
+"The extension name may not be changed after that, and its name can be "
+"accessed by calling :meth:`Entry.get_extension_name() "
+"<psp.types.Entry.get_extension_name>` and "
+":meth:`Panel.get_extension_name() <psp.types.Panel.get_extension_name>`:"
+msgstr ""
+
+#: ../../src/psp/types.rst:841
+msgid ""
+"If ``extname`` is not provided, ``cls.__name__`` (``cls`` is the "
+"subclass) is used instead:"
+msgstr ""
+
+#: ../../src/psp/types.rst:855
+msgid ""
+"You might be tempted to call ``Panel.get_extension_name()`` or "
+"``Entry.get_extension_name()``, but don't!  These base classes are not "
+"supposed to be used as extensions and you'll get an ``AttributeError`` "
+"that way."
+msgstr ""
+
+#: ../../src/psp/types.rst:862
+msgid "Return extension name for the current panel class."
+msgstr ""
+
+#: ../../src/psp/types.rst:866
+msgid "Return extension name for the current entry class."
+msgstr ""
+
+#: ../../src/psp/types.rst:871
+msgid "The ``Configurable`` Class"
+msgstr ""
+
+#: ../../src/psp/types.rst:873
+msgid ""
+"Lastly we have a class that is useful for defining user options.  Why? "
+"Well, because otherwise we would have at least three classes that have "
+"the same exact code!  So you clearly know it could be done when you "
+"literally copy-and-paste more than 50 lines of code, right?"
+msgstr ""
+
+#: ../../src/psp/types.rst:880
+msgid "Base class for classes that have options."
+msgstr ""
+
+#: ../../src/psp/types.rst:882
+msgid ""
+"The class itself doesn't have an option registry, but subclasses will. "
+"And although there are no abstract methods to implement, you should not "
+"use this class directly.  For the sake of demonstration I will be using "
+"this subclass:"
+msgstr ""
+
+#: ../../src/psp/types.rst:893
+msgid ""
+"The example above calls the :meth:`get_registered_option_names` class "
+"method that retrieves the option names that have been registered. Below "
+"we will first look at all the class methods concerning registration."
+msgstr ""
+
+#: ../../src/psp/types.rst:900
+msgid ""
+"Register an option named *name* with a default value of *default*. An "
+"optional *hook* can be supplied as a callback function, which will be "
+"called every time the user attempts to set the option.  (See "
+":meth:`set_option` on how the *hook* is used.)"
+msgstr ""
+
+#: ../../src/psp/types.rst:905
+msgid ":class:`ValueError` is raised if *name* is already registered."
+msgstr ""
+
+#: ../../src/psp/types.rst:909
+msgid "Return whether the option has been registered."
+msgstr ""
+
+#: ../../src/psp/types.rst:913
+msgid ""
+"Unregister an option named *name*.  Return a tuple of the default value "
+"and the hook function on success (if the option does not have a hook, "
+"None takes the place of the hook).  :class:`KeyError` is raised if *name*"
+" is not registered."
+msgstr ""
+
+#: ../../src/psp/types.rst:918
+msgid "The class method we just looked at is used for obtaining all the options:"
+msgstr ""
+
+#: ../../src/psp/types.rst:922
+msgid "Return a set of all registered option names."
+msgstr ""
+
+#: ../../src/psp/types.rst:924
+msgid ""
+"Each time a new class is created, the option names, paired with a deep "
+"copy of the default values, are used to initialize an internal option "
+"*dict*.  No option can be deleted, and users may not add any extra "
+"options, only overwrite existing ones.  More on that later, but first "
+"here are the instance methods:"
+msgstr ""
+
+#: ../../src/psp/types.rst:932
+msgid ""
+"Set the option with *name* to *value*.  Raise :class:`ValueError` if "
+"*name* is not an existing option for this instance."
+msgstr ""
+
+#: ../../src/psp/types.rst:935
+msgid ""
+"If a *hook* is registered in :meth:`add_option` for *name*, it is called "
+"with arguments ``(self, name, value)`` (``self`` is the current instance)"
+" and its return value is used instead of *value*."
+msgstr ""
+
+#: ../../src/psp/types.rst:941
+msgid ""
+"Get the value of the option with *name*.  Raise :class:`KeyError` if "
+"*name* is not an existing option for this instance."
+msgstr ""
+
+#: ../../src/psp/types.rst:946
+msgid "Return whether this instance has option named *name*."
+msgstr ""
+
+#: ../../src/psp/types.rst:950
+msgid ""
+"Set option with the name and value of every keyword argument. This method"
+" calls :meth:`set_option` whether you like it or not."
+msgstr ""
+
+#: ../../src/psp/types.rst:955
+msgid "Return a set of all option names for this instance."
+msgstr ""
+
+#: ../../src/psp/types.rst:957
+msgid ""
+"Most of the time you won't want to change options once they are defined, "
+"but here are the rules for your reference anyways."
+msgstr ""
+
+#: ../../src/psp/types.rst:960
+msgid ""
+"An important thing to note is that while we use the class to *define* "
+"options that can be used, the options themselves are *stored* in the "
+"instance.  That is, if we use a class to demonstrate:"
+msgstr ""
+
+#: ../../src/psp/types.rst:969
+msgid ""
+"Currently ``Config`` has one option \"foo\", so every instance created "
+"from there on will have the same one option too:"
+msgstr ""
+
+#: ../../src/psp/types.rst:976
+msgid ""
+"But now if we add another option \"bar\", every instance created from "
+"there on will have both \"foo\" and \"bar\" as options:"
+msgstr ""
+
+#: ../../src/psp/types.rst:984
+msgid "The instance we created earlier, however, isn't affected."
+msgstr ""
+
+#: ../../src/psp/types.rst:989
+msgid ""
+"And as described in :meth:`set_option`, an option is considered invalid "
+"in the scope of an instance, *not* the options the class defines:"
+msgstr ""
+
+#: ../../src/psp/types.rst:1000
+msgid ""
+"And of course, once an instance is created, there's nothing you can do to"
+" change the options. At least, not with "
+":meth:`~Configurable.remove_option`."
+msgstr ""
+
+#: ../../src/psp/types.rst:1010
+msgid ""
+"On the other hand, option hooks are stored in *classes*, so option "
+"checking may only take place if the instance's class defines it.  As "
+"another example, let's make another subclass and add an option with a "
+"hook:"
+msgstr ""
+
+#: ../../src/psp/types.rst:1023
+msgid ""
+"This time, notice how a change in the behavior of ``a.set_option()`` is "
+"changed because ``ConfigAgain`` is no longer defined:"
+msgstr ""
+
+#: ../../src/psp/types.rst:1034
+msgid ""
+"Finally, inheritance.  You guys probably wonder how this would turn out "
+"if you subclassed something configurable and has options.  Well here's "
+"something good to know:"
+msgstr ""
+
+#: ../../src/psp/types.rst:1038
+msgid "Each subclass has their own separate option registry; and"
+msgstr ""
+
+#: ../../src/psp/types.rst:1039
+msgid "Options from base classes are merged from right to left."
+msgstr ""
+
+#: ../../src/psp/types.rst:1043
+msgid "For instance, say you have a class like this:"
+msgstr ""
+
+#: ../../src/psp/types.rst:1052
+msgid ""
+"Then if you create subclasses, each subclass would always obtain a copy "
+"of the options in their parent class."
+msgstr ""
+
+#: ../../src/psp/types.rst:1061
+msgid "Adding an option in the subclass does not affect the parent class:"
+msgstr ""
+
+#: ../../src/psp/types.rst:1069
+msgid ""
+"And when you have multiple base classes, options are merged from right to"
+" left.  For example, let's say you have another class that implements "
+"some options that are somewhat the same:"
+msgstr ""
+
+#: ../../src/psp/types.rst:1078
+msgid "And for demonstration's sake, let's add an option unique to ``A``:"
+msgstr ""
+
+#: ../../src/psp/types.rst:1082
+msgid "Then"
+msgstr ""
+
+#: ../../src/psp/types.rst:1100
+msgid ""
+"As you can see, since the \"foo\" option is present in class ``A`` and "
+"class ``B``, ``ChildA`` derives the default value ``17`` from ``A`` since"
+" it is the leftmost class that defines the option, and ``ChildB`` derives"
+" ``42`` from ``B`` since it is the leftmost class there. (I hope I made "
+"myself clear there...)"
+msgstr ""
+
+#: ../../src/psp/util.rst:5
 msgid ":mod:`util` --- Miscellaneous functions"
 msgstr ""
 
-#: ../../psp/util.rst:7
+#: ../../src/psp/util.rst:7
 msgid "These are completely random or not that random but just convenient stuff"
 msgstr ""

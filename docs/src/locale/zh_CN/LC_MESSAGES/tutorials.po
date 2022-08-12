@@ -1,0 +1,190 @@
+# SOME DESCRIPTIVE TITLE.
+# Copyright (C) 2022, rapidcow
+# This file is distributed under the same license as the The Perspective
+# Library package.
+# FIRST AUTHOR <EMAIL@ADDRESS>, 2022.
+#
+#, fuzzy
+msgid ""
+msgstr ""
+"Project-Id-Version: The Perspective Library \n"
+"Report-Msgid-Bugs-To: \n"
+"POT-Creation-Date: 2022-08-11 09:01+0800\n"
+"PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
+"Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
+"Language-Team: LANGUAGE <LL@li.org>\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=utf-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+"Generated-By: Babel 2.10.3\n"
+
+#: ../../src/tutorials/backup.rst:3
+msgid "How to back up entries from Perspective"
+msgstr ""
+
+#: ../../src/tutorials/backup.rst
+msgid "Author"
+msgstr ""
+
+#: ../../src/tutorials/backup.rst:5
+msgid "rapidcow <thegentlecow@gmail.com>"
+msgstr ""
+
+#: ../../src/tutorials/backup.rst
+msgid "Date"
+msgstr ""
+
+#: ../../src/tutorials/backup.rst:6
+msgid "May something, 2022"
+msgstr ""
+
+#: ../../src/tutorials/backup.rst
+msgid "Video"
+msgstr ""
+
+#: ../../src/tutorials/backup.rst:7
+msgid "I haven't recorded it lol"
+msgstr ""
+
+#: ../../src/tutorials/backup.rst:16
+msgid "Setting up"
+msgstr ""
+
+#: ../../src/tutorials/backup.rst:19
+msgid "Backup process"
+msgstr ""
+
+#: ../../src/tutorials/backup.rst:22
+msgid "Using the main program"
+msgstr ""
+
+#: ../../src/tutorials/backup.rst:25
+msgid "Checking for errors"
+msgstr ""
+
+#: ../../src/tutorials/backup.rst:28
+msgid "Basic configuration"
+msgstr ""
+
+#: ../../src/tutorials/backup.rst:30
+msgid "Some configurations you might find helpful..."
+msgstr ""
+
+#: ../../src/tutorials/backup.rst:32
+msgid "A basic template to work with (this is used the default)::"
+msgstr ""
+
+#: ../../src/tutorials/backup.rst:60
+msgid ""
+"In the configuration file you only have to define classes that you want "
+"to override.  Run"
+msgstr ""
+
+#: ../../src/tutorials/backup.rst:67
+msgid ""
+"to run the *psp print* command with your configuration file. (Replace "
+"``config.py`` with the path to your file.)"
+msgstr ""
+
+#: ../../src/tutorials/backup.rst:70
+msgid "24-hour format::"
+msgstr ""
+
+#: ../../src/tutorials/backup.rst:82
+msgid ""
+"Loading with ``BigLoader``... just replace ``JSONLoader`` in the above "
+"code with ``BigLoader`` after importing using ::"
+msgstr ""
+
+#: ../../src/tutorials/backup.rst:89
+msgid "Helpful tools I use"
+msgstr ""
+
+#: ../../src/tutorials/backup.rst:92
+msgid "``plainconv.py``"
+msgstr ""
+
+#: ../../src/tutorials/backup.rst:95
+msgid "``panel2html.py``"
+msgstr ""
+
+#: ../../src/tutorials/cookbook.rst:5
+msgid "Perspective Cookbook"
+msgstr ""
+
+#: ../../src/tutorials/cookbook.rst:7
+msgid ""
+"The Perspective library is built with the ability to extend in mind, but "
+"a good question to ask is *how*?  To answer that, here are some examples "
+"that you might find useful."
+msgstr ""
+
+#: ../../src/tutorials/cookbook.rst:19
+msgid "stringify doesn't look like the app interface in Perspective!!!"
+msgstr ""
+
+#: ../../src/tutorials/cookbook.rst:21
+msgid ""
+"Okay, okay.  Whether you came from :ref:`basicproc` or just decided to..."
+" read, I guess.  I'm sorry I hadn't noticed this earlier okay?  But good "
+"news: you can fix this very easily by subclassing :class:`PanelFormatter "
+"<psp.stringify.PanelFormatter>`! ::"
+msgstr ""
+
+#: ../../src/tutorials/cookbook.rst:30
+msgid "(notice the ``%b`` instead of ``%B``)"
+msgstr ""
+
+#: ../../src/tutorials/cookbook.rst:34
+msgid "File types inference"
+msgstr ""
+
+#: ../../src/tutorials/cookbook.rst:36
+msgid "You may have noticed that (plain and binary are always inferred)"
+msgstr ""
+
+#: ../../src/tutorials/cookbook.rst:38
+msgid "They are controlled by the context in ``filetypes``"
+msgstr ""
+
+#: ../../src/tutorials/cookbook.rst:40
+msgid ""
+"There is currently no way to restrict a loader/dumper to a specific "
+"context so if you want to do that you'll have to wrap your code in "
+"``local_context()`` every time."
+msgstr ""
+
+#: ../../src/tutorials/cookbook.rst:46
+msgid "Swiching to json5"
+msgstr ""
+
+#: ../../src/tutorials/cookbook.rst:48
+msgid "In case you want comments..."
+msgstr ""
+
+#: ../../src/tutorials/cookbook.rst:52
+msgid "More date, time, and timezone!"
+msgstr ""
+
+#: ../../src/tutorials/cookbook.rst:54
+msgid ""
+"Out of the box JSONLoader only supports ISO format and fixed timezone "
+"offset"
+msgstr ""
+
+#: ../../src/tutorials/cookbook.rst:56
+msgid "But you can change that!"
+msgstr ""
+
+#: ../../src/tutorials/extensions.rst:5
+msgid "Extension Tutorial"
+msgstr ""
+
+#: ../../src/tutorials/extensions.rst:7
+msgid "Howdy!"
+msgstr ""
+
+#: ../../src/tutorials/index.rst:5
+msgid "Tutorials"
+msgstr ""
+

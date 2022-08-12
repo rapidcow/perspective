@@ -3,38 +3,60 @@
 A Python library providing backup utility for the iOS journaling app
 [Perspective][]![^1]
 
-Now the library is pretty much complete... except potentially with
-millions of bugs.  I might change the library slightly during this period
-but there shouldn't be super big changes now.
+Documentation in English is available [here][docs].
 
 
 ## Installation
 
-To install the library, download this repository, `cd` to `src/` and run
+NOTE: Make sure you have Python 3.8+ installed, and replace `python3`
+in the following commands with the name of your interpretor.  (For example,
+this might be `py` on Windows.)
+
+You may install globally or [activate a virtual environment][venv] first.
+
+To install, use ONE of the following methods:
+
+*   (from Test PyPI) You can probably try this I'm not sure if
+    this is still up on test.pypi.org
+
+    ```sh
+    python3 -m pip install -i https://test.pypi.org/simple/ perspe
+    ```
+
+*   (from this repository directly)
+
+    ```sh
+    git clone https://github.com/rapidcow/perspective.git
+    python3 -m pip install src
+    ```
+
+If you have successfully installed, running `python3 -m psp -V` should
+print the version number.
+
+To uninstall, run `python3 -m pip uninstall perspe`.
+
+For a clumsy demo (WILL BE REPLACED IN THE FUTURE), you can find one
+[here][Demo] at the moment.
+
+
+## Building documentation
+
+See `docs/README.md`.
+
+
+## Development
+
+Assuming that you have activated a [virtual environment][venv], you can
+clone this repo and install with [editable mode][-e] (this is so that any
+changes you make here in the repo will be reflected in your Python runtime)
 
 ```sh
-python3 -m pip install .
-# Or install for current user only...
-python3 -m pip install --user .
+git clone https://github.com/rapidcow/perspective.git
+pip install -e src
 ```
 
-where `python3` is the name of your Python 3 interpretor.  To confirm you
-have successfully installed, you may run `python3 -m psp -V` or just import
-`psp` into Python.
-
-And to uninstall the library, run
-
-    python3 -m pip uninstall psp
-
----
-
-Documentations will be available in `docs/` or something.  I don't know,
-haven't figured out how to put them up here (and it's also essentially
-incomplete now).
-I will include a brief introduction there so... please be patient with
-me if this makes no sense to you now.
-
-(For a brief demo, you can find one [here][Demo].)
+At the moment `python3 -m unittest` does the job...
+This will run tests in `tests/` and `newtests/`.
 
 
 [Perspective]: http://blinky.co/perspective_app/
@@ -43,6 +65,9 @@ me if this makes no sense to you now.
   work...
 -->
 [Demo]: https://github.com/rapidcow/perspective/tree/master/src
+[docs]: https://perspe.readthedocs.io/en/latest/
+[venv]: https://docs.python.org/3/library/venv.html
+[-e]: https://pip-python3.readthedocs.io/en/latest/reference/pip_install.html#editable-installs
 
 [^1]: This was not an attempt to replace the app!  My intent was originally
       to back up my diaries in the app, but since waiting for the devs to

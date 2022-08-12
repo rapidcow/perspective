@@ -4,7 +4,7 @@
 The Perspective Library 0.2.0
 =============================
 
-Documentation for ``basicproc.py`` (archived) and the ``psp`` library
+Documentation for ``basicproc.py`` (archived) and the ``psp`` package
 (in development)!
 
 Read ":ref:`What is this?`" for a brief explanation of what this library

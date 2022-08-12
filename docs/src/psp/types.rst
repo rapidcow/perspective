@@ -16,8 +16,8 @@ as a :class:`Configurable` class that is... just there, it exists, y'know?
 Like I don't know where else to put it either.
 
 
-.. contents::
-   :local:
+.. .. contents::
+..    :local:
 
 .. _attr_protocol:
 
