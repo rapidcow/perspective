@@ -14,10 +14,27 @@
 # import sys
 # sys.path.insert(0, os.path.abspath('.'))
 
+from multiproject.utils import get_project
+
+multiproject_projects = {
+    'en': {
+        'path': '.',
+        'use_config_file': False,
+    },
+    'zh_CN': {
+        'path': '.',
+        'use_config_file': False,
+    },
+}
+
+current_project = get_project(multiproject_projects)
 
 # -- Project information -----------------------------------------------------
 
-project = 'The Perspective Library'
+project = {
+    'en': 'The Perspective Library',
+    'zh_CN': 'Perspective 库',
+}[current_project]
 copyright = '2022, rapidcow'
 author = 'rapidcow'
 
@@ -31,7 +48,7 @@ extensions = [
     'sphinx.ext.intersphinx',
     'sphinx.ext.doctest',
     'sphinx.ext.todo',
-    # 'sphinx_rtd_theme',
+    'multiproject',
 ]
 
 # Add any paths that contain templates here, relative to this directory.
@@ -48,8 +65,6 @@ exclude_patterns = ['Thumbs.db', '.DS_Store']
 # The theme to use for HTML and HTML Help pages.  See the documentation for
 # a list of builtin themes.
 #
-# html_theme = 'alabaster'
-# html_theme = 'sphinx_rtd_theme'
 html_theme = 'furo'
 
 # Add any paths that contain custom static files (such as style sheets) here,
@@ -64,10 +79,10 @@ html_css_files = [
 
 # -- Internationalization ----------------------------------------------------
 
-# This is usually changed from command-line using "-D language=..."
-language = 'en'
+language = current_project
 locale_dirs = ['locale/']
 gettext_compact = True
+
 
 # Numbered figures
 numfig = True

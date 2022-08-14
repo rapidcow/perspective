@@ -4,8 +4,6 @@
 :mod:`processors.json_processor` --- JSON backup file processors
 ================================================================
 
-:Author: rapidcow <thegentlecow@gmail.com>
-
 .. module:: psp.processors.json_processor
    :synopsis: JSON backup file processors
 
@@ -15,16 +13,18 @@ module.  Specifically::
    from psp.processors import load_json, dump_json
    from psp.processors import JSONLoader, JSONDumper
 
-can be used instead of the whole long name. Also for the examples below
-I used ::
+can be used instead of the whole long name.
+
+All the examples below will use the following import:
 
    from psp.processors.json_processor import *
 
-to pollute the public namespace.  You're welcome!
+.. note::
 
-Also, if you're new to backup files, please read the "Backup File Structure"
-section from :ref:`basicproc` for my *awesome* explanation!  (jk it's there
-because i don't have time to write a new one UGHH DX)
+   This module deals with what are called *backup files*, which are
+   JSON files following a format described in :ref:`backup_spec`.
+   Make sure to refer to that because the default implementation here
+   is entirely based off of the rules described there!
 
 .. testsetup::
 
