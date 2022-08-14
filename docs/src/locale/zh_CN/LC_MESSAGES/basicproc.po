@@ -28,7 +28,7 @@ msgstr ""
 
 #: ../../src/basicproc/zero.rst
 msgid "Author"
-msgstr ""
+msgstr "作者"
 
 #: ../../src/basicproc/zero.rst:11
 msgid "rapidcow"

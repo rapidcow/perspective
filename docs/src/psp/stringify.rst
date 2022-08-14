@@ -7,8 +7,6 @@
 .. module:: psp.stringify
    :synopsis: Formatter stuff
 
-.. TODO Examples --- we know what classes are in here okay
-
 This module defines classes :class:`PanelFormatter` and
 :class:`EntryFormatter` for formatting panels and entries as strings
 that mimics the interface from the app Perspective.

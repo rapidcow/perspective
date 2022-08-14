@@ -1,6 +1,9 @@
+.. _backup_spec:
+
 =============================
 ``backup.json`` Specification
 =============================
+
 :Author: rapidcow
 :Date: Nov 29, 2021?
 
@@ -15,6 +18,10 @@ Abstract
 This is meant to provide a technical specification for the minimal syntax of
 ``backup.json``, as read and written by :mod:`psp.processors.json_processor`.
 
+.. important::
+
+   This isn't complete at the moment, so please refer to "Backup File
+   Structure" section from :ref:`basicproc` for a more detailed explanation!
 
 -----------
 Terminology

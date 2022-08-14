@@ -1,25 +1,38 @@
 .. _home:
 
-=============================
-The Perspective Library 0.2.0
-=============================
+======================================
+The Perspective Library Documentation!
+======================================
 
-Documentation for ``basicproc.py`` (archived) and the ``psp`` package
-(in development)!
+Welcome!  This is a pure Python library providing backup utility for the
+iOS journaling app `Perspective`_, as well as backing up and processing
+diaries in general!
 
-Read ":ref:`What is this?`" for a brief explanation of what this library
-is all about, ":ref:`Installation`" for instructions, and
-":ref:`Tutorials`" for a series of tutorials on practical uses of this
-library.  The rest is technical documentation concerning the code and
-JSON backup files.
+.. _Perspective: http://blinky.co/perspective_app/
+
+
+Installation
+------------
+
+The package requires Python 3.8 or later installed on your machine.
+To install, run the following commands in your terminal:
+
+.. code-block:: sh
+
+   git clone https://github.com/rapidcow/perspective.git
+   python3 -m pip install perspective/src
+
+Remember to replace ``python3`` with the name of your Python 3 interpreter!
+
+
+Overview
+--------
 
 .. toctree::
    :maxdepth: 1
-   :caption: Contents:
 
    changelog/index.rst
    intro/about.rst
-   intro/install.rst
    tutorials/index.rst
    basicproc/zero.rst
    psp/index.rst
@@ -27,7 +40,7 @@ JSON backup files.
 
 
 Indices and tables
-==================
+------------------
 
 * :ref:`genindex`
 * :ref:`modindex`

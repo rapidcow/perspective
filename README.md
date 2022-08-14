@@ -1,7 +1,7 @@
 # perspective
 
 A Python library providing backup utility for the iOS journaling app
-[Perspective][]![^1]
+[Perspective][] (and diaries in general)![^1]
 
 Documentation in English is available [here][docs].
 
@@ -27,7 +27,7 @@ To install, use ONE of the following methods:
 
     ```sh
     git clone https://github.com/rapidcow/perspective.git
-    python3 -m pip install src
+    python3 -m pip install perspective/src
     ```
 
 If you have successfully installed, running `python3 -m psp -V` should

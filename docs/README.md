@@ -21,8 +21,8 @@ Make sure to install the dependencies first using
 
 It is HIGHLY recommended (though not required) that you create and activate
 a virtual environment first.  See the [Python docs][venv] for how to create
-one.  For Mac it might look like this (run this in the root directory of
-this repository):
+one.  For Mac it might look like this (you don't have to run this anywhere
+in particular):
 
 ```sh
 python3 -m venv .env
@@ -36,11 +36,11 @@ pip install -r docs/requirements.txt
 In `docs/`:
 
 ```sh
-# With Make
+# On Mac/Linux?
 make html
-# On Windows
-make.bat html
-# Without GNU Make
+# On Windows (Command prompt)
+.\make.bat html
+# Without Make
 sphinx-build -M html src build
 ```
 
@@ -62,9 +62,9 @@ Replace `{target}` in the following code with:
 ```sh
 # With Make
 make {target}
-# On Windows
-make.bat {target}
-# Without GNU Make
+# On Windows (Command prompt)
+.\make.bat {target}
+# Without Make
 sphinx-build -M {target} src build
 ```
 
@@ -82,31 +82,59 @@ After the installation is done you may remove the `basicproc/` directory.
 
 ### Building with a different language
 
+It's a little weird, but let me explain... we use this single repository
+for English *and* Chinese documentation, and both of them are built
+automatically on Read the Docs after any changes are made here.
+
+The two languages are built separately as projects using the
+[multiproject][] extension (which [documentation of Read the Docs itself
+uses][conf.py]!  But our use here is gonna be a bit trickier ;)
+Each project is named `en` and `zh_CN`, the language code respectively.
+
+To build a project for each language, override the [`PROJECT` environment
+variable][PROJECT]:
+
+```sh
+## On Mac/Linux
+# English (the default)
+make html
+PROJECT=en make html
+# Simplified Chinese
+PROJECT=zh_CN make html
+
+## On Windows
+# English (no defaults o.o)
+set PROJECT=en
+.\make.bat html
+# Simplified Chinese
+set PROJECT=zh_CN
+.\make.bat html
+
+## Without Make
+# English (probably the default??)
+export PROJECT=en
+sphinx -M html src build
+# Simplified Chinese
+export PROJECT=zh_CN
+sphinx -M html src build
+```
+
+(P.S. The projects uploaded to readthedocs.org all refer to this
+repository and have no difference but the language and environment
+variable settings!  Those are not determined by `.readthedocs.yaml`,
+fortunately.)
+
 The following is borrowed from steps 3 to 6 of the
 [sphinx-intl quick guide][quick].  I'll use Simplified Chinese (zh_CN)
 for the following examples, but just keep in mind it's the same for other
 languages.
 
-To make documentation:
-
-```sh
-# With Make
-make -e SPHINXOPTS="-D language=zh_CN" html
-# On Windows...?
-set SPHINXOPTS="-D language=zh_CN"
-make.bat html
-# Without make
-sphinx-build -M html src build -D language=zh_CN
-```
-
-As before, you may replace `html` with any of the aforementioned target
-(like `latexpdf`.)
-
 For adding translation of some language (with code `zh_CN` again):
 
 ```sh
 make gettext
-cd src && sphinx-intl update -p ../build/gettext -l zh_CN
+cd src
+sphinx-intl update -p ../build/gettext -l zh_CN
 ```
 
 From there you can edit the `.po` files in `locale/zh_CN/LC_MESSAGES/`.
@@ -114,10 +142,7 @@ From there you can edit the `.po` files in `locale/zh_CN/LC_MESSAGES/`.
 to go through, as described [here](https://stackoverflow.com/a/44440757))
 
 
-## Publishing to Read The Docs
-
-It's automatic I guess so just making a commit is all that is needed
-<!-- XXX: prolly update this useless description in the future -->
+## Publishing to Read The Doc
 
 
 ## About translation
@@ -141,3 +166,7 @@ before anything crazy happens :/
 [venv]: https://docs.python.org/3/library/venv.html
 [doctest]: https://www.sphinx-doc.org/en/master/usage/extensions/doctest.html
 [quick]: https://www.sphinx-doc.org/en/master/usage/advanced/intl.html#quick-guide
+
+[multiproject]: https://sphinx-multiproject.readthedocs.io/
+[conf.py]: https://github.com/readthedocs/readthedocs.org/blob/e26b1d906eac69a099d623ce25393a883fc822f9/docs/conf.py#L50
+[PROJECT]: https://sphinx-multiproject.readthedocs.io/en/latest/configuration.html#confval-multiproject_env_var

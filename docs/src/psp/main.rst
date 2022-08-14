@@ -4,6 +4,21 @@
 :mod:`main` --- Main Program
 ============================
 
+XXX: this is broken (don't use this yet)
+
+Evoke with
+
+.. code-block:: console
+
+   $ python3 -m psp {name}
+
+where name is one of:
+
+*  print
+*  synopsis
+*  merge
+*  interact
+
 --config, -c     Configuration
 --date, -d       Date
 
