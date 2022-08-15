@@ -4,10 +4,8 @@ How to back up entries from Perspective
 
 :Author: rapidcow <thegentlecow@gmail.com>
 :Date: May something, 2022
-:Video: I haven't recorded it lol
 
-.. contents::
-   :local:
+.. :Video: I haven't recorded it lol
 
 
 .. Remember: TWO SPACES BEFORE EACH HEADER!!

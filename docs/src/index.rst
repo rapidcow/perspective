@@ -31,9 +31,19 @@ Overview
 .. toctree::
    :maxdepth: 1
 
-   changelog/index.rst
    intro/about.rst
    tutorials/index.rst
+
+
+Technical stuff
+---------------
+
+The actual documentation but might be too boring to read
+
+.. toctree::
+   :maxdepth: 1
+
+   changelog/index.rst
    basicproc/zero.rst
    psp/index.rst
    struct/index.rst
