@@ -8,16 +8,18 @@
    :synopsis: Entries with captions and stuff
 
 I don't know about you, but whenever I see *this* with stringify it always
-throws me off:
+throws me off (the ``===``` add for clarity):
 
 .. code-block:: text
 
+   ============================================================
                   Friday, September 7, 2018  :)
 
 
    2:18 AM
      <jpeg file sized 132.7 kB at 'BRANCHES/2018_G8S1/img/img_d
       ownload/2018-09-07_02-18-00_1.jpg'>
+   ============================================================
 
 It says nothing about what the file contains!  If only there was a way to add
 alt text or something so that at least I know what it says...
@@ -37,6 +39,7 @@ in your backup file, which will produce this!
 
 .. code-block:: text
 
+   ============================================================
                   Friday, September 7, 2018  :)
 
 
@@ -46,11 +49,12 @@ in your backup file, which will produce this!
 
      Caption: An octupus with comically large eyes... and a
               small jelly boi =D
+   ============================================================
 
-This module defines three attributes at panel level: *caption* (as I've just
+This module defines three attributes at entry level: *caption* (as I've just
 shown), *transcription*, and *title*.  Transcription may be used for a plain
 text representation of binary files like images and audios.  And as for titles,
 well, sometimes I like to title my entries, sort of like vignettes and blog
-posts so... that's why.
+posts so... that's why I added that too.
 
 .. describe the default state of all these three variables

@@ -36,7 +36,7 @@ pip install -r docs/requirements.txt
 In `docs/`:
 
 ```sh
-# On Mac/Linux?
+# With Make
 make html
 # On Windows (Command prompt)
 .\make.bat html
@@ -142,7 +142,10 @@ From there you can edit the `.po` files in `locale/zh_CN/LC_MESSAGES/`.
 to go through, as described [here](https://stackoverflow.com/a/44440757))
 
 
-## Publishing to Read The Doc
+## Publishing to Read the Doc
+
+Read the Doc already adds webhooks that trigger whenever the repo is
+updated, so you shouldn't have to worry about it (:
 
 
 ## About translation

@@ -35,7 +35,7 @@ project = {
     'en': 'The Perspective Library',
     'zh_CN': 'Perspective 库',
 }[current_project]
-copyright = '2022, rapidcow'
+copyright = '2022, rapidcow :)'
 author = 'rapidcow'
 
 

@@ -10,9 +10,7 @@ if "%SPHINXBUILD%" == "" (
 set SOURCEDIR=src
 set BUILDDIR=build
 
-REM XXX: Kill me I have no idea what this does
-REM      (it probably sets the default PROJECT similar to
-REM       PROJECT ?= en in Makefile but idk idk >.<)
+REM Set PROJECT to the default (en) when it is undefined
 if "%PROJECT%" == "" (
 	set PROJECT=en
 )

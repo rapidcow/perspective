@@ -1,8 +1,10 @@
 .. _types:
 
-==================================
-:mod:`types` --- Important objects
-==================================
+.. Using :mod:`types` links to the builtin types module so uhh don't
+
+===============================
+``types`` --- Important objects
+===============================
 
 .. module:: psp.types
    :synopsis: Define panel and entry classes and some others.
