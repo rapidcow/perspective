@@ -9,10 +9,6 @@ a good question to ask is *how*?  To answer that, here are some examples that
 you might find useful.
 
 
-.. contents::
-   :local:
-
-
 .. _pspcb_0:
 
 stringify doesn't look like the app interface in Perspective!!!

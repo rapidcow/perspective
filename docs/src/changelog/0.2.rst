@@ -4,15 +4,14 @@
 Release 0.2
 ===========
 
-:Author: rapidcow <thegentlecow@gmail.com>
-
-
 ------------------------------
 Release 0.2.0 (in development)
 ------------------------------
 
-.. .. contents::
-..    :local:
+:Author: rapidcow <thegentlecow@gmail.com>
+
+This documentation didn't exist before this release, so these changes
+are kept here exclusively for the record!
 
 .. TODO:
 
@@ -69,12 +68,13 @@ JSONLoader
 
 *  Removed the ``date`` argument in |load| and |load_data|
 
-*  |load| or |load_data| now returns a generator.  Use
-   ``list(loader.load())`` to obtain an identical result before.
+*  |load| or |load_data| now returns a *generator*.  Use
+   ``list(loader.load())`` to obtain an identical result to before
+   (or alternatively, use the |fload_json| function)
 
 *  Removed the ``check_panel_duplicates`` option given that |load| now
    returns a generator and the option works on top of the fact that panels
-   are loaded entirely a list.  instead, when you do load from a list,
+   are loaded entirely a list.  Instead, when you do load from a list,
    use a function (copied directly from the code)::
 
       def check_duplicates(panels):
@@ -87,6 +87,7 @@ JSONLoader
           for panel_date, indices in sorted(panel_dict.items()):
               if len(indices) > 1:
                   # Sorting 'indices' is trivial here
+                  # (they can only appear in increasing order)
                   index_str = (f"{', '.join(f'#{i}' for i in indices[:-1])} "
                                f"and #{indices[-1]}")
                   raise ValueError(f'panels {index_str} share the '
@@ -95,7 +96,7 @@ JSONLoader
    then something like ::
 
       with open(file, encoding='utf-8') as fp:
-           panel_list = list(loader.load(fp))
+          panel_list = list(loader.load(fp))
       check_duplicates(panel_list)
 
    should work.
@@ -111,13 +112,10 @@ JSONLoader
    instead of ``(panel, entry, attrs)``.  No idea why I put *panel* first
    before given how important *entry* is compared to the rest.
 
-.. |load| replace:: :meth:`~psp.processors.json_processor.JSONLoader.load`
-.. |load_json| replace:: :meth:`~psp.processors.json_processor.JSONLoader.load_json`
-.. |load_data| replace:: :meth:`~psp.processors.json_processor.JSONLoader.load_data`
+*  IMPORTANT!!! now tz and paths are all guaranteed to be set by
+   split_data()
 
-
-IMPORTANT!!! now tz and paths are all guaranteed to be set by
-split_data()
+*  loader: attrs are never copied unless absolutely necessary
 
 
 JSONDumper
@@ -238,28 +236,33 @@ Other Changes
       comparison (always unequal when ``utcoffset()`` depends on the fold
       attribute).)
 
-*  ``__init__.py`` no longer imports :class:`Panel <psp.types.Panel>` or
-   :class:`Entry <psp.types.Entry>`. you have to import explicitly from
-   ``psp.types`` now.
+*  ``__init__.py`` no longer imports the ``types.Panel`` or ``types.Entry``
+   class.  You have to import explicitly from ``psp.types`` now.
 
-*  new convenience functions added! ``util.fileobjequal`` and
-   ``util.copyfileobj``
+*  New convenience functions added! ``util.fileobjequal()`` and
+   ``util.copyfileobj()``
 
 .. TODO: clean up this mess
 
 
-*  change arguments of the ``JSONLoader.process_entry`` method from
+*  change arguments of the |process_entry| method from
    ``(panel, entry, attrs)`` to ``(entry, panel, attrs)``
 
    *  it makes more sense as it follows logical order: the part being
       actually processed (entry) and the part being accessed (attrs)
 
-*  make loader and dumper only accept file pointers
+*  make loader and dumper only accept file objects
 
-   *  load_json() and dump_json() being sole exceptions
-
-*  load_iter(fp): generator
-
-*  loader: attrs are never copied unless absolutely necessary
+   *  |fload_json| and |fdump_json| being sole exceptions
 
 *  find_paths: a public generator
+
+
+
+
+.. |load| replace:: ``JSONLoader.load()``
+.. |load_json| replace:: ``JSONLoader.load_json()``
+.. |load_data| replace:: ``JSONLoader.load_data()``
+.. |process_entry| replace:: ``JSONLoader.process_entry()``
+.. |fload_json| replace:: ``load_json()``
+.. |fdump_json| replace:: ``load_json()``

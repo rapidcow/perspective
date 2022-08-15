@@ -44,6 +44,19 @@ For a clumsy demo (WILL BE REPLACED IN THE FUTURE), you can find one
 See `docs/README.md`.
 
 
+## Bug
+
+I have no idea how this works, but well...
+
+If you find a bug, open a new issue [here][issues], add a Bug label
+(probably) and be sure to address:
+
+*   a minimal example that can reproduce the problem
+*   what you expected to happen (link to the [documentation][docs] or
+    whatever could help us understand the issue)
+*   what you actually got (the full traceback and error message)
+
+
 ## Development
 
 Assuming that you have activated a [virtual environment][venv], you can
@@ -52,11 +65,12 @@ changes you make here in the repo will be reflected in your Python runtime)
 
 ```sh
 git clone https://github.com/rapidcow/perspective.git
-pip install -e src
+cd perspective/src
+pip install -e .
 ```
 
-At the moment `python3 -m unittest` does the job...
-This will run tests in `tests/` and `newtests/`.
+Use `python3 -m unittest` in the repository directory to run tests in
+`tests/` and `newtests/`.
 
 
 [Perspective]: http://blinky.co/perspective_app/
@@ -68,6 +82,8 @@ This will run tests in `tests/` and `newtests/`.
 [docs]: https://perspe.readthedocs.io/en/latest/
 [venv]: https://docs.python.org/3/library/venv.html
 [-e]: https://pip-python3.readthedocs.io/en/latest/reference/pip_install.html#editable-installs
+
+[issues]: https://github.com/rapidcow/perspective/issues
 
 [^1]: This was not an attempt to replace the app!  My intent was originally
       to back up my diaries in the app, but since waiting for the devs to
