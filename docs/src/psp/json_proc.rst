@@ -15,11 +15,11 @@ module.  Specifically::
 
 can be used instead of the whole long name.
 
-All the examples below will use the following import:
+All the examples below will use the following import::
 
    from psp.processors.json_processor import *
 
-.. note::
+.. important::
 
    This module deals with what are called *backup files*, which are
    JSON files following a format described in :ref:`backup_spec`.
@@ -29,11 +29,6 @@ All the examples below will use the following import:
 .. testsetup::
 
    from psp.processors.json_processor import *
-
-
-.. .. contents::
-..    :local:
-..    :depth: 2
 
 
 -----------
@@ -114,8 +109,9 @@ two things (opening a file and processing).
       +----------------------------+---------------------------+----------------------+-----------+
       | Option                     | Description               | Type                 | Default   |
       +============================+===========================+======================+===========+
-      | ``base_dir``               | Base directory for        | *str* or             | ``'.'``   |
-      |                            | relative *input* paths.   | :class:`os.PathLike` |           |
+      | ``base_dir``               | Base directory for        | *str* or             | ``None``  |
+      |                            | *input* paths. (1)        | :class:`os.PathLike` |           |
+      |                            |                           | or None              |           |
       +----------------------------+---------------------------+----------------------+-----------+
       | ``json_options``           | Keyword arguments to      | *dict*               | ``{}``    |
       |                            | pass to ``json.loads()``. |                      |           |
@@ -123,11 +119,11 @@ two things (opening a file and processing).
       | ``check_panel_order``      | If true, warn on          | *bool*               | ``True``  |
       |                            | panel dates that are      |                      |           |
       |                            | not strictly              |                      |           |
-      |                            | increasing. (1)           |                      |           |
+      |                            | increasing. (2)           |                      |           |
       +----------------------------+---------------------------+----------------------+-----------+
       | ``check_entry_order``      | If true, warn on          | *bool*               | ``True``  |
       |                            | entry times that are      |                      |           |
-      |                            | not increasing. (2)       |                      |           |
+      |                            | not increasing. (3)       |                      |           |
       +----------------------------+---------------------------+----------------------+-----------+
       | ``suppress_warnings``      | If true, all              | *bool*               | ``False`` |
       |                            | :exc:`LoadWarning`        |                      |           |
@@ -136,7 +132,7 @@ two things (opening a file and processing).
       | ``error_on_warning``       | If true, all              | *bool*               | ``False`` |
       |                            | :exc:`LoadWarning`        |                      |           |
       |                            | is raised as              |                      |           |
-      |                            | exceptions. (3)           |                      |           |
+      |                            | exceptions. (4)           |                      |           |
       +----------------------------+---------------------------+----------------------+-----------+
       | ``warn_ambiguous_paths``   | If true, warn for         | *bool*               | ``True``  |
       |                            | paths are found more      |                      |           |
@@ -149,10 +145,15 @@ two things (opening a file and processing).
       Notes:
 
       (1)
+         When ``base_dir`` is None, the loader raises :class:`LoadError`
+         as soon as encountering the entry-level attribute ``input``.
+         ``base_dir`` may be a relative path.
+
+      (2)
          A warning is issued if ``d1 >= d2`` for any two consecutive panels
          of dates ``d1`` and ``d2``.
 
-      (2)
+      (3)
          A warning is issued if ``t1 > t2`` for any two consecutive entries
          of times ``t1 and t2`` (converted to UTC).  In particular, main
          entries and insight entries (entries whose :attr:`insight` attribute
@@ -162,10 +163,10 @@ two things (opening a file and processing).
          transition from insight to main or vice versa occurred more than
          once, then a warning is issued.
 
-      (3)
+      (4)
          This has no effect if ``suppress_warnings`` is true.
 
-      (4)
+      (5)
          Default value is set to::
 
             {
@@ -939,21 +940,21 @@ representations.
       +----------------------------+---------------------------+----------------------+-----------+
       | Option                     | Description               | Type                 | Default   |
       +============================+===========================+======================+===========+
-      | ``base_dir``               | Base directory that       | *str* or             | ``'.'``   |
+      | ``base_dir``               | Base directory that       | *str* or             | ``None``  |
       |                            | files will be exported    | :class:`os.PathLike` |           |
-      |                            | relative to.              |                      |           |
+      |                            | relative to. (1)          | or None              |           |
       +----------------------------+---------------------------+----------------------+-----------+
       | ``json_options``           | Keyword arguments to      | *dict*               | ``{}``    |
       |                            | pass to ``json.dump()``.  |                      |           |
       |                            |                           |                      |           |
       |                            |                           |                      |           |
       +----------------------------+---------------------------+----------------------+-----------+
-      | ``data_encoder``           | Function that is used to  | callable             | \(1)      |
+      | ``data_encoder``           | Function that is used to  | callable             | \(2)      |
       |                            | write inline binary       |                      |           |
       |                            | entries.                  |                      |           |
       +----------------------------+---------------------------+----------------------+-----------+
       | ``paths``                  | Lookup paths; used as the | *list* of path-like  | ``['.']`` |
-      |                            | JSON top-level attribute  | objects (2)          |           |
+      |                            | JSON top-level attribute  | objects (3)          |           |
       |                            | ``paths``.                |                      |           |
       |                            |                           |                      |           |
       +----------------------------+---------------------------+----------------------+-----------+
@@ -971,12 +972,20 @@ representations.
       | ``error_on_warning``       | If true, all              | *bool*               | ``False`` |
       |                            | :exc:`DumpWarning`        |                      |           |
       |                            | is raised as              |                      |           |
-      |                            | exceptions. (3)           |                      |           |
+      |                            | exceptions. (4)           |                      |           |
       +----------------------------+---------------------------+----------------------+-----------+
 
       Notes:
 
       (1)
+         When ``base_dir`` is None, calling any of these methods results in
+         a :class:`DumpError`:
+
+         *  :meth:`generate_export_path`
+         *  :meth:`compute_input_path`
+         *  :meth:`export_entry`
+
+      (2)
          The function in the ``data_encoder`` option should take the entry
          being written and return a tuple ``(data_encoding, data)``, where
          the two values are strings that will be written to the
@@ -988,11 +997,11 @@ representations.
             def data_encoder(entry):
                 return 'base64', base64.b64encode(entry.get_raw_data()).decode('ascii')
 
-      (2)
+      (3)
          The list of paths is always converted to strings by calling
          ``os.fspath()`` on each item.
 
-      (3)
+      (4)
          This has no effect if ``suppress_warnings`` is true.
 
       More on the usage of these options in the
@@ -1175,7 +1184,7 @@ representations.
       >>> # make this a text entry otherwise it will be exported
       >>> entry.set_data('hi')
       >>> panel.add_entry(entry)
-      >>> # we know that no exporting will happen so it's safe to
+      >>> # we know that no exporting will happen so it's okay to
       >>> # not provide a base_dir
       >>> dumper = JSONDumper()
       >>> attrs = dumper.get_top_level_attributes([])
@@ -1347,6 +1356,26 @@ representations.
    However, if an entry is not exported and None is being returned,
    :meth:`get_input_path` should not create any files.
 
+   In addition, if ``base_dir`` is set to None, any attempt to generate a
+   new path immediately fails.  As an example, observe what happens when we
+   export a binary entry:
+
+   >>> from psp.types import Entry
+   >>> from datetime import datetime, timezone
+   >>> entry = Entry(datetime(2022, 2, 22, tzinfo=timezone.utc))
+   >>> # is_text() returns False, so dumper will see this as a binary entry
+   >>> entry.is_text()
+   False
+   >>> dumper = JSONDumper()
+   >>> # the default value is None
+   >>> dumper.get_option('base_dir') is None
+   True
+   >>> attrs = dumper.get_top_level_attributes([])
+   >>> JSONDumper().wrap_entry(entry, attrs)
+   Traceback (most recent call last):
+     ...
+   psp.processors.json_processor.DumpError: base_dir must be set when calling generate_export_path()
+
    .. method:: get_input_path(entry, attrs)
 
       Get an input path for the entry.  The arguments passed are the
@@ -1446,7 +1475,10 @@ representations.
       Generate a file name for exporting by combining ``base`` and ``ext``
       in a way the file name doesn't collide with any existing file.
 
-      Raise :class:`ValueError` when candidates are exhausted
+      :raise ValueError:
+         when candidates are exhausted
+      :raise DumpError:
+         if the base_dir option is None
 
       EXAMPLE
 
@@ -1458,7 +1490,13 @@ representations.
 
    .. method:: compute_input_path(name, dirname, paths)
 
+      :raise DumpError:
+         if the base_dir option is None
+
    .. method:: export_entry(entry, export_path)
+
+      :raise DumpError:
+         if the base_dir option is None
 
    secondary
 
@@ -1493,9 +1531,9 @@ Dumper Options
 '''''''''''''''''''''
 
 
----------
-Functions
----------
+---------------------
+Lookup Implementation
+---------------------
 
 .. function:: find_paths(path, base_dir, paths)
 
@@ -1531,30 +1569,55 @@ on.  But I thought, maybe, just *maybe*, people will be less intimidated
 if they see just one line of code magically doing everything they need!
 So here we go...
 
+.. I know this breaks the 80 char limit, but even so don't wrap this
+   (it will break)
+
 .. function:: load_json(file, date=None, *, encoding=None, errors=None, cls=JSONLoader, **options)
 
    Convenience interface to loading JSON archives.
 
-   :param file: File
-   :param date: The date of the panel to load or None.  Can either
-                be a :class:`datetime.date` object or a *str*, which will
-                then converted with the :meth:`parse_date` method.
-   :param encoding: Argument for :func:`io.open`
-   :param errors: Argument for :func:`io.open`
-   :param cls: Loader class to use; can be any subclass of
-               :class:`JSONLoader`.
-   :returns: A *list* of panel (note: not a generator)
+   :param file:
+      A file object that implements ``read()`` or a file path where
+      :func:`io.open` will be used with the *encoding* and *errors*
+      parameters to open the file.  If a file object is passed, it remains
+      open after the function call.
+   :param date:
+      The date of the panel to load or None.  Can either be a
+      :class:`datetime.date` object or a *str*, which will then converted
+      with the :meth:`JSONLoader.parse_date` method.
+   :param encoding:
+      Parameter for :func:`io.open`
+   :param errors:
+      Parameter for :func:`io.open`
+   :param cls:
+      Loader class to use; can be any subclass of :class:`JSONLoader`.
+   :returns:
+      A *list* of panel (note: not a generator)
 
-.. function:: dump_json(panels, file, *, encoding=None, errors=None, cls=JSONDumper, **options)
+.. function:: dump_json(panels, file, *, exist_ok=False, encoding=None, errors=None, cls=JSONDumper, **options)
 
    Convenience interface to dumping JSON archives.
 
-   :param panels: Iterable of panels
-   :param file: File
-   :param encoding: Argument for :func:`io.open`
-   :param errors: Argument for :func:`io.open`
-   :param cls: Dumper class to use; can be any subclass of
-               :class:`JSONDumper`.
+   :param panels:
+      An iterable of panels.
+   :param file:
+      A file object that implements ``write()`` or a file path where
+      :func:`io.open` will be used with the *encoding* and *errors*
+      parameters to open the file.  If a file object is passed, it remains
+      open after the function call.
+   :param bool exist_ok:
+      If true, use the ``w`` mode to open the file.
+      Otherwise the ``x`` mode is used.
+   :param encoding:
+      Parameter for :func:`io.open`
+   :param errors:
+      Parameter for :func:`io.open`
+   :param cls:
+      Dumper class to use; can be any subclass of :class:`JSONDumper`.
+
+Note that the *file* argument in the above functions can either be a file
+object and a file path.  Pretty messed up if you ask me, but still...
+they're just there in case you need it.
 
 
 .. |Panel| replace:: :class:`~psp.types.Panel`

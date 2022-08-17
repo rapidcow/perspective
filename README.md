@@ -20,7 +20,7 @@ To install, use ONE of the following methods:
     this is still up on test.pypi.org
 
     ```sh
-    python3 -m pip install -i https://test.pypi.org/simple/ perspe
+    python3 -m pip install -i https://test.pypi.org/simple/ perspe==0.2.0a1
     ```
 
 *   (from this repository directly)
@@ -71,6 +71,17 @@ pip install -e .
 
 Use `python3 -m unittest` in the repository directory to run tests in
 `tests/` and `newtests/`.
+
+
+## Publishing on <s>PyPI</s> Test PyPI
+
+From [this](https://packaging.python.org/en/latest/tutorials/packaging-projects/):
+
+```sh
+python3 -m install --update build twine
+python3 -m build
+python3 -m twine upload --repository testpypi dist/*
+```
 
 
 [Perspective]: http://blinky.co/perspective_app/

@@ -122,6 +122,9 @@ def main():
         'interact', help='launch an interactive prompt (experimental)',
         parents=[parser_file])
 
+    parser_init = subparser.add_parser(
+        'init')
+
     args = parser.parse_args()
 
     if args.config is not None:
@@ -312,6 +315,8 @@ def main():
                 'pprint': pprint.pprint,
             })
 
+    elif args.subname == 'init':
+        raise RuntimeError("don't i'm not done yet")
     else:
         raise RuntimeError('unreachable')
 

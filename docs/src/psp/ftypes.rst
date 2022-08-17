@@ -8,7 +8,7 @@
    :synopsis: File type mayhem
 
 .. this is a very interesting module but unfortunately i don't have time
-   to write anything as you can see :(
+   to write anything as you can see :( (i swear i'm not mimicking Fermat)
 
 .. function:: set_context(context)
 

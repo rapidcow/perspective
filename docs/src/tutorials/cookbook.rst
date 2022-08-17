@@ -23,6 +23,10 @@ news: you can fix this very easily by subclassing
        def get_date_string(self, date):
            return date.strftime('%A, %b {date.day}, %Y')
 
+   # To use this...
+   formatter = MyWayBetterPanelFormatter()
+   print(formatter.format(panel))
+
 (notice the ``%b`` instead of ``%B``)
 
 

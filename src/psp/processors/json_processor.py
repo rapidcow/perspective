@@ -678,6 +678,8 @@ class JSONLoader(Configurable):
         'paths' prepended to it.
         """
         base_dir = self.get_option('base_dir')
+        if base_dir is None:
+            raise LoadError('base_dir must be set when there are input paths')
         finder = find_paths(path, base_dir, paths)
 
         try:
@@ -1253,6 +1255,12 @@ class JSONDumper(Configurable):
         ended before a successful file name is returned.
         """
         base_dir = self.get_option('base_dir')
+        try:
+            base_dir = os.fspath(base_dir)
+        except TypeError:
+            # base_dir should be None
+            msg = 'base_dir must be set when calling generate_export_path()'
+            raise DumpError(msg) from None
         # just to check if this contains any slashes
         ext_head, ext_tail = os.path.split(ext)
         if ext_head or ext_tail != ext:
@@ -1342,6 +1350,12 @@ class JSONDumper(Configurable):
         use inconsistent lookup paths!
         """
         base_dir = self.get_option('base_dir')
+        try:
+            base_dir = os.fspath(base_dir)
+        except TypeError:
+            # base_dir should be None
+            msg = 'base_dir must be set when calling compute_input_path()'
+            raise DumpError(msg) from None
         parts = _split_path(dirname)
         name = input_path = os.path.normpath(name)
         target = os.path.abspath(os.path.join(base_dir, dirname, name))
@@ -1371,9 +1385,15 @@ class JSONDumper(Configurable):
         with os.makedirs() even if they exist, although the export path
         must not exist by the time of being exported.
         """
+        base_dir = os.path.abspath(self.get_option('base_dir'))
         # convert base_dir to an absolute path for the following
         # commonpath() check to work
-        base_dir = os.path.abspath(self.get_option('base_dir'))
+        try:
+            base_dir = os.path.abspath(base_dir)
+        except TypeError:
+            # base_dir should be None
+            msg = 'base_dir must be set when calling export_entry()'
+            raise DumpError(msg) from None
         _check_relpath(export_path, base_dir, 'export_path')
         export_path = os.path.join(base_dir, export_path)
         if os.path.exists(export_path):
@@ -1583,9 +1603,9 @@ def callable_checker(_self, _name, value):
 
 
 def base_dir_checker(_self, _name, value):
-    if not isinstance(value, (str, os.PathLike)):
-        raise TypeError(f"the 'base_dir' option should be a str or a "
-                        f"path-like object, not {value!r}")
+    if not (value is None or isinstance(value, (str, os.PathLike))):
+        raise TypeError(f"the 'base_dir' option should be None, a str, or "
+                        f"a path-like object, not {value!r}")
     return value
 
 
@@ -1605,7 +1625,7 @@ paths_checker = make_paths_checker(list_checker)
 del make_paths_checker
 
 
-JSONLoader.add_option('base_dir', '.', base_dir_checker)
+JSONLoader.add_option('base_dir', None, base_dir_checker)
 JSONLoader.add_option('json_options', {}, dict_checker)
 JSONLoader.add_option('check_panel_order', True, bool_checker)
 JSONLoader.add_option('check_entry_order', True, bool_checker)
@@ -1616,7 +1636,7 @@ JSONLoader.add_option('error_on_warning', False, bool_checker)
 JSONLoader.add_option('warn_ambiguous_paths', True, bool_checker)
 JSONLoader.add_option('data_decoders', data_decoders, dict_checker)
 
-JSONDumper.add_option('base_dir', '.', base_dir_checker)
+JSONDumper.add_option('base_dir', None, base_dir_checker)
 JSONDumper.add_option('json_options', {}, dict_checker)
 JSONDumper.add_option('data_encoder', data_encoder, callable_checker)
 JSONDumper.add_option('paths', ['.'], paths_checker)

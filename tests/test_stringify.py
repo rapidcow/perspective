@@ -122,7 +122,7 @@ class TestFormatter(unittest.TestCase):
 
         # Indentation
         # -----------
-        f.set_indent('| ')
+        f.indent = '| '
         self.assertEqual(f.wrap_paragraph(''), ['| '])
         self.assertEqual(f.wrap_paragraph(' \t\n'), ['| '])
         self.assertEqual(f.wrap_paragraph('hello world'),
@@ -137,7 +137,7 @@ class TestFormatter(unittest.TestCase):
         f.width = 8
         f.wrapper = None
         self.assertEqual(f.wrap_paragraph('hello world'), ['| hello world'])
-        f.set_indent('ps> ')
+        f.indent = 'ps> '
         self.assertEqual(f.wrap_paragraph('hello world'),
                          ['ps> hello world'])
 
@@ -155,7 +155,7 @@ class TestFormatter(unittest.TestCase):
 
         # Indentation
         # -----------
-        f.set_indent('|')
+        f.indent = '|'
         self.assertEqual(f.center_paragraph(''), ['|'])
         self.assertEqual(f.center_paragraph('hi'), ['|   hi    '.rstrip()])
         f.configure(line_callback=lambda s: s)
