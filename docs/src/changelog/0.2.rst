@@ -212,8 +212,8 @@ Panel and Entry
 *  ``Entry.set_source()`` no longer checks for file existence
 
 
-Other Changes
-^^^^^^^^^^^^^
+Other Changes (TEMP)
+^^^^^^^^^^^^^^^^^^^^
 
 *  ``util.panels_equal()`` and ``util.entries_equal()`` are removed,
    use ::
@@ -244,7 +244,6 @@ Other Changes
 
 .. TODO: clean up this mess
 
-
 *  change arguments of the |process_entry| method from
    ``(panel, entry, attrs)`` to ``(entry, panel, attrs)``
 
@@ -256,6 +255,10 @@ Other Changes
    *  |fload_json| and |fdump_json| being sole exceptions
 
 *  find_paths: a public generator
+
+*  base_dir in JSONLoader and JSONDumper now take None which activates this
+   sort of "restricted" mode that causes an error to be raised whenever
+   access to the file system is attempted
 
 
 

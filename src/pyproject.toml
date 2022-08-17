@@ -13,8 +13,11 @@ requires-python = ">=3.8"
 authors = [
     { name="rapidcow", email="thegentlecow@gmail.com" },
 ]
+# https://pypi.org/classifiers/
 classifiers = [
     "Programming Language :: Python :: 3",
+    "Development Status :: 2 - Pre-Alpha",
+    "License :: OSI Approved :: GNU General Public License v3 (GPLv3)",
 ]
 # XXX: What do I write here? O.o
 # https://python-poetry.org/docs/pyproject/
@@ -22,9 +25,10 @@ license = {text="GPL-3.0-or-later"}
 dynamic = ["version"]
 
 [project.urls]
-Documentation = "https://perspe.readthedocs.io/"
+Documentation = "https://perspe.readthedocs.io/en/latest/"
 Source = "https://github.com/rapidcow/perspective/"
 
+# XXX: idk but they say support for tool.setuptools is still beta :I
 [tool.setuptools]
 packages = ["psp", "psp.processors", "psp.extensions"]
 
