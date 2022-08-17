@@ -67,7 +67,7 @@ class Formatter(Configurable):
         a textwrap.TextWrapper() instance.  Be noted that has no effect if
         `width` is None (as mentioned above).
     """
-    __slots__ = ('_wrapper', '_width')
+    __slots__ = ('_wrapper', '_width', '_indent')
 
     def __init__(self, width=80, wrapper=None, *args, **kwargs):
         super().__init__(*args, **kwargs)
@@ -81,16 +81,20 @@ class Formatter(Configurable):
                 self.wrapper = textwrap.TextWrapper()
             else:
                 self.wrapper = wrapper
+        self.indent = ''
 
     def format(self, obj):
+        """Format an object as a string."""
         return '\n'.join(self.wrap(obj))
 
     @abc.abstractmethod
     def wrap(self, obj):
+        """Format an object as a list of lines."""
         return []
 
     @property
     def wrapper(self):
+        """The text wrapper used for basic line wrapping or None."""
         return self._wrapper
 
     @wrapper.setter
@@ -108,6 +112,7 @@ class Formatter(Configurable):
 
     @property
     def width(self):
+        """Width of the formatter or None."""
         return self._width
 
     @width.setter
@@ -124,23 +129,28 @@ class Formatter(Configurable):
     # Synonyms of get_option('indent') and configure(indent=...), but...
     # this is a lot more readable (given just how many times indent is
     # modified in this code)
-    def get_indent(self):
-        return self.get_option('indent')
+    @property
+    def indent(self):
+        """Indent of the formatter."""
+        return self._indent
 
-    def set_indent(self, indent):
-        self.set_option('indent', indent)
+    @indent.setter
+    def indent(self, value):
+        if not isinstance(value, str):
+            raise TypeError(f'indent should be a str, not {value!r}')
+        self._indent = value
 
     @contextlib.contextmanager
     def indented(self, extra_indent):
         """A context manager that creates extra indent.
         Indent will be restored on exit.
         """
-        old_indent = self.get_indent()
+        old_indent = self.indent
         try:
-            self.set_indent(old_indent + extra_indent)
+            self.indent = old_indent + extra_indent
             yield
         finally:
-            self.set_indent(old_indent)
+            self.indent = old_indent
 
     # =================
     # Protected methods
@@ -149,8 +159,8 @@ class Formatter(Configurable):
         """Return whether text wrapping will be used."""
         return self.wrapper is None or self.width is None
 
-    # Low-level wrapper of the wrapper.wrap function (does not strip)
     def _wrap(self, text):
+        """Low-level wrappr function of wrapper.wrap()."""
         if self._is_wrapping_disabled():
             return [text] if text else []
         return self.wrapper.wrap(text)
@@ -165,7 +175,7 @@ class Formatter(Configurable):
         if strlen(fillchar) != 1:
             raise ValueError('fillchar should precisely have length 1')
 
-        indent = self.get_indent()
+        indent = self.indent
         if not (prefix or indent):
             self.wrapper.width = self.width
             wrapped = self._wrap(text) or ['']
@@ -191,7 +201,7 @@ class Formatter(Configurable):
     def center_paragraph(self, text, *, fillchar=' '):
         strlen = self._options['strlen']
         callback = self._options['line_callback']
-        indent = self.get_indent()
+        indent = self.indent
         if strlen(fillchar) != 1:
             raise ValueError('fillchar should precisely have length 1')
 
@@ -226,11 +236,6 @@ class Formatter(Configurable):
         return line
 
 
-def indent_checker(_self, _name, indent):
-    if not isinstance(indent, str):
-        raise TypeError(f'indent should be a str, not {indent!r}')
-    return indent
-
 def strlen_checker(_self, _name, strlen):
     if not callable(strlen):
         raise TypeError(f'strlen should be a callable, not {strlen!r}')
@@ -241,12 +246,11 @@ def callback_checker(_self, _name, func):
         raise TypeError(f'line_callback should be a callable, not {func!r}')
     return func
 
-Formatter.add_option('indent', '', indent_checker)
 # can be replaced by say wcwidth.wcswidth
 Formatter.add_option('strlen', len, strlen_checker)
 # called on every line
 Formatter.add_option('line_callback', str.rstrip, callback_checker)
-del indent_checker, strlen_checker, callback_checker
+del strlen_checker, callback_checker
 
 
 class PanelFormatter(Formatter):
@@ -287,8 +291,8 @@ class PanelFormatter(Formatter):
                    e.time.utcoffset() == first.utcoffset()
                    for e in entries):
                 time_zone = first.tzinfo
+        entry_formatter.indent = self.indent
         entry_formatter.configure(
-            indent=self.get_indent(),
             strlen=self.get_option('strlen'),
             line_callback=self.get_option('line_callback'),
             base_dir=self.get_option('base_dir'),
