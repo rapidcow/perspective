@@ -1,0 +1,44 @@
+from psp.processors import JSONLoader, JSONDumper
+from psp.stringify import PanelFormatter
+import psp.timeutil
+
+
+__all__ = [
+    'MyJSONLoader',
+    'MyJSONDumper',
+    'parse_date',
+    'format_date',
+]
+
+
+class MyJSONLoader(
+        JSONLoader,
+    ):
+    __slots__ = ()
+
+    def parse_date(self, s):
+        return parse_date(s)
+
+
+class MyJSONDumper(
+        JSONDumper,
+    ):
+    __slots__ = ()
+
+    def format_date(self, date):
+        return format_date(date)
+
+
+
+class MyPanelFormatter(
+        PanelFormatter,
+    ):
+    __slots__ = ()
+
+
+def parse_date(s):
+    return psp.timeutil.parse_date(s)
+
+
+def format_date(date):
+    return psp.timeutil.format_date(date)

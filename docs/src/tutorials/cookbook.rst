@@ -54,3 +54,19 @@ More date, time, and timezone!
 Out of the box JSONLoader only supports ISO format and fixed timezone offset
 
 But you can change that!
+
+
+Main program: speed
+-------------------
+
+quick check ::
+
+    def load_singles(path, encoding, date):
+        self.json_loader.configure(base_dir=os.path.dirname(path))
+        with open(path, encoding=encoding) as fp:
+            data = self.json_loader.load_json(fp)
+        panels, attrs = self.json_loader.split_data(data)
+        for panel in panels:
+            panel_date = self.json_loader.parse_date(panel['date'])
+            if panel_date == date:
+                yield self.json_loader.process_panel(panel, attrs)

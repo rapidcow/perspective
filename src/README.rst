@@ -1,5 +1,13 @@
-<!-- TODO: copy the installation procedure to keep things in one place
-and DON'T address basicproc.py!!! -->
+`psp` --- a package for backing up diaries
+==========================================
+
+The ``psp`` package, named after the iOS journaling app `Perspective`_,
+helps you backup entries in the app Perspective or diaries in general.s
+
+.. _Perspective: http://blinky.co/perspective_app/
+
+
+
 
 # `psp` --- A rework of the `basicproc.py` program
 
@@ -159,5 +167,6 @@ There's also a ton of new interesting functions in the library... so be
 excited when I write about them in a documentation!
 
 
+[Perspective]: http://blinky.co/perspective_app/
 [`basicproc.py`]: https://gist.github.com/rapidcow/a0490a57965061ae06e5c43b2c97e46c
 [bigentry]: https://github.com/rapidcow/perspective/blob/master/src/psp/extensions/bigentry.py

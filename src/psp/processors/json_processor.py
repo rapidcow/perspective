@@ -1650,15 +1650,16 @@ del base_dir_checker, paths_checker, callable_checker
 
 
 # TODO: address convenience interface of providing date
-def load_json(file, date=None, *, encoding=None, errors=None, cls=JSONLoader,
-              **options):
+def load_json(file, date=None, *, encoding=None, errors=None,
+              loader=None, **options):
     """Simple interface for loading a JSON archive.
 
     Extra keyword arguments are passed on to the configure() method.
     """
     if isinstance(file, (str, os.PathLike)):
         options.setdefault('base_dir', os.path.dirname(file))
-    loader = cls(**options)
+    if loader is None:
+        loader = JSONLoader(**options)
     if hasattr(file, 'read'):
         fp = file
         close = False
@@ -1685,7 +1686,7 @@ def load_json(file, date=None, *, encoding=None, errors=None, cls=JSONLoader,
 
 
 def dump_json(panels, file, *, encoding=None, errors=None, exist_ok=False,
-              cls=JSONDumper, **options):
+              dumper=None, **options):
     """Simple interface for dumping a JSON archive.
 
     For method signature, see JSONDumper.dump().  Extra keyword
@@ -1693,7 +1694,8 @@ def dump_json(panels, file, *, encoding=None, errors=None, exist_ok=False,
     """
     if isinstance(file, (str, os.PathLike)):
         options.setdefault('base_dir', os.path.dirname(file))
-    dumper = cls(**options)
+    if dumper is None:
+        dumper = JSONDumper(**options)
     mode = 'w' if exist_ok else 'x'
     if hasattr(file, 'read'):
         fp = file

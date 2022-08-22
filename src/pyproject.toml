@@ -34,3 +34,9 @@ packages = ["psp", "psp.processors", "psp.extensions"]
 
 [tool.setuptools.dynamic]
 version = { attr="psp.__version__" }
+
+# beta support for package data?
+# https://stackoverflow.com/a/73062301
+# https://setuptools.pypa.io/en/stable/userguide/datafiles.html
+[tool.setuptools.package-data]
+psp = ["_templates/*.txt"]

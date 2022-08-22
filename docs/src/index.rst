@@ -1,7 +1,7 @@
 .. _home:
 
 ======================================
-The Perspective Library Documentation!
+The Perspective Library documentation!
 ======================================
 
 Welcome!  This is a pure Python library providing backup utility for the
@@ -25,8 +25,10 @@ To install, run the following commands in your terminal:
 Remember to replace ``python3`` with the name of your Python 3 interpreter!
 
 
-Overview
---------
+Quick start
+-----------
+
+Read these first because uh I give examples
 
 .. toctree::
    :maxdepth: 1

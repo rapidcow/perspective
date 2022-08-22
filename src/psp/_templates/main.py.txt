@@ -1,0 +1,224 @@
+"""Main program for the backup project."""
+
+import code
+from contextlib import closing
+import itertools
+import os
+import shlex
+import shutil
+import sys
+import textwrap
+import tempfile
+import time
+
+import config
+
+
+def main(argv):
+    import argparse
+    import os
+    root = os.path.dirname(os.path.dirname(__file__))
+    parser = argparse.ArgumentParser()
+    subparsers = parser.add_subparsers(dest='name', required=True)
+
+    # ==================================
+    # Command-line options configuration
+    # ==================================
+    parser_print = subparsers.add_parser('print')
+    parser_print.add_argument('--date', type=config.parse_date, default=None)
+    parser_print.add_argument('--width', '-w', type=int,
+                              default=shutil.get_terminal_size().columns)
+
+    parser_synop = subparsers.add_parser('synopsis')
+    parser_synop.add_argument('--width', '-w', type=int,
+                              default=shutil.get_terminal_size().columns)
+
+    parser_update = subparsers.add_parser('interact')
+
+    parser_update = subparsers.add_parser('update')
+    parser_update.add_argument('migrate')
+
+    parser_backup = subparsers.add_parser('backup')
+    choices = ['list', 'create', 'restore', 'remove']
+    parser_backup.add_argument('bcmd', choices=choices)
+    parser_backup.add_argument('bname', nargs='?')
+
+    args = parser.parse_args(argv)
+
+    # ==============
+    # Code execution
+    # ==============
+    if args.name == 'print':
+        run_print(root, args.date, args.width, sys.stdout)
+    elif args.name == 'synopsis':
+        run_synopsis(root, args.width, sys.stdout)
+    elif args.name == 'interact':
+        run_interact(root)
+    elif args.name == 'update':
+        run_update(root, args.migrate)
+    elif args.name == 'backup':
+        # handle argument that user did not input
+        if args.bname is None:
+            if args.bcmd == 'create':
+                args.bname = config.request_backup_name(root)
+            elif args.bcmd in {'restore', 'remove'}:
+                args.bname = config.select_backup_name(root)
+        # subcommands
+        if args.bcmd == 'list':
+            run_backup_list(root)
+        elif args.bcmd == 'create':
+            run_backup_create(root, args.bname)
+        elif args.bcmd == 'restore':
+            run_backup_restore(root, args.bname)
+        elif args.bcmd == 'remove':
+            run_backup_remove(root, args.bname)
+
+
+def run_print(root, date, width, file):
+    if date is None:
+        date = config.request_panel_date(root)
+    panel = config.load_single_panel(root, date)
+    config.print_panel(panel, width, file)
+
+
+def run_synopsis(root, width, file):
+    # keep track of the unique date of every panel
+    unique_dates = set()
+    total_panel_count = 0
+    total_entry_count = 0
+    for filepath, base_dir, source in config.get_loading_info(root):
+        wrapper = textwrap.TextWrapper(max(5, width - 4))
+        print(f'info {source!r}:', file=file)
+        desc = config.get_description(filepath, base_dir)
+        if desc is not None:
+            print('  description:', file=file)
+            indent = ' ' * 4
+            if isinstance(desc, list):
+                desc = ''.join(desc)
+            for par in desc.splitlines():
+                for line in wrapper.wrap(par) or ['']:
+                    print((indent + line).rstrip(), file=file)
+        panel_count = 0
+        entry_count = 0
+        dates = []
+        with closing(config.load_panels(filepath, base_dir)) as panels:
+            for panel in panels:
+                panel_count += 1
+                entry_count += panel.count()
+                dates.append(panel.date)
+        print(f'  panels: {panel_count}', file=file)
+        print(f'  entries: {entry_count}', file=file)
+        if dates:   # skip this if dates is empty
+            print(f'  span: {min(dates)} to {max(dates)}')
+        total_panel_count += panel_count
+        total_entry_count += entry_count
+        unique_dates.update(dates)
+    # print the # of unique date only if it differs from panel count
+    if len(unique_dates) != total_panel_count:
+        extra = f' (unique {len(unique_dates)})'
+    else:
+        extra = ''
+    print(f'total:', file=file)
+    print(f'  panels: {total_panel_count}{extra}', file=file)
+    print(f'  entries: {total_entry_count}', file=file)
+
+
+def run_interact(root):
+    import pprint
+    panels = []
+    print('Loading panels... ', end='', flush=True)
+    panels = list(itertools.chain.from_iterable(
+        config.load_panels(file, base_dir)
+        for file, base_dir, _ in config.get_loading_info(root)))
+    merged = list(config.load_merged_panels(root))
+    print('done')
+    print(f'Launching an interactive prompt with the following variables:')
+    print()
+    print(f'    config = {config!r}')
+    print(f'    panels = [list of length {len(panels)}]')
+    print(f'    merged = [list of length {len(merged)}]')
+    print(f'    pp = pprint.pprint')
+    print()
+    code.interact(
+        local={
+            'config': config,
+            'panels': panels,
+            'merged': merged,
+            'pp': pprint.pprint,
+        })
+
+
+def run_update(root, path):
+    print('Loading migration script... ', end='', flush=True)
+    panels = config.load_migration_script(path)
+    print('done')
+    print('Merging panels... ', end='', flush=True)
+    merged_panels = config.merge_panels(root, panels)
+    print('done')
+    with tempfile.TemporaryDirectory() as tempdir:
+        print('Dumping panels... ', end='', flush=True)
+        config.dump_panels(tempdir, merged_panels)
+        print('done')
+        backup_name = config.generate_backup_name(root)
+        run_backup_create(root, backup_name)
+        print('Removing data from current project... ', end='', flush=True)
+        config.clean_up_data(root)
+        print('done')
+        print('Moving the new data in... ', end='', flush=True)
+        for entry in os.scandir(tempdir):
+            src = entry.path
+            dst = os.path.join(root, entry.name)
+            if entry.is_dir():
+                shutil.copytree(src, dst)
+            else:
+                shutil.copy2(src, dst)
+        print('done')
+    print(f'Update complete.  To undo this, run')
+    print()
+    print(f'   python3 main.py backup restore '
+          f'{shlex.quote(backup_name)}')
+
+
+def run_backup_create(root, name):
+    if config.backup_exists(root, name):
+        raise ValueError(f'backup exists: {name!r}')
+    print(f'Creating backup {name}... ', end='', flush=True)
+    backup_path = config.create_backup(root, name)
+    print('done')
+
+
+def run_backup_restore(root, name):
+    print(f'Showing changes after restoring {name}:')
+    exit_status = config.show_backup_diff(root, name)
+    # print a warning if there is diff
+    if exit_status == 1:
+        print()
+        print('WARNING: ANY FILE NOT IGNORED WILL BE REMOVED IMMEDIATELY.')
+    else:
+        print('Your backup is identical to the current files!')
+    s = ''
+    while s != 'y':
+        s = input('Confirm restoration? (y/[n]) ')
+        if not s or s == 'n':
+            return
+    print(f'Restoring {name!r}... ', end='', flush=True)
+    config.restore_backup(root, name)
+    print('done')
+
+
+def run_backup_remove(root, name):
+    print(f'Removing {name!r}... ', end='', flush=True)
+    config.remove_backup(root, name)
+    print('done')
+
+
+def run_backup_list(root):
+    backups = config.list_backups(root)
+    if backups:
+        print('\n'.join(map(str, backups)))
+    else:
+        print('(no backup found)')
+
+
+if __name__ == '__main__':
+    main(sys.argv[1:])
