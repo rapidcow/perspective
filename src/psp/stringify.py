@@ -629,24 +629,24 @@ del name, default, time_format_checker
 
 # Note that if width or wrapper needs to be provided, they have to be
 # passed as a keyword argument!
-def format_panel(panel, *, entry_formatter=None, **options):
-    formatter = PanelFormatter(**options)
+def format_panel(panel, *args, entry_formatter=None, **kwargs):
+    formatter = PanelFormatter(*args, **kwargs)
     if entry_formatter is not None:
         formatter.set_entry_formatter(entry_formatter)
     return formatter.format(panel)
 
 
-def format_entry(entry, **options):
-    formatter = EntryFormatter(**options)
+def format_entry(entry, *args, **kwargs):
+    formatter = EntryFormatter(*args, **kwargs)
     return formatter.format(entry)
 
 
-def print_panel(panel, file=None, **kwargs):
-    return print(format_panel(panel, **kwargs), file=file)
+def print_panel(panel, *args, **kwargs):
+    return print(format_panel(panel, *args, **kwargs))
 
 
-def print_entry(entry, file=None, **kwargs):
-    return print(format_entry(entry, **kwargs), file=file)
+def print_entry(entry, *args, **kwargs):
+    return print(format_entry(entry, *args, **kwargs))
 
 
 # Calling this format_bytes() is like calling some length

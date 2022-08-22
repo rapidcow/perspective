@@ -1475,18 +1475,49 @@ representations.
       Generate a file name for exporting by combining ``base`` and ``ext``
       in a way the file name doesn't collide with any existing file.
 
-      :raise ValueError:
-         when candidates are exhausted
-      :raise DumpError:
-         if the base_dir option is None
+      More specifically, the method checks
 
-      EXAMPLE
+      *  ``d/e/``
+
+      :param str base: The inseparable component of the export path,
+                       stripped of extension
+      :param str ext: The file extension
+      :param dirname: The other component of the export path aside from
+                      *base* as a path like object
+      :param paths: The paths top-level attributes
 
       .. code-block:: text
 
          +
          |
          \-- img/
+
+      * name is going to be checked against The passed paths argument
+      * for each right most path component in dirname, the component is joined with name and checked against as well
+      * The components of dirname are determined after OS path norm path is called
+
+      give examples or something
+
+      * the amount of components that base contains determines the starting point of the checking process
+          * this is to create a sort of namespace with the given extra components in base
+      * however you will run into trouble if any amount of the left component join what the name is matched against by a certain pattern in paths
+          * DumpWarning
+          * this is guaranteed to be avoided yes face only contains one component: The file name itself
+
+      include these more in depth and detailed descriptions in a separate section
+
+      also make sure to define proper definitions of right most and left component
+
+      :raise ValueError:
+         when ``ext`` contains more than one path component
+
+         when candidates are exhausted
+      :raise DumpError:
+         if the base_dir option is None
+
+      .. relpath = a/b/c/d/e/1.txt
+         base = d/e/1.txt
+         dirname = a/b/c
 
    .. method:: compute_input_path(name, dirname, paths)
 
@@ -1589,8 +1620,9 @@ So here we go...
       Parameter for :func:`io.open`
    :param errors:
       Parameter for :func:`io.open`
-   :param cls:
-      Loader class to use; can be any subclass of :class:`JSONLoader`.
+   :param dumper:
+      Loader object to use.  Should implement the ``load()`` and
+      ``parse_date()`` methods like :class:`JSONLoader` does.
    :returns:
       A *list* of panel (note: not a generator)
 
@@ -1612,8 +1644,9 @@ So here we go...
       Parameter for :func:`io.open`
    :param errors:
       Parameter for :func:`io.open`
-   :param cls:
-      Dumper class to use; can be any subclass of :class:`JSONDumper`.
+   :param dumper:
+      Dumper object to use.  Should implement a ``dump()`` method like
+      :class:`JSONDumper` does.
 
 Note that the *file* argument in the above functions can either be a file
 object and a file path.  Pretty messed up if you ask me, but still...

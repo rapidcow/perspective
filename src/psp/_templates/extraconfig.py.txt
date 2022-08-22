@@ -1,0 +1,144 @@
+# Extra config.py parts for psp main's simple interface
+from psp.processors import JSONLoader
+from psp.stringify import PanelFormatter
+import calendar
+import os, sys
+
+config_path = {config_path!r}
+if config_path is None:
+    quick_config = None
+    config_parent_dir = os.getcwd()
+else:
+    config_path = os.path.abspath(config_path)
+    quick_config = tools.load_module_from_file('config', config_path)
+    config_parent_dir = os.path.dirname(config_path)
+
+try:
+    BackupLoader = quick_config.BackupLoader
+except AttributeError:
+    class BackupLoader:
+        # root argument is always the parent directory of config.py
+        # or if config.py isn't provided, the current working directory.
+        def __init__(self, root_dir, warning_level):
+            loader = self.json_loader = JSONLoader()
+            if warning_level == 2:
+                loader.configure(error_on_warning=True)
+            elif warning_level == 1:
+                loader.configure(error_on_warning=False,
+                                 suppress_warnings=False)
+            elif warning_level == 0:
+                loader.configure(suppress_warnings=True)
+
+        # By default we set base_dir to the directory the backup
+        # JSON file belongs to.
+        def load_all(self, path, encoding):
+            self.json_loader.configure(base_dir=os.path.dirname(path))
+            with open(path, encoding=encoding) as fp:
+                yield from self.json_loader.load(fp)
+
+        # Singles => panels with the same date, not what you might think
+        def load_singles(self, path, encoding, date):
+            for panel in self.load_all(path, encoding):
+                if panel.date == date:
+                    yield panel
+
+        def load_panel_info(self, path, encoding):
+            for panel in self.load_all(path, encoding):
+                yield panel.date, panel.get_rating(None)
+
+        def get_description(self, path, encoding):
+            self.json_loader.configure(base_dir=os.path.dirname(path))
+            with open(path, encoding=encoding) as fp:
+                data = self.json_loader.load_json(fp)
+                panels, attrs = self.json_loader.split_data(data)
+                try:
+                    desc = attrs['desc']
+                except KeyError:
+                    return None
+
+
+# Get panel printer
+try:
+    PanelPrinter = quick_config.PanelPrinter
+except AttributeError:
+    class PanelPrinter:
+        __slots__ = ('formatter',)
+
+        def __init__(self, width, root_dir):
+            self.formatter = PanelFormatter(width)
+
+        def print(self, panel, file):
+            print('=' * self.formatter.width, file=file)
+            print(self.formatter.format(panel), file=file)
+            print('=' * self.formatter.width, file=file)
+
+
+# First weekday (for printing calendars)
+firstweekday = getattr(quick_config, 'firstweekday', calendar.MONDAY)
+
+
+try:
+    parse_date = quick_config.parse_date
+except AttributeError:
+    from psp.timeutil import parse_date
+
+#
+# Slight bit of change from the project config.py here: we're letting
+# the user decide how the base directory is computed, and every time
+# we pass in not the base directory, but the directory belongs to
+# (aka the config_parent_dir above)
+#
+# The base_dir parameter from the project config.py is all renamed to
+# root_dir for convenience.
+#
+def load_panels(file, base_dir):
+    loader = BackupLoader(base_dir, {warning_level!r})
+    yield from loader.load_all(file, {encoding!r})
+
+
+def request_panel_date(root):
+    date_map = {{}}
+    for file, root_dir, source in get_loading_info(root):
+        loader = BackupLoader(root_dir, {warning_level!r})
+        with closing(loader.load_panel_info(file, {encoding!r})) as info:
+            for date, rating in info:
+                date_map[date] = rating
+    return tools.DateRequester(calendar.MONDAY).request(date_map.items())
+
+
+def load_single_panel(root, date):
+    values = []
+    for file, root_dir, source in get_loading_info(root):
+        loader = BackupLoader(root_dir, {warning_level!r})
+        with closing(loader.load_singles(file, {encoding!r}, date)) as panels:
+            try:
+                for panel in panels:
+                    values.append((panel, source))
+            except Exception as exc:
+                raise RuntimeError(f'failed to load {{source}}') from exc
+    if not values:
+        raise ValueError(f'cannot find panel on {{date}}')
+    tools.check_panel_attributes(values)
+    return tools.merge_panels(panel for panel, _ in values)
+
+
+def get_loading_info(root):
+    for source, name in {sources!r}:
+        yield source, config_parent_dir, name
+
+
+def get_description(file, base_dir):
+    loader = BackupLoader(base_dir, {warning_level!r})
+    return loader.get_description(file, {encoding!r})
+
+
+def open_for_reading(file):
+    return open(file, encoding={encoding!r})
+
+
+def open_for_writing(file):
+    return open(file, 'x', encoding={encoding!r})
+
+
+def print_panel(panel, width, file):
+    return PanelPrinter(width, config_parent_dir).print(panel, file)
