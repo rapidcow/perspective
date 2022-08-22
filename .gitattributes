@@ -7,4 +7,5 @@
 *.css   diff=css
 *.html  diff=html
 *.py    diff=python
+*.py.txt    diff=python
 *.md    diff=markdown

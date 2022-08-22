@@ -925,9 +925,10 @@ literally copy-and-paste more than 50 lines of code, right?
 
    Each time a new class is created, the option names, paired with a deep
    copy of the default values, are used to initialize an internal option
-   *dict*.  No option can be deleted, and users may not add any extra
-   options, only overwrite existing ones.  More on that later, but first
-   here are the instance methods:
+   *dict*.  No option can be deleted after the object is instantiated, and
+   users may not add any extra options, only overwrite existing ones.
+   More on that later, but first here are the methods concerning the
+   internal option *dict*:
 
    .. method:: set_option(name, value)
 

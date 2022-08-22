@@ -69,6 +69,9 @@ cd perspective/src
 pip install -e .
 ```
 
+Although weirdly enough if you import `psp` it tells you that it is a
+namespace package... (because it can't find `__init__.py` somehow??
+
 Use `python3 -m unittest` in the repository directory to run tests in
 `tests/` and `newtests/`.
 

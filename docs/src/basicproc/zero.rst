@@ -1255,7 +1255,7 @@ Now with the three kinds of inferences in mind, we can finally talk about how
 the program infers types!  (The word INFER in all-caps refers to one of the
 inferences we discussed above)
 
-1.  ``data`` without ``data-encoding``
+1. ``data`` without ``data-encoding``
 
    -  If ``encoding`` is provided, issue a warning if it's not ``'utf-8'``.
       Treat encoding as ``utf-8`` in any way.
