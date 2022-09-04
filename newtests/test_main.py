@@ -93,7 +93,7 @@ class TestDemo(unittest.TestCase):
 
 
                     class PanelPrinter:
-                        def __init__(self, width, root_dir):
+                        def __init__(self, root_dir, width):
                             self.formatter = MyPanelFormatter(width - 4,
                                                               time_format='24 hour',
                                                               title_entries_vsep=1,
@@ -166,7 +166,7 @@ class TestDemo(unittest.TestCase):
                     class PanelPrinter:
                         __slots__ = ('formatter',)
 
-                        def __init__(self, width, root_dir):
+                        def __init__(self, root_dir, width):
                             self.formatter = MyPF(width)
 
                         def print(self, panel, file):

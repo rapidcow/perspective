@@ -64,7 +64,7 @@ except AttributeError:
     class PanelPrinter:
         __slots__ = ('formatter',)
 
-        def __init__(self, width, root_dir):
+        def __init__(self, root_dir, width):
             self.formatter = PanelFormatter(width)
 
         def print(self, panel, file):
@@ -141,4 +141,4 @@ def open_for_writing(file):
 
 
 def print_panel(panel, width, file):
-    return PanelPrinter(width, config_parent_dir).print(panel, file)
+    return PanelPrinter(config_parent_dir, width).print(panel, file)

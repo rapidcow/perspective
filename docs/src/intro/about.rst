@@ -241,7 +241,7 @@ Save the above file as ``backup.json`` to run these examples:
 
       # NOTE: This class has to be named PanelPrinter precisely!
       class PanelPrinter:
-          def __init__(self, width, root_dir):
+          def __init__(self, root_dir, width):
               #
               # Configure panel formatter so that:
               #
