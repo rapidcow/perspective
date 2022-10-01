@@ -10,8 +10,8 @@ import filecmp
 import itertools
 import os
 from pathlib import Path
-import sys
 import shutil
+import sys
 import tempfile
 
 # Local library imports
@@ -113,8 +113,7 @@ def load_migration_script(path):
 def merge_panels(root, new_panels):
     panel_map = collections.defaultdict(list)
     for panel, source in itertools.chain(
-            zip(new_panels,
-                itertools.repeat('external source')),
+            zip(new_panels, itertools.repeat('external source')),
             zip(load_merged_panels(root),
                 itertools.repeat('current project'))):
         panel_map[panel.date].append((panel, source))

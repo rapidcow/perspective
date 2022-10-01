@@ -113,6 +113,16 @@ class _AttributeHolder:
             self._attrs = attrs = {}
         attrs.update(*args, **kwargs)
 
+    # I don't know if we need this
+    def get_attributes_for_comparison(self):
+        return self.get_attributes()
+
+    def __eq__(self, other):
+        if isinstance(other, _AttributeHolder):
+            return (self.get_attributes_for_comparison()
+                    == other.get_attributes_for_comparison())
+        return False
+
 
 class Panel(_AttributeHolder):
     """Panel containing entries for a single day.
@@ -251,12 +261,14 @@ class Panel(_AttributeHolder):
         """
         # We accept objects of any subclass of Panel
         if isinstance(other, Panel):
-            if not (self.date == other.date
-                    and self.get_attributes() == other.get_attributes()):
+            if self.date != other.date:
                 return False
             # Subclasses should override __eq__() too if they want to
             # rewire the entries list somehow!
-            return self._entries == other._entries
+            if self._entries != other._entries:
+                return False
+            # Delegate to attribute comparison
+            return super().__eq__(other)
         return NotImplemented
 
     # Perspective day rating
@@ -602,19 +614,20 @@ class Entry(_AttributeHolder):
             #   never equal.
             if self.is_text() != self.is_text():
                 return False
-            if self.get_attributes() != other.get_attributes():
-                return False
             #   Note that we don't require the data to be byte-wise
             #   equal if they are text.
             with self.stream_data() as fp1:
                 with other.stream_data() as fp2:
-                    return util.fileobjequal(fp1, fp2)
+                    if not util.fileobjequal(fp1, fp2):
+                        return False
+            # Delegate to attribute comparison
+            return super().__eq__(other)
         return NotImplemented
 
     # Live streamers
     def stream_raw_data(self):
         """Return a file-like object that implements read().
-        Note that THE CALLER IS RESPONSIBLE FOR CLOSING IT.
+        Note: THE CALLER IS RESPONSIBLE FOR CLOSING IT.
         """
         if self.has_source():
             return io.open(self.get_source(), 'rb')
@@ -624,7 +637,7 @@ class Entry(_AttributeHolder):
         """Return a file-like object that implements read().
         Depending on whether the entry is a text entry or not,
         the read() method returns either str or bytes.
-        Note that THE CALLER IS RESPONSIBLE FOR CLOSING IT.
+        Note: THE CALLER IS RESPONSIBLE FOR CLOSING IT.
         """
         if self.is_text():
             if self.has_source():

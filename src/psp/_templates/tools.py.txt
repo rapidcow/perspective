@@ -382,6 +382,7 @@ class UnequalPanelAttributeError(ValueError):
 
 def check_panel_attributes(values, error=True):
     for (p1, s1), (p2, s2) in itertools.combinations(values, 2):
+        assert p1.date == p2.date
         d1 = p1.get_attributes()
         d2 = p2.get_attributes()
         for key in d1.keys() | d2.keys():
@@ -402,7 +403,7 @@ def check_panel_attributes(values, error=True):
                            f'attribute from {s2!r} '
                            f'({value_1!r} != {value_2!r})')
             if msg is not None:
-                errmsg = (f'{len(values)} panels on {date} have '
+                errmsg = (f'{len(values)} panels on {p1.date} have '
                           f'differing attributes: {msg}')
                 raise UnequalPanelAttributeError(errmsg)
 

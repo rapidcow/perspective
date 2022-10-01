@@ -29,13 +29,16 @@ except AttributeError:
             elif warning_level == 0:
                 loader.configure(suppress_warnings=True)
 
-        # By default we set base_dir to the directory the backup
-        # JSON file belongs to.
+        # Users do not need to define load_all() anymore; the main program
+        # now solely relies on load_singles() and load_panel_info().
         def load_all(self, path, encoding):
             self.json_loader.configure(base_dir=os.path.dirname(path))
             with open(path, encoding=encoding) as fp:
                 yield from self.json_loader.load(fp)
 
+        # By default we set base_dir to the directory the backup
+        # JSON file belongs to.
+        #
         # Singles => panels with the same date, not what you might think
         def load_singles(self, path, encoding, date):
             for panel in self.load_all(path, encoding):
@@ -82,6 +85,11 @@ try:
 except AttributeError:
     from psp.timeutil import parse_date
 
+def get_loading_info(root):
+    for source, name in {sources!r}:
+        yield source, config_parent_dir, name
+
+
 #
 # Slight bit of change from the project config.py here: we're letting
 # the user decide how the base directory is computed, and every time
@@ -91,11 +99,6 @@ except AttributeError:
 # The base_dir parameter from the project config.py is all renamed to
 # root_dir for convenience.
 #
-def load_panels(file, base_dir):
-    loader = BackupLoader(base_dir, {warning_level!r})
-    yield from loader.load_all(file, {encoding!r})
-
-
 def request_panel_date(root):
     date_map = {{}}
     for file, root_dir, source in get_loading_info(root):
@@ -120,11 +123,6 @@ def load_single_panel(root, date):
         raise ValueError(f'cannot find panel on {{date}}')
     tools.check_panel_attributes(values)
     return tools.merge_panels(panel for panel, _ in values)
-
-
-def get_loading_info(root):
-    for source, name in {sources!r}:
-        yield source, config_parent_dir, name
 
 
 def get_description(file, base_dir):

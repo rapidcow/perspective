@@ -92,7 +92,7 @@ two things (opening a file and processing).
 
    The JSON backup file loader class.  This class inherits from
    :class:`~psp.types.Configurable`, so you can technically use all the
-   options there, although we will stick to the |Configurable.configure|
+   methods there, although we will stick to the |Configurable.configure|
    method in all the following examples since that has stuck around for a
    while.
 
@@ -302,8 +302,8 @@ two things (opening a file and processing).
    the *entries* list, it calls :meth:`process_entry` with the newly created
    panel object, a shallow copy of the entry (as a *dict*) and a reference
    to *attrs* (again, not a copy), which returns an |Entry| object.  Each
-   entry object is added to the panel with :meth:`Panel.add_entry
-   () <psp.types.Panel.add_entry>` and finally the panel object is returned
+   entry object is added to the panel with :meth:`Panel.add_entry()
+   <psp.types.Panel.add_entry>` and finally the panel object is returned
    by :meth:`process_panel` and yielded by :meth:`load_data`.
 
    Very windy, I know, right?  Well I probably could have phrased it better,
@@ -363,7 +363,7 @@ two things (opening a file and processing).
       removing or re-assigning certain attributes), **always make a
       shallow copy**, or you're probably writing inconsistent code.
 
-   The following methods are responsible for parsing time-related.
+   The following methods are responsible for parsing time-related things.
    Default implementation calls their corresponding functions in
    :mod:`timeutil <psp.timeutil>`.
 
@@ -462,26 +462,12 @@ encountered by the loader isn't detrimental to the output, like this
 To make debugging easier you can turn on the ``error_on_warning`` option
 as it prints a useful stack trace that can help locate the problem:
 
-.. doctest won't work when I put this chained exception traceback
-   here >:( so I'm skipping this too (weirdly if I only put the last
-   exception it works, but that'd be missing the point)
+.. doctest:: error_on_warning
 
->>> JSONLoader(error_on_warning=True).load_data(data)# doctest: +SKIP
-Traceback (most recent call last):
-  ...
-psp.processors.json_processor.LoadWarning: ignored entry key: invalid-key
-<BLANKLINE>
-The above exception was the direct cause of the following exception:
-<BLANKLINE>
-Traceback (most recent call last):
-  ...
-psp.processors.json_processor.LoadError: error while loading entry 1
-<BLANKLINE>
-The above exception was the direct cause of the following exception:
-<BLANKLINE>
-Traceback (most recent call last):
-  ...
-psp.processors.json_processor.LoadError: error while loading 2022-02-22
+   >>> list(JSONLoader(error_on_warning=True).load_data(data))
+   Traceback (most recent call last):
+     ...
+   psp.processors.json_processor.LoadWarning: ignored entry key: invalid-key
 
 On the other hand, if you want all warnings to be ignored, set the
 ``suppress_warning`` option to True.  This always overrides
@@ -1458,7 +1444,43 @@ representations.
    *  :meth:`compute_input_path` returns the *shortest unambiguous* input
       path that can reach ``join(dirname, name)``.  If that is impossible,
       return ``join(dirname, name)``.
+         
+   .. XXX: This is a mess we probs should put this in a separate section
+   
+   To motivate you with why it was made this way, consider the case where we would like to export to ``assets/1.txt``.  What :meth:`get_input_path` is similar to something like this::
+   
+      def get_input_path(self, entry, attrs):
+          paths = attrs['paths']
+          name = self.generate_export_path('1', '.txt', 'assets', paths)
+          self.export_entry(os.path.join('assets', name))
+          return self.compute_input_path(name, 'assets', paths)
+          
+   The last step with :meth:`compute_input_path` is probably the most intuitive to understand, because with different *paths* you would need to select the appropriate input path, which could be ``1.txt`` or ``assets/1.txt``.  For example the former would be selected if the ``assets`` directory is in *paths*, and the latter would be selected if the base directory ``.`` is in *paths*, and whichever is shorter is preferred.  (The rules aren't exactly like that though.  For example if ``paths = ['assets', 'doc', '.']`` and ``doc/1.txt`` exists, then :meth:`compute_input_path` would not use ``1.txt`` as an input path since it causes ambiguity known at runtime.)
+   
+   But just having the input path unambiguous at runtime isn't enough.  Again, recall that *any* sub-path of an export path can be a potential input path, and by claiming ``assets/1.txt`` to be your new file name, you're risking the possibility of taking up one of the candidate paths of any of these sub-paths.  To give a super contrived example, let's say ``paths = ['.', 'assets']`` and we're still exporting to ``assets/1.txt``, except there already is a file oddly named ``assets/assets/1.txt``, whose input path ``assets/1.txt`` was determined unambiguous in a prior call to :meth:`get_input_path`.  By going through the same logic, :meth:`compute_input_path` arrives at the conclusion that ``1.txt`` is the shortest unambiguous input path and sees that with the lookup path ``assets`` derived from *paths* and returns it.  However ``assets/1.txt`` is in fact one of the candidate paths for the input path ``assets/1.txt``, and by exporting to that path we run into a problem: ``assets/1.txt`` is longer unambiguous.
+   
+   .. code-block:: text
 
+         Candidate paths for ``assets/1.txt`` | Candidate paths for ``1.txt``
+         -------------------------------------+------------------------------
+         ./[assets/1.txt]                     | ./[1.txt]
+         ./assets/[assets/1.txt]              | ./assets/[1.txt]
+      
+   In this case, the ambiguous input path ``assets/1.txt`` is long enough to go unnoticed for :meth:`compute_input_path` to ignore, but regardless this poses a serious problem: it is not possible (not practical to say the least) to "rename" that previously exported ``assets/1.txt``, and by simply selecting the right sub-path for input path isn't going to fix that ambiguity.  This is exactly where :meth:`generate_export_path` comes in; it renames the path that we are about to export to avoid the above scenario from happening in the first place.  In this case in particular, :meth:`generate_export_path` iterates over all possible input paths (``1.txt`` and ``assets/1.txt``) and sees if any of them matches an existing file (ignoring the extension, so finding ``1.jpg`` or ``1.md`` would look the same to :meth:`generate_export_path`).  If it does, then it appends a numerical suffix to the file name such as ``1_001.txt`` and ``1_002.txt`` (assuming a default implementation of :meth:`get_export_path_candidates`) and repeats the same process.  Once the file name is good to go, it returns the file name.
+   
+   And now let me briefly talk about why the directory name and base name are separated.
+   
+   .. code-block:: text
+   
+         .
+         +-- img
+         |   +-- a/
+         |   \-- b/
+         |
+         +-- doc
+             +-- a/
+             \-- b/
+   
    .. warning::
 
       Currently ``dirname`` in :meth:`generate_export_path` and
@@ -1475,9 +1497,22 @@ representations.
       Generate a file name for exporting by combining ``base`` and ``ext``
       in a way the file name doesn't collide with any existing file.
 
-      More specifically, the method checks
+      More specifically, this method iterates over a generator of candidates
+      to use in place of *base* (returned by :meth:`get_export_path_candidates`).
+      For each ``base_0`` in that generator, ``base_0 + ext`` is used to form
+      the *name* of the file, and *name* is returned if:
 
-      *  ``d/e/``
+      *   ``join(dirname, name)`` does not point to an existing path,
+      *   *name* is unreachable with the *paths* argument, and
+      *   any extended version of *name* with a number of path components from
+          *dirname* is unreachable with the *paths* argument.
+
+      As an example, here are the paths checked for:
+
+      *  ``d/e/1.txt``
+      *  ``c/d/e/1.txt``
+      *  ``b/c/d/e/1.txt``
+      *  ``a/b/c/d/e/1.txt``
 
       :param str base: The inseparable component of the export path,
                        stripped of extension
@@ -1485,12 +1520,6 @@ representations.
       :param dirname: The other component of the export path aside from
                       *base* as a path like object
       :param paths: The paths top-level attributes
-
-      .. code-block:: text
-
-         +
-         |
-         \-- img/
 
       * name is going to be checked against The passed paths argument
       * for each right most path component in dirname, the component is joined with name and checked against as well
@@ -1514,10 +1543,6 @@ representations.
          when candidates are exhausted
       :raise DumpError:
          if the base_dir option is None
-
-      .. relpath = a/b/c/d/e/1.txt
-         base = d/e/1.txt
-         dirname = a/b/c
 
    .. method:: compute_input_path(name, dirname, paths)
 

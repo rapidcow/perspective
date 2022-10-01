@@ -66,7 +66,7 @@ Parsers
 
 .. function:: parse_datetime(s, tzinfo=None, fold=None)
 
-   Parse a date time string.  This calls |time_fif| to get a base
+   Parse a date time string.  This calls |datetime_fif| to get a base
    aware/naive date time to work on.  If the parsed date time has no
    *tzinfo* and *tzinfo* is provided (not *None*), the provided *tzinfo*
    will be used.  In addition, if *fold* is not *None*, the *fold*
@@ -74,10 +74,10 @@ Parsers
 
 .. function:: parse_time(s, tzinfo=None, fold=None)
 
-   Parse a time string.  This calls |datetime_fif| to get a base
-   aware/naive time to work on.  If the parsed time has no *tzinfo* and
-   *tzinfo* is provided (not None), the provided *tzinfo* will be used.
-   In addition, if *fold* is not None, the *fold* will be used too.
+   Parse a time string.  This calls |time_fif| to get a base aware/naive
+   time to work on.  If the parsed time has no *tzinfo* and *tzinfo* is
+   provided (not None), the provided *tzinfo* will be used.  In addition,
+   if *fold* is not None, the *fold* will be used too.
 
 .. |date_fif| replace:: :meth:`date.fromisoformat() <datetime.date.fromisoformat>`
 .. |time_fif| replace:: :meth:`time.fromisoformat() <datetime.time.fromisoformat>`
