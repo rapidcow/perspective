@@ -124,8 +124,9 @@ Save the above file as ``backup.json`` to run these examples:
       print_panel(panel, 65)                          # default 12-hour format
       print_panel(panel, 65, time_format='24 hour')   # 24-hour format
 
-*  Time zone!  Despite ``print_panel()`` hiding it whenever it can, time is
-   always internally stored as aware :class:`~datetime.datetime` objects.
+*  Time zone!  Despite :func:`~psp.stringify.print_panel` hiding it
+   whenever it can, time is always internally stored as aware
+   :class:`~datetime.datetime` objects:
 
    .. testsetup::
 
