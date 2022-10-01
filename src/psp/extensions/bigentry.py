@@ -3,6 +3,7 @@
 import abc
 import base64
 import collections
+from contextlib import contextmanager
 import io
 import os
 import tarfile
@@ -434,38 +435,47 @@ class ArchiveManager(BigEntryManager):
     def __extract(self, arcpath, dirpath):
         shutil.unpack_archive(arcpath, dirpath, self.arc_format)
 
-    def get_main_file_data(self, entry):
+    def stream_main_file_data(self, entry):
         mf_name = os.path.normpath(entry.get_main_file())
         mf_enc = entry.get_main_file_encoding()
         if entry.has_source():
-            return self.get_mfdata(entry.get_source(), mf_name, mf_enc)
+            return self.stream_mfdata(entry.get_source(), mf_name, mf_enc)
         fp = tempfile.NamedTemporaryFile(delete=False)
         try:
             with fp:
                 with entry.stream_raw_data() as fsrc:
                     shutil.copyfileobj(fsrc, fp)
-            return self.get_mfdata(fp.name, mf_name, mf_enc)
+            return self.stream_mfdata(fp.name, mf_name, mf_enc)
         finally:
             os.unlink(fp.name)
 
+    def get_main_file_data(self, entry):
+        with self.stream_main_file_data(entry) as fp:
+            return fp.read()
 
+
+# XXX: How do these decorators make any sense??? :DD
 @staticmethod
-def get_zip_mfdata(filename, mf_name, mf_enc):
+@contextmanager
+def stream_zip_mfdata(filename, mf_name, mf_enc):
     with zipfile.ZipFile(filename) as zf:
         for name in zf.namelist():
             if os.path.normpath(name) == mf_name:
                 with zf.open(name) as mainfp:
-                    return mainfp.read().decode(mf_enc)
+                    yield io.TextIOWrapper(mainfp, encoding=mf_enc)
+                    return
     raise ValueError(f'cannot find main file {filename!r}')
 
 
 @staticmethod
-def get_tar_mfdata(filename, mf_name, mf_enc):
+@contextmanager
+def stream_tar_mfdata(filename, mf_name, mf_enc):
     with tarfile.open(filename) as tf:
         for member in tf.getmembers():
             if os.path.normpath(member.name) == mf_name:
                 with tf.extractfile(member) as mainfp:
-                    return mainfp.read().decode(mf_enc)
+                    yield io.TextIOWrapper(mainfp, encoding=mf_enc)
+                    return
     raise ValueError(f'cannot find main file {filename!r}')
 
 
@@ -474,7 +484,7 @@ supported_formats = [fmt for (fmt, _, _) in shutil.get_unpack_formats()]
 if 'zip' in supported_formats:
     class ZipManager(ArchiveManager):
         arc_format = 'zip'
-        get_mfdata = get_zip_mfdata
+        stream_mfdata = stream_zip_mfdata
 
     BigEntry.add_manager('zip', ZipManager())
     del ZipManager
@@ -482,7 +492,7 @@ if 'zip' in supported_formats:
 if 'tar' in supported_formats:
     class TarManager(ArchiveManager):
         arc_format = 'tar'
-        get_mfdata = get_tar_mfdata
+        stream_mfdata = stream_tar_mfdata
 
     BigEntry.add_manager('tar', TarManager())
     del TarManager
@@ -490,7 +500,7 @@ if 'tar' in supported_formats:
 if 'gztar' in supported_formats:
     class GzTarManager(ArchiveManager):
         arc_format = 'gztar'
-        get_mfdata = get_tar_mfdata
+        stream_mfdata = stream_tar_mfdata
 
     BigEntry.add_manager('gztar', GzTarManager())
     del GzTarManager
@@ -498,7 +508,7 @@ if 'gztar' in supported_formats:
 if 'bztar' in supported_formats:
     class BzTarManager(ArchiveManager):
         arc_format = 'bztar'
-        get_mfdata = get_tar_mfdata
+        stream_mfdata = stream_tar_mfdata
 
     BigEntry.add_manager('bztar', BzTarManager())
     del BzTarManager
@@ -506,11 +516,11 @@ if 'bztar' in supported_formats:
 if 'xztar' in supported_formats:
     class XzTarManager(ArchiveManager):
         arc_format = 'xztar'
-        get_mfdata = get_tar_mfdata
+        stream_mfdata = stream_tar_mfdata
 
     BigEntry.add_manager('xztar', XzTarManager())
     del XzTarManager
 
 del supported_formats
-del get_zip_mfdata, get_tar_mfdata
+del stream_zip_mfdata, stream_tar_mfdata
 del ArchiveManager

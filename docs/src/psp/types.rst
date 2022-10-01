@@ -95,6 +95,19 @@ directly used, keep in mind that you can expect these functionalities from
 
       Use :meth:`dict.update` to set attributes for the current object.
 
+   .. TODO: add more words
+
+   Comparison between two objects that implement attribute protocol:
+
+   .. method:: __eq__(self, other)
+
+      Return if the attributes for *self* and *other* are equal.
+      Return False if *other* does not implement attribute protocol.
+
+   .. method:: get_attributes_for_comparison()
+
+      Return attributes used by :meth:`__eq__` to test for equality with.
+
 
 Example:
 

@@ -17,6 +17,7 @@ class MetaEntry(Entry, extname='meta'):
     __slots__ = ()
     _metavars = set()
     _metahooks = {}
+    _metagetters = {}
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
@@ -26,19 +27,22 @@ class MetaEntry(Entry, extname='meta'):
     # way that clearly distinguishes from the instance methods i can
     # think of...)
     @classmethod
-    def register_meta_attribute(cls, name, hook=None):
+    def register_meta_attribute(cls, name, hook=None, getter=None):
         if name in cls._metavars:
             raise ValueError(f'meta attribute {name!r} is already '
                              f'registered')
         cls._metavars.add(name)
         if hook is not None:
             cls._metahooks[name] = hook
+        if getter is not None:
+            cls._metagetters[name] = getter
 
     @classmethod
     def unregister_meta_attribute(cls, name):
         # set.remove() raises a KeyError upon failure
         cls._metavars.remove(name)
-        return cls._metahooks.pop(name, None)
+        return (cls._metahooks.pop(name, None),
+                cls._metagetters.pop(name, None))
 
     @classmethod
     def has_registered_meta_attribute(cls, name):
@@ -52,12 +56,14 @@ class MetaEntry(Entry, extname='meta'):
         super().__init_subclass__(**kwargs)
         cls._metavars = metavars = set()
         cls._metahooks = hooks = {}
+        cls._metagetters = getters = {}
         # Traverse the MRO in reversed order, skipping
         # only the current class.
         for base in cls.__mro__[:0:-1]:
             if issubclass(base, MetaEntry):
                 metavars.update(base._metavars)
                 hooks.update(base._metahooks)
+                getters.update(base._metagetters)
 
     def get_meta_attribute(self, name, default=_NoValue):
         meta = self.get_attribute('meta')
@@ -82,7 +88,7 @@ class MetaEntry(Entry, extname='meta'):
     def has_meta_attribute(self, name):
         return name in self.get_attribute('meta')
 
-    def get_meta_atttribute_names(self):
+    def get_meta_attribute_names(self):
         return self.get_attribute('meta').keys()
 
     def get_meta_attribute_items(self):
@@ -95,6 +101,19 @@ class MetaEntry(Entry, extname='meta'):
         meta_dict = dict(*args, **kwargs)
         for name, value in meta_dict.items():
             self.set_meta_attribute(name, value)
+
+    # Comparison
+    def get_attributes_for_comparison(self):
+        attrs = super().get_attributes_for_comparison()
+        attrs['meta'] = meta = {}
+        for name, value in self.get_meta_attribute_items():
+            try:
+                getter = type(self)._metagetters[name]
+            except KeyError:
+                meta[name] = value
+            else:
+                meta[name] = getter(self, value)
+        return attrs
 
 
 class MetaJSONLoader(JSONLoader):
