@@ -1,4 +1,4 @@
-"""Configuration file for the backup project."""
+"""Configuration file for my backup project!"""
 
 # Standard library imports
 import calendar
@@ -19,12 +19,14 @@ curdir = Path(__file__).parent
 sys.path.insert(0, str(curdir.parent / 'lib'))
 try:
     import mystuff
-    import tools
 finally:
     del sys.path[0]
 
+from psp.main import tools
+import psp.util
+
 # Perspective project version :}
-version = 1
+VERSION = 0
 
 # Constants
 FILE_ENCODING = 'utf-8'
@@ -58,8 +60,9 @@ def load_merged_panels(root):
             for panel in panels:
                 panel_map[panel.date].append((panel, source))
     for date, values in panel_map.items():
-        tools.check_panel_attributes(values)
-        yield tools.merge_panels(panel for panel, _ in values)
+        for msg in tools.check_panel_attributes(values):
+            raise ValueError(msg)
+        yield psp.util.merge_panels(panel for panel, _ in values)
 
 
 def load_panels(file, base_dir):
@@ -94,7 +97,7 @@ def get_description(file, base_dir):
 # ========
 def load_migration_script(path):
     # XXX: wtf???
-    for modname in 'config', 'mystuff', 'tools':
+    for modname in 'config', 'mystuff':
         if modname in sys.modules:
             del sys.modules[modname]
     if os.path.isdir(path):
@@ -119,8 +122,9 @@ def merge_panels(root, new_panels):
         panel_map[panel.date].append((panel, source))
     merged = []
     for date, values in panel_map.items():
-        tools.check_panel_attributes(values)
-        yield tools.merge_panels(panel for panel, _ in values)
+        for msg in tools.check_panel_attributes(values):
+            raise ValueError(msg)
+        yield merge_panels(panel for panel, _ in values)
 
 
 def dump_panels(root, panels):
