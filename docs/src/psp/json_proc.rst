@@ -849,7 +849,7 @@ That is, with a loading process that looks like this::
    with open('path/to/backup.json', encoding='utf-8'):
        panels = loader.load(fp)
 
-The dumping process should look like this, nothing more, nothing less::
+The dumping process should look like this; nothing more, nothing less::
 
    dumper = JSONDumper()
    dumper.configure(base_dir='some/other/path/to')
@@ -862,15 +862,13 @@ won't override any existing files, we might create a mess given how
 directories will be implicitly created!  (The ``assets`` directory
 relative to ``base_dir`` is the only one created by default, by the way.)
 
-Ideally (assuming a perfect lack of bugs), if ``panel`` is a list of
-|Panel| objects, then ::
+Theoretically, if ``panel`` is a list of |Panel| objects, then ::
 
    panels == list(loader.load_data(dumper.dump_data(panels)))
 
-will *always* hold regardless of what ``panel`` is.  (This equality assumes
-Python's item-wise comparison for :class:`list` objects and the
-:meth:`Panel.__eq__() <psp.types.Panel.__eq__>` method for panel equality.)
-For a proper pair of loader and dumper like this, I recommend making sure that:
+will *always* hold regardless of what ``panels`` is.
+For a proper pair of loader and dumper like this, I recommend making
+sure that:
 
 *  their ``base_dir`` options point to the same directory path
    (unless all data is encapsulated within the backup and no entries
@@ -882,8 +880,8 @@ Although if ``data`` is a JSON archive as a *dict*, then ::
 
    data == dumper.dump_data(loader.load_data(data))
 
-isn't necessarily true, since there are infinitely many JSON
-representations.
+isn't necessarily true, since there are more than one way to represent a
+panel (and its entries recursively) in JSON.
 
 .. * explain what an input path is
 .. * explain the possible exceptions of returning an invalid input path
@@ -968,8 +966,8 @@ representations.
          a :class:`DumpError`:
 
          *  :meth:`generate_export_path`
-         *  :meth:`compute_input_path`
          *  :meth:`export_entry`
+         *  :meth:`compute_input_path`
 
       (2)
          The function in the ``data_encoder`` option should take the entry
@@ -1349,10 +1347,11 @@ representations.
    >>> from psp.types import Entry
    >>> from datetime import datetime, timezone
    >>> entry = Entry(datetime(2022, 2, 22, tzinfo=timezone.utc))
-   >>> # is_text() returns False, so dumper will see this as a binary entry
+   >>> dumper = JSONDumper()
+   >>> # is_text() returns False, so by the implementation of
+   >>> # get_path() dumper will see this as a binary entry
    >>> entry.is_text()
    False
-   >>> dumper = JSONDumper()
    >>> # the default value is None
    >>> dumper.get_option('base_dir') is None
    True
@@ -1362,6 +1361,15 @@ representations.
      ...
    psp.processors.json_processor.DumpError: base_dir must be set when calling generate_export_path()
 
+   .. XXX: One drawback of implementing get_input_path() this way (exhibiting
+      behavior as shown above) is that we are forcing the user to export with
+      the default implementation...
+      I guess it depends on what users like in general, given how anyone who
+      prefers using binary inline would necessarily have to override the
+      class, which is of little cost IMO compared to having users forget to
+      provide a base_dir and end up getting a bunch of base64 junk in their
+      backup file :/
+
    .. method:: get_input_path(entry, attrs)
 
       Get an input path for the entry.  The arguments passed are the
@@ -1369,8 +1377,19 @@ representations.
       ``input`` to include an external path or None for using inline
       text/binary.
 
+   .. note::
+
+      Implementation of :meth:`get_input_path` should not worry about
+      returning a valid input path.  When a *str* is returned,
+      :meth:`wrap_entry` will check if the file matched by the input path
+      has content identical to that of the entry.  (This also means a new
+      file does not necessarily have to be created as long as you are able
+      to point at a file with matching content!  Default implementation,
+      of course, always creates a new file.)
+
    By default :meth:`get_input_path` always exports to the ``assets``
-   directory, which can be seen in the default implementation::
+   directory, which can be seen in the default implementation
+   (I'll explain this in a bit)::
 
       def get_input_path(self, entry, attrs):
           if self.use_inline_text(entry):
@@ -1385,14 +1404,14 @@ representations.
           # arbitrarily extend the input path by its directory name
           return self.compute_input_path(filename, 'assets', paths)
 
-   First off, the use of :meth:`use_inline_text` here is merely
-   conventional.  Generally :class:`JSONDumper` prefers exporting to inline
-   binary, so only entries that can be fully represented with inline text
-   (determined by :meth:`use_inline_text` returning True) cause
-   :meth:`get_input_path` to return None (that is, they are kept inside
-   the backup).  The next two lines call :meth:`get_export_path_name` and
-   :meth:`get_export_path_extension` to form an appropriate file name for
-   the entry.
+   First off, the use of :meth:`use_inline_text` is to simply make sure
+   that text entries are never exported.  Generally :class:`JSONDumper`
+   prefers exporting to inline binary, so only entries that can be fully
+   represented with inline text (determined by :meth:`use_inline_text`
+   returning True) cause :meth:`get_input_path` to return None (that is,
+   they are kept inside the backup).  The next two lines call
+   :meth:`get_export_path_name` and :meth:`get_export_path_extension` to
+   form an appropriate file name for the entry.
 
    The next three method calls are what I'm going to explain in depth:
    :meth:`generate_export_path`, :meth:`export_entry`, and
@@ -1408,15 +1427,15 @@ representations.
       some *lookup path* joined with the input path.  A lookup path in this
       sense is a concrete directory path matching a pattern in the ``paths``
       attribute (see :func:`get_lookup_paths`).  For example, the
-      ``img/a/1.jpg`` relative path is reachable with the ``img/`` lookup
-      path and ``a/1.jpg`` input path.
+      ``img/a/1.jpg`` relative path is reachable when the ``img/`` lookup
+      path is joined with the input path ``a/1.jpg``.
 
    *  We say a reachable input path is *unambiguous* when it is reachable
-      with precisely one lookup path; a reachable input path is ambiguous
-      otherwise (reachable with more than one lookup path).  For example,
-      with lookup paths ``./``, ``img/``, and ``assets/``, the input path
-      ``a/1.jpg`` is only unambiguous when precisely one of the three
-      relative paths exists:
+      when joined with precisely one lookup path; a reachable input path
+      is ambiguous otherwise (reachable with more than one lookup path).
+      For example, with lookup paths ``./``, ``img/``, and ``assets/``,
+      the input path ``a/1.jpg`` is only unambiguous when precisely one of
+      the three relative paths exists:
 
       .. code-block:: text
 
@@ -1426,8 +1445,8 @@ representations.
 
       The square brackets will be used to denote the input path in a
       relative path.  The above relative paths are collectively called the
-      *candidate paths*, which need not exist, but it's convenient to refer
-      to these later on.
+      *candidate paths*, which need not exist, but it's a convenient term
+      for us to use to refer to these later on.
 
    *  To keep things short, I will be using ``join(a, b, c, ...)`` to denote
       path concatenation using :func:`os.path.join`.
@@ -1444,123 +1463,323 @@ representations.
    *  :meth:`compute_input_path` returns the *shortest unambiguous* input
       path that can reach ``join(dirname, name)``.  If that is impossible,
       return ``join(dirname, name)``.
-         
+
    .. XXX: This is a mess we probs should put this in a separate section
-   
-   To motivate you with why it was made this way, consider the case where we would like to export to ``assets/1.txt``.  What :meth:`get_input_path` is similar to something like this::
-   
+
+   To motivate you with why it was made this way, consider the case where
+   we would like to export to ``assets/1.txt``.  What :meth:`get_input_path`
+   does breaks down to the following calls::
+
       def get_input_path(self, entry, attrs):
           paths = attrs['paths']
           name = self.generate_export_path('1', '.txt', 'assets', paths)
-          self.export_entry(os.path.join('assets', name))
+          self.export_entry(entry, join('assets', name))
           return self.compute_input_path(name, 'assets', paths)
-          
-   The last step with :meth:`compute_input_path` is probably the most intuitive to understand, because with different *paths* you would need to select the appropriate input path, which could be ``1.txt`` or ``assets/1.txt``.  For example the former would be selected if the ``assets`` directory is in *paths*, and the latter would be selected if the base directory ``.`` is in *paths*, and whichever is shorter is preferred.  (The rules aren't exactly like that though.  For example if ``paths = ['assets', 'doc', '.']`` and ``doc/1.txt`` exists, then :meth:`compute_input_path` would not use ``1.txt`` as an input path since it causes ambiguity known at runtime.)
-   
-   But just having the input path unambiguous at runtime isn't enough.  Again, recall that *any* sub-path of an export path can be a potential input path, and by claiming ``assets/1.txt`` to be your new file name, you're risking the possibility of taking up one of the candidate paths of any of these sub-paths.  To give a super contrived example, let's say ``paths = ['.', 'assets']`` and we're still exporting to ``assets/1.txt``, except there already is a file oddly named ``assets/assets/1.txt``, whose input path ``assets/1.txt`` was determined unambiguous in a prior call to :meth:`get_input_path`.  By going through the same logic, :meth:`compute_input_path` arrives at the conclusion that ``1.txt`` is the shortest unambiguous input path and sees that with the lookup path ``assets`` derived from *paths* and returns it.  However ``assets/1.txt`` is in fact one of the candidate paths for the input path ``assets/1.txt``, and by exporting to that path we run into a problem: ``assets/1.txt`` is longer unambiguous.
-   
+
+   The last step with :meth:`compute_input_path` is probably the most
+   intuitive to understand, because with different *paths* you would need
+   to select the appropriate input paths, which could be ``1.txt`` or
+   ``assets/1.txt``.  For example the former would be selected if the
+   ``assets`` directory is in *paths*, and the latter would be selected if
+   the base directory ``.`` is in *paths*; whichever is shorter is preferred.
+   (The rules aren't exactly like that though.  For example if
+   ``paths = ['assets', 'doc', '.']`` and ``doc/1.txt`` exists, then
+   :meth:`compute_input_path` would not use ``1.txt`` as an input path
+   since it causes ambiguity known at runtime.)
+
+   But just having the input path unambiguous at runtime isn't enough.
+   Again, recall that *any* sub-path of an export path can be a potential
+   input path, and by claiming ``assets/1.txt`` to be your new file name,
+   you're risking the possibility of taking up one of the candidate paths of
+   any of these sub-paths.  To give a super contrived example, let's say
+   ``paths = ['.', 'assets']`` and we're still exporting to ``assets/1.txt``,
+   except there already is a file oddly named ``assets/assets/1.txt``, whose
+   input path ``assets/1.txt`` was determined unambiguous in a prior call to
+   :meth:`get_input_path`.  By going through the same logic,
+   :meth:`compute_input_path` arrives at the conclusion that ``1.txt`` is the
+   shortest unambiguous input path and sees that with the lookup path
+   ``assets`` derived from *paths* and returns it.  However ``assets/1.txt``
+   is in fact one of the candidate paths for the input path ``assets/1.txt``,
+   and by exporting to that path we run into a problem: ``assets/1.txt`` is
+   no longer unambiguous.
+
    .. code-block:: text
 
          Candidate paths for ``assets/1.txt`` | Candidate paths for ``1.txt``
          -------------------------------------+------------------------------
          ./[assets/1.txt]                     | ./[1.txt]
          ./assets/[assets/1.txt]              | ./assets/[1.txt]
-      
-   In this case, the ambiguous input path ``assets/1.txt`` is long enough to go unnoticed for :meth:`compute_input_path` to ignore, but regardless this poses a serious problem: it is not possible (not practical to say the least) to "rename" that previously exported ``assets/1.txt``, and by simply selecting the right sub-path for input path isn't going to fix that ambiguity.  This is exactly where :meth:`generate_export_path` comes in; it renames the path that we are about to export to avoid the above scenario from happening in the first place.  In this case in particular, :meth:`generate_export_path` iterates over all possible input paths (``1.txt`` and ``assets/1.txt``) and sees if any of them matches an existing file (ignoring the extension, so finding ``1.jpg`` or ``1.md`` would look the same to :meth:`generate_export_path`).  If it does, then it appends a numerical suffix to the file name such as ``1_001.txt`` and ``1_002.txt`` (assuming a default implementation of :meth:`get_export_path_candidates`) and repeats the same process.  Once the file name is good to go, it returns the file name.
-   
-   And now let me briefly talk about why the directory name and base name are separated.
-   
-   .. code-block:: text
-   
-         .
-         +-- img
-         |   +-- a/
-         |   \-- b/
-         |
-         +-- doc
-             +-- a/
-             \-- b/
-   
-   .. warning::
 
-      Currently ``dirname`` in :meth:`generate_export_path` and
-      :meth:`compute_input_path` is always normalized, so if you pass
-      ``'assets/./../img'`` it is simply treated as ``'img'``.
+   In this case, the ambiguous input path ``assets/1.txt`` is long enough to
+   go unnoticed for :meth:`compute_input_path`, but regardless
+   this poses a serious problem: it is not possible (not practical to say
+   the least) to "rename" that previously exported ``assets/1.txt``, and by
+   simply selecting the right sub-path for input path isn't going to fix that
+   ambiguity since the file path we are exporting to is regardless going to
+   be in the candidate paths of some other input path (in this case,
+   ``assets/assets/1.txt``).
 
-      I haven't tested with ``base`` in :meth:`generate_export_path`
-      though (since like I said with the ``base + ext`` analogy, it only
-      does a simple string concatenation and doesn't normalize the path),
-      but I can't guarantee non-normalized paths work there.
+   This is exactly where :meth:`generate_export_path` comes in;
+   it renames the path that we are about to export to avoid the above scenario
+   from happening in the first place.  In this case in particular,
+   :meth:`generate_export_path` iterates over all possible input paths
+   (``1.txt`` and ``assets/1.txt``) and sees if any of them matches an
+   existing file (ignoring the extension, so finding ``1.jpg`` or ``1.md``
+   would look the same to :meth:`generate_export_path`).  If it does, then
+   it appends a numerical suffix to the file name such as ``1_001.txt`` and
+   ``1_002.txt`` (assuming a default implementation of
+   :meth:`get_export_path_candidates`) and repeats the same process.
+   Once the file name is good to go, it returns the file name.
+
+   And now let me briefly talk about why the directory name and base name
+   are separated.  As an example, let's say you have two audio files
+   ``rec/cat.mp3`` and ``mus/cat.mp3``, but you don't want
+   :class:`JSONDumper` to rename either one of them.  One way is to make
+   the directory a part of its "file name" so that :class:`JSONDumper`
+   does not try to tear them apart:
+
+   .. code-block:: python
+
+      self.generate_export_path('rec/cat', '.mp3', '.', paths)
+      self.generate_export_path('mus/cat', '.mp3', '.', paths)
+
+   This, however, comes at a risk.  By skipping the shorter components
+   like ``cat.mp3`` in the process of checking for ambiguity, we are subject
+   to ill-defined lookup paths that may cause :meth:`generate_export_path` to
+   overlook ambiguity brought about by ``cat.mp3``.  As I will elaborate on
+   later, :meth:`generate_export_path` would issue a :class:`DumpWarning`
+   when such ambiguity becomes problematic.
 
    .. method:: generate_export_path(base, ext, dirname, paths)
 
       Generate a file name for exporting by combining ``base`` and ``ext``
       in a way the file name doesn't collide with any existing file.
 
+      :param str base: The component of the export path that this method
+                       should start checking from, stripped of its file
+                       extension
+      :param str ext: The file extension
+      :param dirname: The other component of the export path aside from
+                      *base* as a path-like object
+      :param list paths: The *paths* top-level attributes
+
+      :return: ``base_0 + ext``, where ``base_0`` is the first string
+               generated from :meth:`get_export_path_candidates` that
+               causes no ambiguity
+
       More specifically, this method iterates over a generator of candidates
-      to use in place of *base* (returned by :meth:`get_export_path_candidates`).
-      For each ``base_0`` in that generator, ``base_0 + ext`` is used to form
-      the *name* of the file, and *name* is returned if:
+      to use in place of *base*
+      (returned by :meth:`get_export_path_candidates`).
+      For each ``base_0`` in that generator, ``base_0 + ext`` is used to
+      form the *name* of the file, and *name* is returned if:
 
       *   ``join(dirname, name)`` does not point to an existing path,
       *   *name* is unreachable with the *paths* argument, and
       *   any extended version of *name* with a number of path components from
           *dirname* is unreachable with the *paths* argument.
 
-      As an example, here are the paths checked for:
+      As an example, here are the file paths checked for when called with
+      arguments ``('d/e/1', '.txt', 'a/b/c', paths)``:
+
+      *  ``d/e/1.txt`` (or any file whose base file name is ``1`` in ``d/e``)
+      *  ``c/d/e/1.txt`` (similarly from here on)
+      *  ``b/c/d/e/1.txt``
+      *  ``a/b/c/d/e/1.txt``
+
+      .. warning::
+
+         Currently ``dirname`` in :meth:`generate_export_path` and
+         :meth:`compute_input_path` is always normalized, so if you pass
+         ``'assets/./../img'`` it is simply treated as ``'img'``.
+
+         I haven't tested with ``base`` in :meth:`generate_export_path`
+         though (since like I said with the ``base + ext`` analogy, it only
+         does a simple string concatenation and doesn't normalize the path),
+         but I can't guarantee non-normalized paths work there.
+
+      :raise ValueError:
+         When *ext* contains a path separator
+
+      :raise DumpError:
+         If the ``base_dir`` option is ``None`` or when
+         :meth:`get_export_path_candidates` is exhausted
+
+      :raise DumpWarning:
+         If any sub-path of *name*, as in input path, *could* be reachable
+         with an ill-defined *paths*.
+         (This will never be issued if *name* has no directory component)
+
+      To give an example that would raise a :class:`DumpWarning`, imagine if
+      we want to export to the following files:
+
+      .. code-block:: text
+
+         .
+         +-- 1.txt           <-- (1) first export this
+         |
+         \-- a/
+             \-- 1.txt       <-- (2) then this
+
+      And the lookup paths expand to ``['a', '.']``.
+      To export the first entry, we call ::
+
+         self.generate_export_path('1', '.txt', '.', paths)
+
+      and ``1.txt`` is returned because ``1.txt`` is reachable when joined
+      with the lookup path ``'.'``.  To export the second entry, we call ::
+
+         self.generate_export_path('a/1', '.txt', '.', paths)
+
+      and ``a/1.txt`` is returned because ``a/1.txt`` is reachable when
+      joined with the lookup path ``'a'``.  But notice how because we
+      skipped the process of checking the smaller components of ``a/1.txt``,
+      we did not check those components as possible input paths that *could*
+      match the file we are exporting to.  In our case, the file path
+      ``a/1.txt`` is reachable by the smaller input path ``1.txt``, and our
+      first entry is now pointing towards the file ``a/1.txt`` instead of
+      the file ``1.txt``.
+
+      Another way to assert this fact is that some directory of *name* can be
+      matched by the lookup paths.  In this case, ``a`` is a directory of
+      ``1.txt`` and ``a`` is clearly matched by the lookup paths.  A benefit
+      of asserting it this way is that we do not need to wait for the moment
+      when the program is about to break, i.e. when an entry is already
+      exported with the shorter input path ``1.txt``.
+
+      .. TODO: include this in doctest
+
+      To see what we said in action, consider the following code that
+      implements the preceding example::
+
+         from psp.processors import JSONLoader, JSONDumper
+         import io, json, tempfile
+         class DemoDumper(JSONDumper):
+             def get_input_path(self, entry, attrs):
+                 paths = attrs['paths']
+                 if entry.get_data() == 'ONE':
+                     filename = self.generate_export_path('1', '.txt', '.', paths)
+                 elif entry.get_data() == 'TWO':
+                     filename = self.generate_export_path('a/1', '.txt', '.', paths)
+                 # join('.', filename) would be identical to just... filename,
+                 # so I'm skipping that here.
+                 self.export_entry(entry, filename)
+                 return self.compute_input_path(filename, '.', paths)
+
+         with tempfile.TemporaryDirectory() as root:
+             panels = JSONLoader().load(io.StringIO("""\
+                 {
+                   "tz": "UTC",
+                   "data": [ { "date": "2022-02-22",
+                               "entries": [
+                                 { "time": "01:00", "data": "ONE" },
+                                 { "time": "02:00", "data": "TWO" }
+                               ]
+                           } ]
+                 }
+             """))
+             DemoDumper(base_dir=root, paths=['a', '.']).dump_data(panels)
+
+      If we run this, we get (with a bit of line wrapping)
+
+      .. code-block:: text
+
+         /Users/rapidcow/GitHub/perspective/src/psp/processors/json_processor.py:1291:
+         DumpWarning: 'a/1.txt' is not the shortest reachable path for 'a/1.txt'
+         (parent directory 'a' matches the lookup path 'a'); name collisions may occur
+           self._warn(
+
+      More generally, if we had a longer *name*, say ``a/b/c/d/e/1.txt``,
+      accompanied by some *dirname* ``root`` then the *directories* checked
+      for are:
+
+      *  ``join(root, 'a')``
+      *  ``join(root, 'a/b')``
+      *  ``join(root, 'a/b/c')``
+      *  ``join(root, 'a/b/c/d')``
+      *  ``join(root, 'a/b/c/d/e')``
+
+      If any one of these directories can be matched by *paths*,
+      a :class:`DumpWarning` ensues.
+
+      Okay, now we understand how this might be an issue.  How do we
+      solve it then?  Well, here are some solutions to think of:
+
+      1. Redefine your *paths* so that no shorter input path can be reachable.
+         In this case, consider removing ``'a'`` from your *paths*.
+
+      2. Tell :meth:`generate_export_path` to start from the shortest
+         reachable path instead, that is::
+
+            filename = self.generate_export_path('1', '.txt', 'a', paths)
+
+         Once you've prevented name collisions, then you can call ::
+
+            return self.compute_input_path(join('a', filename), '.', paths)
+
+         later to ensure that ``a`` and ``1.txt`` are always glued together
+         in the input path.
+
+   .. method:: export_entry(entry, export_path)
+
+      Export *entry* to an *export_path* relative to the current dumper's
+      ``base_dir``, creating intermediary directories as needed.
+
+      :param entry: Entry whose data is to be exported
+      :type entry: |Entry| object
+      :param export_path: Relative path-like object, pointing to a file
+                          within ``base_dir`` that doesn't exist at runtime
+
+      :raise DumpError:
+         If the ``base_dir`` option is ``None``, the file path
+         ``join(base_dir, export_path)`` points at a path beyond
+         ``base_dir`` (e.g. ``export_path = '../1.txt'``, or
+         ``export_path`` is absolute), or a file located at that
+         file path exists
+
+   .. method:: compute_input_path(name, dirname, paths)
+
+      Compute a valid input path for an existing file at
+      ``join(dirname, name)``; return ``join(dirname, name)`` as
+      a last resort.
+
+      :param str name: The inseparable component that must be included in
+                       the input path
+      :param dirname: The other component of the export path aside from
+                      *base* as a path-like object
+      :param list paths: The *paths* top-level attributes
+
+      :return: The shortest input path that can *unambiguously reach*
+               ``join(dirname, name)`` with the provided *paths*
+
+      :raise DumpError:
+         If the ``base_dir`` option is ``None``
+
+      Again, a concrete example might help you understand the algorithm
+      better.  Let's say we are passed ``('d/e/1.txt', 'a/b/c', paths)``.
+      Then input paths are tested in the following order:
 
       *  ``d/e/1.txt``
       *  ``c/d/e/1.txt``
       *  ``b/c/d/e/1.txt``
-      *  ``a/b/c/d/e/1.txt``
 
-      :param str base: The inseparable component of the export path,
-                       stripped of extension
-      :param str ext: The file extension
-      :param dirname: The other component of the export path aside from
-                      *base* as a path like object
-      :param paths: The paths top-level attributes
-
-      * name is going to be checked against The passed paths argument
-      * for each right most path component in dirname, the component is joined with name and checked against as well
-      * The components of dirname are determined after OS path norm path is called
-
-      give examples or something
-
-      * the amount of components that base contains determines the starting point of the checking process
-          * this is to create a sort of namespace with the given extra components in base
-      * however you will run into trouble if any amount of the left component join what the name is matched against by a certain pattern in paths
-          * DumpWarning
-          * this is guaranteed to be avoided yes face only contains one component: The file name itself
-
-      include these more in depth and detailed descriptions in a separate section
-
-      also make sure to define proper definitions of right most and left component
-
-      :raise ValueError:
-         when ``ext`` contains more than one path component
-
-         when candidates are exhausted
-      :raise DumpError:
-         if the base_dir option is None
-
-   .. method:: compute_input_path(name, dirname, paths)
-
-      :raise DumpError:
-         if the base_dir option is None
-
-   .. method:: export_entry(entry, export_path)
-
-      :raise DumpError:
-         if the base_dir option is None
-
-   secondary
+      The first unambiguous path in the list is returned.
+      Note that ``a/b/c/d/e/1.txt`` is never tested and will always be
+      returned if the method doesn't return at any of the preceding
+      input paths.
 
    .. method:: get_export_path_name(entry)
 
+      Return the base file name for *entry*.
+
    .. method:: get_export_path_extension(entry)
 
+      Return the file name extension for *entry*.
+
    .. method:: get_export_path_candidates(name)
+
+      Given a base file name, yield a list of candidate names that can
+      be used to substitute the name.  Default implementation yields
+      ``name``, ``name_001``, ``name_002``, and so forth.
 
    .. method:: format_timezone(tz)
 

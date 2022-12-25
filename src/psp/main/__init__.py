@@ -15,36 +15,17 @@ import shutil
 import tempfile
 import textwrap
 
-from .__init__ import __version__
-from . import util
-from .timeutil import format_date
-from .stringify import PanelFormatter
-from .processors.json_processor import (JSONLoader, JSONDumper,
-                                        load_json, dump_json, LoadError)
+from ..__init__ import __version__
+from ..timeutil import format_date
+from ..stringify import PanelFormatter
+from ..processors.json_processor import (JSONLoader, JSONDumper,
+                                         load_json, dump_json, LoadError)
+from .tools import load_module_from_file
 
 __all__ = ['main', 'create_project']
 
 CURDIR = os.path.dirname(__file__)
-TEMPL = os.path.join(CURDIR, '_templates')
-
-
-# a copy of the function in tools.py >_>
-def _load_module_from_file(modname, file):
-    # Resolve the file path so that the module's __file__ attribute
-    # is absolute
-    file = os.path.realpath(file)
-    # https://stackoverflow.com/a/67692
-    spec = importlib.util.spec_from_file_location(modname, file)
-    if spec is None:
-        raise RuntimeError(f'failed to load module at {file!r}')
-    module = importlib.util.module_from_spec(spec)
-    # Put the module's parent directory at the very front in sys.path
-    sys.path.insert(0, os.path.dirname(file))
-    try:
-        spec.loader.exec_module(module)
-    finally:
-        sys.path.pop(0)
-    return module
+TEMPL = os.path.normpath(os.path.join(CURDIR, '..', '_templates'))
 
 
 def main(argv):
@@ -124,8 +105,7 @@ def main(argv):
     sources = _get_source_files(parser, args)
     with tempfile.TemporaryDirectory() as tempdir:
         create_project(tempdir)
-        for modname in 'mystuff', 'tools':
-            del sys.modules[modname]
+        del sys.modules['mystuff']
         with open(os.path.join(tempdir, 'scripts', 'main.py'),
                   'r+', encoding='utf-8') as fp:
             content = fp.read().replace(
@@ -167,9 +147,9 @@ def main(argv):
                 fp.write(content)
             fp.seek(0)
 
-        main_mod = _load_module_from_file(
+        main_mod = load_module_from_file(
             'main', os.path.join(tempdir, 'scripts', 'main.py'))
-        config_mod = _load_module_from_file(
+        config_mod = load_module_from_file(
             'config', os.path.join(tempdir, 'scripts', 'config.py'))
 
         if args.subname == 'print':
@@ -184,7 +164,7 @@ def main(argv):
 
         elif args.subname == 'interact':
             if args.config is not None:
-                config_user = _load_module_from_file('config', args.config)
+                config_user = load_module_from_file('config', args.config)
             else:
                 config_user = None
             print('Loading panels... ', end='', flush=True)
@@ -230,8 +210,6 @@ def create_project(project_dir):
         config_py = fp.read()
     with open(os.path.join(TEMPL, 'mystuff.py.txt'), encoding='utf-8') as fp:
         mystuff_py = fp.read()
-    with open(os.path.join(TEMPL, 'tools.py.txt'), encoding='utf-8') as fp:
-        tools_py = fp.read()
 
     scripts_dir = os.path.join(project_dir, 'scripts')
     lib_dir = os.path.join(project_dir, 'lib')
@@ -246,14 +224,11 @@ def create_project(project_dir):
     with open(os.path.join(lib_dir, 'mystuff.py'), 'x',
               encoding='utf-8') as fp:
         fp.write(mystuff_py)
-    with open(os.path.join(lib_dir, 'tools.py'), 'x',
-              encoding='utf-8') as fp:
-        fp.write(tools_py)
     with open(os.path.join(scripts_dir, 'requirements.txt'), 'x',
               encoding='utf-8') as fp:
         fp.write(f'perspe=={__version__}\n')
 
-    config_mod = _load_module_from_file(
+    config_mod = load_module_from_file(
         'config', os.path.join(scripts_dir, 'config.py'))
     config_mod.dump_panels(project_dir, [])
 

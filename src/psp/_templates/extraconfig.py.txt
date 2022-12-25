@@ -31,27 +31,29 @@ except AttributeError:
 
         # Users do not need to define load_all() anymore; the main program
         # now solely relies on load_singles() and load_panel_info().
-        def load_all(self, path, encoding):
-            self.json_loader.configure(base_dir=os.path.dirname(path))
-            with open(path, encoding=encoding) as fp:
+        #
+        # XXX: What???  We totally still need this XDD
+        def load_all(self, file, encoding):
+            self.json_loader.configure(base_dir=os.path.dirname(file))
+            with open(file, encoding=encoding) as fp:
                 yield from self.json_loader.load(fp)
 
         # By default we set base_dir to the directory the backup
         # JSON file belongs to.
         #
         # Singles => panels with the same date, not what you might think
-        def load_singles(self, path, encoding, date):
-            for panel in self.load_all(path, encoding):
+        def load_singles(self, file, encoding, date):
+            for panel in self.load_all(file, encoding):
                 if panel.date == date:
                     yield panel
 
-        def load_panel_info(self, path, encoding):
-            for panel in self.load_all(path, encoding):
+        def load_panel_info(self, file, encoding):
+            for panel in self.load_all(file, encoding):
                 yield panel.date, panel.get_rating(None)
 
-        def get_description(self, path, encoding):
-            self.json_loader.configure(base_dir=os.path.dirname(path))
-            with open(path, encoding=encoding) as fp:
+        def get_description(self, file, encoding):
+            self.json_loader.configure(base_dir=os.path.dirname(file))
+            with open(file, encoding=encoding) as fp:
                 data = self.json_loader.load_json(fp)
                 panels, attrs = self.json_loader.split_data(data)
                 try:
@@ -106,7 +108,13 @@ def request_panel_date(root):
         with closing(loader.load_panel_info(file, {encoding!r})) as info:
             for date, rating in info:
                 date_map[date] = rating
-    return tools.DateRequester(calendar.MONDAY).request(date_map.items())
+    return tools.DateRequester(firstweekday).request(date_map.items())
+
+
+def load_panels(file, root_dir):
+    loader = BackupLoader(root_dir, {warning_level!r})
+    with closing(loader.load_all(file, {encoding!r})) as panels:
+        yield from panels
 
 
 def load_single_panel(root, date):
@@ -122,7 +130,7 @@ def load_single_panel(root, date):
     if not values:
         raise ValueError(f'cannot find panel on {{date}}')
     tools.check_panel_attributes(values)
-    return tools.merge_panels(panel for panel, _ in values)
+    return psp.util.merge_panels(panel for panel, _ in values)
 
 
 def get_description(file, base_dir):

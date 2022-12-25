@@ -1,4 +1,4 @@
-"""Main program for the backup project."""
+"""Main program for my backup project..."""
 
 import code
 from contextlib import closing
@@ -173,10 +173,16 @@ def run_update(root, path):
             else:
                 shutil.copy2(src, dst)
         print('done')
+    try:
+        main_py = sys.argv[0]
+    except IndexError:
+        main_py = 'main.py'
     print(f'Update complete.  To undo this, run')
     print()
-    print(f'   python3 main.py backup restore '
+    print(f'   python3 {main_py} backup restore '
           f'{shlex.quote(backup_name)}')
+    print()
+
 
 
 def run_backup_create(root, name):
