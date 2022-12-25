@@ -16,8 +16,8 @@ The web version of this documentation can be found [here][perspe] (hosted by
 
 ### Prerequisites
 
-Make sure to install the dependencies first using
-`python3 -m pip install -r requirements.txt`!
+**Make sure to install the dependencies first using
+`python3 -m pip install -r requirements.txt`!!**
 
 It is HIGHLY recommended (though not required) that you create and activate
 a virtual environment first.  See the [Python docs][venv] for how to create

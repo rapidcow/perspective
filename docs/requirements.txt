@@ -1,3 +1,4 @@
 Sphinx==5.0.0
-furo==2022.6.21
 sphinx-multiproject==1.0.0rc1
+# @pradyunsg's furo theme :3
+furo==2022.6.21

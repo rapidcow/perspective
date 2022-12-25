@@ -795,7 +795,7 @@ class JSONLoader(Configurable):
 # this was a method in JSONLoader exclusively until it becomes too
 # important it has to be shared across two classes
 #
-# (it's also a generator now woohoo)
+# (it's also a generator now YIPPEE o_o)
 def find_paths(path, base_dir, paths):
     """Yield all reachable file paths with the input path 'path'.
 
@@ -909,14 +909,14 @@ def _check_relpath(path, base_dir, name):
     is inside base_dir.  if any of these conditions fails, DumpError.
     """
     if os.path.isabs(path):
-        raise DumpError(f'{name} {path!r} is absolute')
+        raise DumpError(f'{name}: {path!r} is absolute')
     abspath = os.path.abspath(os.path.join(base_dir, path))
     # i don't know if this rule makes sense but you shouldn't
     # really do this anyways so ummmm whatever
     # https://stackoverflow.com/a/37095733
     if (os.path.commonpath([abspath, base_dir])
             != os.path.commonpath([base_dir])):
-        raise DumpError(f'{name} {path!r} beyond base directory')
+        raise DumpError(f'{name}: {path!r} beyond base directory')
 
 
 class JSONDumper(Configurable):
@@ -1258,10 +1258,9 @@ class JSONDumper(Configurable):
         try:
             base_dir = os.fspath(base_dir)
         except TypeError:
-            # base_dir should be None
             msg = 'base_dir must be set when calling generate_export_path()'
             raise DumpError(msg) from None
-        # just to check if this contains any slashes
+        # just to check if the extension contains any slashes
         ext_head, ext_tail = os.path.split(ext)
         if ext_head or ext_tail != ext:
             raise ValueError(f'invalid file extension: {ext!r}')
@@ -1280,7 +1279,8 @@ class JSONDumper(Configurable):
         # 'join(dirname, name)', otherwise issue a warning (one is enough)
         parts = _split_path(base)
         # for a 'name' that looks like 'a/b/.../c/d/name', iterate through
-        # 'a', 'a/b', ..., 'a/b/.../c', 'a/b/.../c/d'.
+        # directives 'a', 'a/b', ..., 'a/b/.../c', 'a/b/.../c/d' and warn
+        # the user if any of the above matches a pattern in 'paths'
         for i in range(1, len(parts)):
             long_dir = os.path.normpath(os.path.join(dirname, *parts[:i]))
             for lookup_path in paths:
@@ -1295,7 +1295,8 @@ class JSONDumper(Configurable):
                         f'path {lookup_path!r}); name collisions may occur',
                         DumpWarning)
                     break
-            # break the outer loop when the inner loop is broken
+            # break the outer loop when the inner loop is broken:
+            # one warning is enough
             else:
                 continue
             break
@@ -1319,7 +1320,7 @@ class JSONDumper(Configurable):
         # we've tried everything so just give up (lol you can count on
         # me for optimism)
         name = f'{base}{ext}'
-        raise DumpError(f'failed to generate an input path for {name!r} '
+        raise DumpError(f'failed to generate a file name for {name!r} '
                         f'(with directory name {dirname!r})')
 
     def compute_input_path(self, name, dirname, paths):
@@ -1353,7 +1354,6 @@ class JSONDumper(Configurable):
         try:
             base_dir = os.fspath(base_dir)
         except TypeError:
-            # base_dir should be None
             msg = 'base_dir must be set when calling compute_input_path()'
             raise DumpError(msg) from None
         parts = _split_path(dirname)
@@ -1391,10 +1391,9 @@ class JSONDumper(Configurable):
         try:
             base_dir = os.path.abspath(base_dir)
         except TypeError:
-            # base_dir should be None
             msg = 'base_dir must be set when calling export_entry()'
             raise DumpError(msg) from None
-        _check_relpath(export_path, base_dir, 'export_path')
+        _check_relpath(export_path, base_dir, 'export_path()')
         export_path = os.path.join(base_dir, export_path)
         if os.path.exists(export_path):
             raise DumpError(f'export path {export_path!r} exists')
@@ -1505,15 +1504,28 @@ class JSONDumper(Configurable):
 
     def write_entry_time(self, entry_dict, dt):
         """Update entry_dict with entry time, omitting the date."""
-        entry_dict['time'] = timeutil.format_time(dt)
+        entry_dict['time'] = self.format_time(dt)
+        # In case that dt is naive and the time zone is inherited from the
+        # top-level attribute tz, make sure that we also serialize the fold
+        # attribute.  We don't have to worry about the case where dt is
+        # aware as format_time() always uses a fixed offset.
         if timeutil.is_naive(dt) and dt.fold:
             entry_dict['fold'] = dt.fold
 
     def write_entry_date_and_time(self, entry_dict, dt):
         """Update entry_dict with entry time, including the date."""
-        entry_dict['date-time'] = timeutil.format_datetime(dt)
+        entry_dict['date-time'] = self.format_datetime(dt)
         if timeutil.is_naive(dt) and dt.fold:
             entry_dict['fold'] = dt.fold
+
+    # XXX: experimental? don't use these yet???
+    def format_time(self, dt):
+        """Format an aware/naive datetime object as a time str."""
+        return timeutil.format_time(dt)
+
+    def format_datetime(self, dt):
+        """Format an aware/naive datetime object as a datetime str."""
+        return timeutil.format_datetime(dt)
 
     def write_entry_type_and_format(self, entry_dict, e_type, e_format):
         """Update entry_dict with entry type and format."""

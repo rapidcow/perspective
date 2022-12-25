@@ -1,4 +1,4 @@
-"""Useful stuff provided by psp init"""
+"""Useful tools for psp projects."""
 
 import calendar
 import datetime
@@ -11,23 +11,10 @@ import subprocess as sp
 import sys
 import textwrap
 
-import psp.util
-
 __all__ = [
-    'yippee',
-    'termcolor',
-    'DateRequester',
-    'load_module_from_file',
+    'termcolor', 'DateRequester',
+    'check_panel_attributes', 'load_module_from_file',
 ]
-
-
-# this is a debug function... use it whenever you feel like it
-# and while you're still here... this is my fav of all time:
-# https://youtu.be/a0t_wyoO8LI?t=9
-def yippee():
-    """when your mom lets you drink cola"""
-    print('YIPPEE!!')
-
 
 MONTH_NAMES = [
     'January', 'February', 'March', 'April', 'May', 'June',
@@ -376,15 +363,17 @@ class DateRequester:
         return f'{termcolor.BOLD}{color}{day_str}{termcolor.RESET}'
 
 
-class UnequalPanelAttributeError(ValueError):
-    __slots__ = ()
+def check_panel_attributes(values):
+    """Check whether panels have the same attributes.
 
-
-def check_panel_attributes(values, error=True):
+    This function takes a list of (panel, name) and returns an error
+    string if it finds two panels with unequal/missing attributes.
+    None is returned on success.
+    """
     for (p1, s1), (p2, s2) in itertools.combinations(values, 2):
         assert p1.date == p2.date
-        d1 = p1.get_attributes()
-        d2 = p2.get_attributes()
+        d1 = p1.get_attributes_for_comparison()
+        d2 = p2.get_attributes_for_comparison()
         for key in d1.keys() | d2.keys():
             msg = None
             if not p2.has_attribute(key):
@@ -403,12 +392,8 @@ def check_panel_attributes(values, error=True):
                            f'attribute from {s2!r} '
                            f'({value_1!r} != {value_2!r})')
             if msg is not None:
-                errmsg = (f'{len(values)} panels on {p1.date} have '
-                          f'differing attributes: {msg}')
-                raise UnequalPanelAttributeError(errmsg)
-
-
-merge_panels = psp.util.merge_panels
+                yield (f'{len(values)} panels on {p1.date} have '
+                       f'differing attributes: {msg}')
 
 
 # Requires Python 3.5+

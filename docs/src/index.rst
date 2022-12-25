@@ -46,6 +46,7 @@ The actual documentation but might be too boring to read
    :maxdepth: 1
 
    changelog/index.rst
+   contrib.rst
    basicproc/zero.rst
    psp/index.rst
    struct/index.rst
