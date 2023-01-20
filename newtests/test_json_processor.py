@@ -20,12 +20,16 @@ from psp.processors.json_processor import (
 )
 
 
+# function decorator that passes the temporary directory
+# as an extra positional argument
 class tempdir:
     __slots__ = ('f',)
 
     def __init__(self, f):
         self.f = f
 
+    # descriptor protocol for instance methods / class methods?
+    # (i forgor how this works)
     def __get__(self, obj, objtype=None):
         if hasattr(self.f, '__get__'):
             meth = self.f.__get__(obj, objtype)
@@ -33,7 +37,7 @@ class tempdir:
             meth = types.MethodType(self.f, obj)
         return _tempdir(meth)
 
-    # make it so that it works as a function or with @staticmethod
+    # support for decorating static methods
     def __call__(self, *args, **kwargs):
         return _tempdir(self.f)(*args, **kwargs)
 
@@ -53,7 +57,7 @@ def open_with_unicode(file, mode='r'):
 class TestJSONLoader(unittest.TestCase):
     """Test the JSONLoader class."""
     @tempdir
-    def do_test_type(self, root, factory, attr_type, msg_factory,
+    def _test_type(self, root, factory, attr_type, msg_factory,
                      allow_none=False):
         """Test whether TypeError is thrown when a certain JSON field
         takes on different types.
@@ -90,7 +94,7 @@ class TestJSONLoader(unittest.TestCase):
                 fp.truncate(0)
 
     @tempdir
-    def do_test_method_hook(self, root, factory, getter, cls, name, values,
+    def _test_method_hook(self, root, factory, getter, cls, name, values,
                             *args, **kwargs):
         """Test if a certain method is called to parse a certain value.
 
@@ -153,7 +157,7 @@ class TestJSONLoader(unittest.TestCase):
               ]
             }
             """))
-        self.do_test_type(lambda s: template.substitute(date=s), str,
+        self._test_type(lambda s: template.substitute(date=s), str,
                           lambda v: ("'date': expected a str, got {}"
                                      .format(type(v).__name__)))
 
@@ -168,7 +172,7 @@ class TestJSONLoader(unittest.TestCase):
             return panel.date
 
         good_dates = ['2018-09-04', '2022-02-02']
-        self.do_test_method_hook(json_factory, date_getter, JSONLoader,
+        self._test_method_hook(json_factory, date_getter, JSONLoader,
                                  'parse_date', good_dates)
 
         # XXX: I just realized that parse_date() still works when it
@@ -187,7 +191,7 @@ class TestJSONLoader(unittest.TestCase):
 
         good_dates.extend(['Nov 18 2011', 'Nov  4 2014'])
         loader = CustomLoader()
-        self.do_test_method_hook(json_factory, date_getter, CustomLoader,
+        self._test_method_hook(json_factory, date_getter, CustomLoader,
                                  'parse_date', good_dates)
 
     # TEST 2
@@ -351,7 +355,7 @@ class TestJSONLoader(unittest.TestCase):
         for name in 'time', 'date-time', 'date':
             # The 'date' variable won't be seen unless 'time' is provided
             e = '"time": "10:00+08:00",' if name == 'date' else ''
-            self.do_test_type(
+            self._test_type(
                 lambda s: template.substitute(extra=e, name=name, value=s),
                 str, lambda v: msg.format(name, type(v).__name__))
 
@@ -403,7 +407,7 @@ class TestJSONLoader(unittest.TestCase):
         good_aware_time = ['06:00+08:00', '19:00-07:00']
 
         loader = JSONLoader()
-        self.do_test_method_hook(
+        self._test_method_hook(
             lambda s: template.substitute(
                 tlextra='"tz": "UTC",', extra='', name='time', value=s),
             time_getter,
@@ -414,7 +418,7 @@ class TestJSONLoader(unittest.TestCase):
             fold=None)
 
         # tests exclusive to aware time
-        self.do_test_method_hook(
+        self._test_method_hook(
             lambda s: template.substitute(
                 tlextra='', extra='', name='time', value=s),
             time_getter,
@@ -445,7 +449,7 @@ class TestJSONLoader(unittest.TestCase):
         good_naive_time.extend(['08:00 AM', '04:00 PM'])
         good_aware_time.extend(['07:00-07:00 PM', '03:00+08:00 AM'])
         loader = CustomTimeLoader()
-        self.do_test_method_hook(
+        self._test_method_hook(
             lambda s: template.substitute(
                 tlextra='"tz": "UTC",', extra='', name='time', value=s),
             time_getter,
@@ -455,7 +459,7 @@ class TestJSONLoader(unittest.TestCase):
             tzinfo=JSONLoader().parse_timezone('UTC'),
             fold=None)
 
-        self.do_test_method_hook(
+        self._test_method_hook(
             lambda s: template.substitute(
                 tlextra='', extra='', name='time', value=s),
             time_getter,
@@ -473,7 +477,7 @@ class TestJSONLoader(unittest.TestCase):
                                '2021-09-15 19:00+08:00']
 
         loader = JSONLoader()
-        self.do_test_method_hook(
+        self._test_method_hook(
             lambda s: template.substitute(
                 tlextra='"tz": "UTC",', extra='', name='date-time', value=s),
             date_time_getter,
@@ -484,7 +488,7 @@ class TestJSONLoader(unittest.TestCase):
             fold=None)
 
         # tests exclusive to aware date time
-        self.do_test_method_hook(
+        self._test_method_hook(
             lambda s: template.substitute(
                 tlextra='', extra='', name='date-time', value=s),
             date_time_getter,
@@ -513,7 +517,7 @@ class TestJSONLoader(unittest.TestCase):
         good_aware_datetime.extend(['Feb 02 02:22+02:22 2022',
                                     'Sep 15 19:00+08:00 2021'])
 
-        self.do_test_method_hook(
+        self._test_method_hook(
             lambda s: template.substitute(
                 tlextra='"tz": "UTC",', extra='', name='date-time', value=s),
             date_time_getter,
@@ -524,7 +528,7 @@ class TestJSONLoader(unittest.TestCase):
             fold=None)
 
         # tests exclusive to aware date time
-        self.do_test_method_hook(
+        self._test_method_hook(
             lambda s: template.substitute(
                 tlextra='', extra='', name='date-time', value=s),
             date_time_getter,
@@ -539,7 +543,7 @@ class TestJSONLoader(unittest.TestCase):
         #################
         good_dates = ['2018-09-04', '2022-02-02']
         loader = JSONLoader()
-        self.do_test_method_hook(
+        self._test_method_hook(
             lambda s: template.substitute(
                 tlextra='', extra='"time": "08:00+08:00",', name='date',
                 value=s),
@@ -559,7 +563,7 @@ class TestJSONLoader(unittest.TestCase):
 
         good_dates.extend(['Nov 18 2021', 'Dec 25 2021'])
         loader = CustomDateLoader()
-        self.do_test_method_hook(
+        self._test_method_hook(
             lambda s: template.substitute(
                 tlextra='', extra='"time": "08:00+08:00",', name='date',
                 value=s),
