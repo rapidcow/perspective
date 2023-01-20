@@ -961,7 +961,7 @@ class JSONDumper(Configurable):
         import warnings
         warnings.warn(msg, w, 2)
 
-    def dump(self, panels, fp):
+    def dump(self, panels, fp, *, attrs=None):
         """Dump an iterable of panels to a file object.
 
         Arguments
@@ -972,8 +972,12 @@ class JSONDumper(Configurable):
         fp : file object
             A file-like object implementing the `write()` method.
             (Should be open in text mode)
+
+        attrs : optional, mapping object
+            Extra JSON top-level attributes to add after those
+            created by prepare_backup().
         """
-        data = self.dump_data(panels)
+        data = self.dump_data(panels, attrs=attrs)
         self.dump_json(data, fp)
 
     def dump_json(self, data, fp):
@@ -990,17 +994,18 @@ class JSONDumper(Configurable):
         """
         json.dump(data, fp, **self.get_option('json_options'))
 
-    def dump_data(self, panels):
+    def dump_data(self, panels, *, attrs=None):
         """Dump an iterable of panels to a dict.  dump() calls this.
-
-        (There's literally one argument so... I'm not writing that whole
-        argument list.)
+        For info on the arguments, see dump().
         """
-        attrs = self.get_top_level_attributes(panels)
-        data = self.prepare_backup(attrs)
+        py_attrs = self.get_top_level_attributes(panels)
+        data = dict(attrs) if attrs is not None else {}
+        self.prepare_backup(data, py_attrs)
+        if attrs is not None:
+            data.update(attrs)
         panel_list = data['data'] = []
         for panel in panels:
-            panel_dict = self.wrap_panel(panel, attrs)
+            panel_dict = self.wrap_panel(panel, py_attrs)
             panel_list.append(panel_dict)
         if not panel_list:
             del data['data']
@@ -1021,21 +1026,19 @@ class JSONDumper(Configurable):
         return {'tz': self.get_option('time_zone'),
                 'paths': self.get_option('paths')}
 
-    def prepare_backup(self, attrs):
-        """Get the JSON top-level attributes from the top-level
+    def prepare_backup(self, json_attrs, attrs):
+        """Update the JSON top-level attributes from the top-level
         attributes.
 
         (Keep in mind that the 'data' key will always be overridden
         by dump_data() with the list of panels!)
         """
-        data = {}
         tz = attrs['tz']
         if tz is not None:
-            data['tz'] = self.format_timezone(tz)
+            json_attrs['tz'] = self.format_timezone(tz)
         paths = attrs['paths']
         if paths != ['.']:
-            data['paths'] = paths
-        return data
+            json_attrs['paths'] = paths
 
     def wrap_panel(self, panel, attrs):
         """Convert a panel object into a dict.
@@ -1664,9 +1667,28 @@ del base_dir_checker, paths_checker, callable_checker
 # TODO: address convenience interface of providing date
 def load_json(file, date=None, *, encoding=None, errors=None,
               loader=None, **options):
-    """Simple interface for loading a JSON archive.
+    """Convenience interface for loading a JSON archive.
 
-    Extra keyword arguments are passed on to the configure() method.
+    NOTE: Extra keyword arguments are used only if a loader
+    isn't provided.
+
+    Arguments
+    ---------
+    file : path-like or readable text file-like object
+        JSON archive file to read from.
+
+    date : optional, datetime.date object or str
+        When provided, return the first panel whose date equals
+        this argument.  When omitted, return all panels.
+        If date is a str, it is converted to a datetime.date
+        with the parse_date() method of the loader.
+
+    encoding, errors : str
+        Optional arguments for the built-in open() function.
+
+    loader : optional, JSONLoader instance
+        The underlying loader object to use.  By default,
+        a JSONLoader is created with the extra keyword arguments.
     """
     if isinstance(file, (str, os.PathLike)):
         options.setdefault('base_dir', os.path.dirname(file))
@@ -1697,22 +1719,41 @@ def load_json(file, date=None, *, encoding=None, errors=None,
             fp.close()
 
 
-def dump_json(panels, file, *, encoding=None, errors=None, exist_ok=False,
-              dumper=None, **options):
-    """Simple interface for dumping a JSON archive.
+def dump_json(panels, file, *, attrs=None, encoding=None, errors=None,
+              exist_ok=False, dumper=None, **options):
+    """Convenience interface for dumping a JSON archive.
 
-    For method signature, see JSONDumper.dump().  Extra keyword
-    arguments are passed on to the configure() method.
+    NOTE: Extra keyword arguments are used only if a dumper
+    isn't provided.
+
+    Arguments
+    ---------
+    file : path-like or writable text file-like object
+        JSON archive file to dump to.
+
+    attrs : optional, mapping object
+        Addition JTL attributes passed to JSONDumper.dump().
+
+    encoding, errors : optional, str
+        Optional arguments for the built-in open() function.
+
+    exist_ok : bool, default False
+        (Only applicable when 'file' is a path-like object)
+        If True, open in 'w' mode.  Otherwise open in 'x' mode.
+
+    dumper : optional, JSONLoader instance
+        The underlying doader object to use.  By default,
+        a JSONDoader is created with the extra keyword arguments.
     """
     if isinstance(file, (str, os.PathLike)):
         options.setdefault('base_dir', os.path.dirname(file))
     if dumper is None:
         dumper = JSONDumper(**options)
-    mode = 'w' if exist_ok else 'x'
     if hasattr(file, 'read'):
         fp = file
         close = False
     else:
+        mode = 'w' if exist_ok else 'x'
         fp = io.open(file, mode, encoding=encoding, errors=errors)
         close = True
     try:
