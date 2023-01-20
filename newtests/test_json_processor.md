@@ -97,6 +97,7 @@ TODO: test fold attribute?
     (8) lookup paths
     (9) inference rules
     (10) panel & entry extensions
+    (11) public interface (`load()`, `load_json()`, `load_data()`)
 
 
 JSONDumper tests
@@ -116,7 +117,7 @@ attributes.
 TEST 2: backup preparation
 --------------------------
 
-Test prepare_backup() given the top-level attributes.
+Test `prepare_backup()` given the top-level attributes.
 These are the JSON top-level (JTL) attributes.
 
 1.  The JTL attribute `tz` is the str returned by calling
@@ -124,6 +125,15 @@ These are the JSON top-level (JTL) attributes.
     is not None, otherwise unset
 2.  The JTL attribute `paths` is the `paths` TL attribute
     if it is not equal to `['.']`, otherwise unset
+
+TEST ???: public interface
+--------------------------
+
+Test the `dump()`, `dump_data()`, and `dump_json()` methods.
+
+1.  When `attrs` is provided to `dump()` as a mapping, it is used to
+    update the JSON backup dumped by `dump()`.  (Similarly for
+    `dump_data()`)
 
 
 InferenceManager tests

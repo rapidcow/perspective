@@ -5,7 +5,7 @@
 =============================
 
 :Author: rapidcow
-:Date: Nov 29, 2021?
+:Date: Nov 29, 2021 (still WIP tho)
 
 .. .. contents::
 ..    :local:
@@ -15,8 +15,9 @@
 Abstract
 --------
 
-This is meant to provide a technical specification for the minimal syntax of
-``backup.json``, as read and written by :mod:`psp.processors.json_processor`.
+This is meant to provide a technical specification for the minimal
+syntax of ``backup.json``, as read and written by
+:mod:`psp.processors.json_processor`.
 
 .. important::
 
@@ -39,12 +40,13 @@ attribute
    *panels* and *entries*).
 
 field
-   Another name for attribute.  Sometimes.
+   Another name for attribute (sometimes).
 
 *dict*, *list*, *str*, *bool*, null
-   These will be convenient Pythonic terms to refer to JSON objects, arrays,
-   strings, and booleans.  (They are used mainly because object means
-   something different in Python; the use of null is preserved however.)
+   These will be convenient Pythonic terms to refer to JSON objects,
+   arrays, strings, and booleans.  They are used mainly because object
+   means something different in Python; the use of null, however, is
+   preserved, despite in Python it is the singleton ``None``.
 
 *text*
    When an attribute is a *text* attribute, it must be either a *str*
@@ -65,38 +67,35 @@ that you may use.
 
 tz (optional)
    A *str* representing the time zone for everything in this backup.
-   Must be valid when passed to
-   :meth:`JSONLoader.parse_timezone() <psp.processors.json_processor.JSONLoader.parse_timezone>`.
+   Must be valid when passed to |parse_timezone|.
    This is optional but a time zone must be eventually provided as
-   :class:`JSONLoader <psp.processors.json_processor.JSONLoader>` parses
-   some time/date time string.
+   |JSONLoader| parses some time/date time string.
 
 paths (optional)
-   A *list* of *str* for the lookup paths.  Each time the ``input`` attribute
-   of an *entry* is parsed, its value is prepended with the ``base_dir`` option
-   of :class:`JSONLoader <psp.processors.json_processor.JSONLoader>` and
-   a path in this attribute.
+   A *list* of *str* for the lookup paths.  Each time the ``input``
+   attribute of an *entry* is parsed, its value is prepended with the
+   ``base_dir`` option of |JSONLoader| and a path in this attribute.
 
-   By default this evaluates to simply ``['.']``---that is, the same directory
-   as ``base_dir``.  If this is not omitted, however, be noted that ``"."``
-   will not be automatically added and you have to explicitly add it if you
-   want :class:`JSONLoader <psp.processors.json_processor.JSONLoader>` to
-   look in the same directory as ``base_dir``.
+   By default this evaluates to simply ``['.']``---that is, the same
+   directory as ``base_dir``.  If this is not omitted, however, be noted
+   that ``"."`` will not be automatically added and you have to
+   explicitly add it if you want |JSONLoader| to look in the same
+   directory as ``base_dir``.
 
 data (optional)
    A *list* of *dict*, each *dict* being what is called a *panel*.  The
    content of each *dict* is elaborated in the following section.
    An empty list is assumed if this is omitted.
 
-psp.processors.json_processorAny other key is ignored by
-:class:`JSONLoader <psp.processors.json_processor.JSONLoader>`, though
-there is one key that is recommended for you to use.  It is also
-addressed because
-:class:`JSONDumper <psp.processors.json_processor.JSONDumper>` exports it
-and the ``psp synopsis`` command recognizes it.
+Any other key is ignored by |JSONLoader|, though there is one key that is
+recommended for you to use.  It is also addressed because |JSONDumper|
+exports it and the ``psp synopsis`` command recognizes it.
 
-desc
+desc (optional)
    A *text* attribute giving a brief description of this backup file.
+   This is just a recommendation previously reinforced by
+   :mod:`basicproc` and, sometimes, other "nonstandard" parts of
+   my code.  |JSONLoader| never tries to parse this.
 
 
 ------
@@ -108,8 +107,8 @@ It does cooler stuff than that though, but first let's talk about the one and
 only **required** attribute:
 
 date
-   A *str* representing the date of the panel.  Must be valid when passed to
-   :meth:`JSONLoader.parse_date() <psp.processors.json_processor.JSONLoader.parse_date>`.
+   A *str* representing the date of the panel.  Must be valid when
+   passed to |parse_date|.
 
 For providing entries:
 
@@ -121,40 +120,42 @@ entries (optional)
 There is only one valid optional attribute:
 
 rating (optional)
-   A *str* representing the rating of the panel (can be null).  The three
-   ratings from Perspective from bad to good are represented with the strings
-   ``":("``, ``":|"``, and ``":)"``.
-   (I did not use numbers because I'm not a nerd >_>)
+   A *str* representing the rating of the panel (can be null).
+   The three ratings from Perspective from bad to good are
+   represented with the strings ``":("``, ``":|"``, and ``":)"``.
+   (I did not use numbers because I'm not a nerd >_> (well, not entirely))
 
    Rating is set to null when omitted.
 
-.. doctest::
+   Example:
 
-   >>> from psp.processors.json_processor import load_json
-   >>> from io import StringIO
-   >>> panels = load_json(StringIO("""\
-   ... {
-   ...   "data": [
-   ...     {
-   ...       "date": "2021-04-29",
-   ...       "rating": ":)"
-   ...     },
-   ...     {
-   ...       "date": "2021-12-25",
-   ...       "rating": null
-   ...     },
-   ...     {
-   ...       "date": "2022-06-01"
-   ...     }
-   ...   ]
-   ... }
-   ... """))
-   >>> for panel in panels:
-   ...     rating = panel.get_attribute('rating', default=None)
-   ...     print('{!r:27}  {!r}'.format(panel.date, rating))
-   datetime.date(2021, 4, 29)   ':)'
-   datetime.date(2021, 12, 25)  None
-   datetime.date(2022, 6, 1)    None
+   .. doctest::
+
+      >>> from psp.processors.json_processor import load_json
+      >>> from io import StringIO
+      >>> panels = load_json(StringIO("""\
+      ... {
+      ...   "data": [
+      ...     {
+      ...       "date": "2021-04-29",
+      ...       "rating": ":)"
+      ...     },
+      ...     {
+      ...       "date": "2021-12-25",
+      ...       "rating": null
+      ...     },
+      ...     {
+      ...       "date": "2022-06-01"
+      ...     }
+      ...   ]
+      ... }
+      ... """))
+      >>> for panel in panels:
+      ...     rating = panel.get_attribute('rating', default=None)
+      ...     print('{!r:27}  {!r}'.format(panel.date, rating))
+      datetime.date(2021, 4, 29)   ':)'
+      datetime.date(2021, 12, 25)  None
+      datetime.date(2022, 6, 1)    None
 
 
 -------
@@ -175,3 +176,9 @@ Inference
 
 This will be a reorganized version of the algorithm from
 :ref:`basicproc <basicproc_inference>`.
+
+
+.. |JSONLoader| replace:: :class:`~psp.processors.json_processor.JSONLoader`
+.. |JSONDumper| replace:: :class:`~psp.processors.json_processor.JSONDumper`
+.. |parse_timezone| replace:: :meth:`JSONLoader.parse_timezone() <psp.processors.json_processor.JSONLoader.parse_timezone>`
+.. |parse_date| replace:: :meth:`JSONLoader.parse_date() <psp.processors.json_processor.JSONLoader.parse_date>`

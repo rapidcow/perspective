@@ -318,10 +318,7 @@ two things (opening a file and processing).
 
       :param dict panel: A shallow copy of the panel *dict* to be processed.
       :param dict attrs: Top-level attributes, as described above.
-      :returns: A |Panel| object, or None,
-               in which case :meth:`load_data()` will either return
-               None if *date* is passed to it or skip the panel
-               if *date* is not passed to it.
+      :returns: A |Panel| object, always.
 
       .. note::
 
@@ -340,9 +337,7 @@ two things (opening a file and processing).
       :type panel: |Panel|
       :param dict entry: A shallow copy of the entry *dict* to be processed.
       :param dict attrs: Top-level attributes, as described above.
-      :returns: An |Entry| object, or None,
-               in which case :meth:`process_panel()` will not add the
-               entry to the panel.
+      :returns: An |Entry| object, always.
 
    .. note::
 
@@ -883,9 +878,6 @@ Although if ``data`` is a JSON archive as a *dict*, then ::
 isn't necessarily true, since there are more than one way to represent a
 panel (and its entries recursively) in JSON.
 
-.. * explain what an input path is
-.. * explain the possible exceptions of returning an invalid input path
-
 .. exception:: DumpError
 
    Error that occured while loading a JSON file; subclass of
@@ -1000,11 +992,21 @@ panel (and its entries recursively) in JSON.
       *dict* and :meth:`dump_json` to write to the JSON file.
       The implementation of :meth:`dump` is precisely the following::
 
-         def dump(self, panels, fp):
+         def dump(self, panels, fp, *, attrs=attrs):
              data = self.dump_data(panels)
-             self.dump_json(data, fp)
+             self.dump_json(data, fp, attrs=attrs)
 
-   .. method:: dump(panels, fp)
+      At first glance, it might seem weird how we have such an
+      asymmetrical option for :meth:`dump` but not :meth:`load`.
+      As we will document shortly, this optional *attrs* parameter is
+      particularly useful when attributes aren't generated dynamically
+      based on the state of the dumper (like a description string);
+      that is the job of :meth:`prepare_backup`.
+      (As an aside, :class:`JSONLoader` gets all the top-level
+      attributes it needs from the JSON data itself, so it doesn't
+      need such an awkward option.)
+
+   .. method:: dump(panels, fp, *, attrs=None)
 
       Dump an iterable of panels to a file.
 
@@ -1013,9 +1015,12 @@ panel (and its entries recursively) in JSON.
                      iterator.
       :param fp: A file-like object implementing the ``write()`` method
                  that accepts a *str*.
+      :param attrs: An optional mapping (such as :class:`dict`) of JSON
+                    top-level attributes to put at the beginning of the
+                    archive.
 
-      With default implementation, the iterable is only consumed once, where
-      in each iteration a panel *dict* is created.
+      With default implementation, the iterable is only consumed once,
+      creating a panel *dict* with each iteration.
 
    .. method:: dump_json(data, fp)
 
@@ -1024,11 +1029,13 @@ panel (and its entries recursively) in JSON.
       :param data: The *dict* to dump.
       :param fp: A file object, same as that from :meth:`dump`.
 
-   .. method:: dump_data(panels)
+   .. method:: dump_data(panels, *, attrs=None)
 
       Dump an iterable of panels to a *dict*.
 
       :param panels: An iterable of panels, same as that from :meth:`dump`.
+      :param attrs: An optional mapping of extra fields to append to the
+                    backup, same as that from :meth:`dump`.
       :returns: The JSON archive as a *dict*.
 
    The dumping process continues with the creation of top-level attributes,
@@ -1055,9 +1062,10 @@ panel (and its entries recursively) in JSON.
       get the TL attributes.  (This argument is untouched, but I'll talk
       about why in the method.)
 
-   2. Call :meth:`prepare_backup` with the TL attributes acquired from
-      step 1 to get the JTL attributes, which is used directly as a basis
-      for the returned *dict*.
+   2. Create the JTL attributes, populating it with the *attrs* argument
+      optionally.
+      Call :meth:`prepare_backup` with the TL attributes acquired from
+      step 1 to update the JTL attributes.
 
    3. Set a new list in the *dict* from step 2 under the key ``'data'``.
 
@@ -1068,19 +1076,22 @@ panel (and its entries recursively) in JSON.
    5. Return the *dict*, optionally removing the ``'data'`` attribute
       in case it's just an empty list.
 
-   Or for those of you who prefer reading Python (count me in!) here's the
-   source code copied for your convenience::
+   Here is the source code copied verbatim for your reference::
 
-      def dump_data(self, panels):
-          attrs = self.get_top_level_attributes(panels)
-          data = self.prepare_backup(attrs)
+      def dump_data(self, panels, *, attrs=None):
+          py_attrs = self.get_top_level_attributes(panels)
+          data = dict(attrs) if attrs is not None else {}
+          self.prepare_backup(data, py_attrs)
+          if attrs is not None:
+              data.update(attrs)
           panel_list = data['data'] = []
           for panel in panels:
-              panel_dict = self.wrap_panel(panel, attrs)
+              panel_dict = self.wrap_panel(panel, py_attrs)
               panel_list.append(panel_dict)
           if not panel_list:
               del data['data']
           return data
+
 
    .. method:: get_top_level_attributes(panels)
 
@@ -1119,14 +1130,13 @@ panel (and its entries recursively) in JSON.
                     attrs['count'] = sum(panel.count() for panel in panels)
                     return attrs
 
-   .. method:: prepare_backup(attrs)
+   .. method:: prepare_backup(data, attrs)
 
       Take the top-level attributes from :meth:`get_top_level_attributes`
-      as the *attrs* argument and return the corresponding JSON top-level
-      attributes as a JSON-serializable *dict*.  This will be directly used
-      by :meth:`dump_json` to construct its return value.  As mentioned
-      above, ``tz`` and ``paths`` are only added when they differ from
-      their respective default values.
+      as the *attrs* argument and update *data* with the corresponding
+      JSON top-level attributes with JSON-serializable values.
+      As mentioned above, ``tz`` and ``paths`` are only added when they
+      differ from their respective default values.
 
       .. note::
 
@@ -1653,6 +1663,7 @@ panel (and its entries recursively) in JSON.
 
          from psp.processors import JSONLoader, JSONDumper
          import io, json, tempfile
+
          class DemoDumper(JSONDumper):
              def get_input_path(self, entry, attrs):
                  paths = attrs['paths']
@@ -1683,7 +1694,7 @@ panel (and its entries recursively) in JSON.
 
       .. code-block:: text
 
-         /Users/rapidcow/GitHub/perspective/src/psp/processors/json_processor.py:1291:
+         .../psp/processors/json_processor.py:1291:
          DumpWarning: 'a/1.txt' is not the shortest reachable path for 'a/1.txt'
          (parent directory 'a' matches the lookup path 'a'); name collisions may occur
            self._warn(
@@ -1854,43 +1865,52 @@ So here we go...
    :param file:
       A file object that implements ``read()`` or a file path where
       :func:`io.open` will be used with the *encoding* and *errors*
-      parameters to open the file.  If a file object is passed, it remains
-      open after the function call.
+      parameters to open the file.  If a file object is passed,
+      it remains open after the function call.
    :param date:
-      The date of the panel to load or None.  Can either be a
-      :class:`datetime.date` object or a *str*, which will then converted
-      with the :meth:`JSONLoader.parse_date` method.
-   :param encoding:
+      The date of the panel to load.  Can either be a
+      :class:`datetime.date` object or a *str*, which will then
+      converted with the :meth:`JSONLoader.parse_date` method.
+      If omitted, all panels are returned as a list.
+   :param str encoding:
       Parameter for :func:`io.open`
-   :param errors:
+   :param str errors:
       Parameter for :func:`io.open`
-   :param dumper:
-      Loader object to use.  Should implement the ``load()`` and
-      ``parse_date()`` methods like :class:`JSONLoader` does.
+   :param loader:
+      The :class:`JSONLoader` object to use.  Should implement
+      :meth:`~JSONLoader.load` and :meth:`~JSONLoader.parse_date`
+      methods like :class:`JSONLoader` does.  If one isn't provided,
+      a new :class:`JSONLoader` instance is created with additional
+      keyword arguments passed to this function.
    :returns:
-      A *list* of panel (note: not a generator)
+      A *list* of panels, or the first panel whose
+      :attr:`~psp.types.Panel.date` equals the *date* argument.
 
-.. function:: dump_json(panels, file, *, exist_ok=False, encoding=None, errors=None, cls=JSONDumper, **options)
+.. function:: dump_json(panels, file, *, attrs=None, exist_ok=False, encoding=None, errors=None, cls=JSONDumper, **options)
 
    Convenience interface to dumping JSON archives.
 
    :param panels:
-      An iterable of panels.
+      An iterable of panels.  Parameter for :meth:`~JSONDumper.dump`.
    :param file:
       A file object that implements ``write()`` or a file path where
       :func:`io.open` will be used with the *encoding* and *errors*
-      parameters to open the file.  If a file object is passed, it remains
-      open after the function call.
+      parameters to open the file.  If a file object is passed,
+      it remains open after the function call.
+   :param attrs:
+      Parameter for :meth:`~JSONDumper.dump`.
    :param bool exist_ok:
       If true, use the ``w`` mode to open the file.
       Otherwise the ``x`` mode is used.
-   :param encoding:
+   :param str encoding:
       Parameter for :func:`io.open`
-   :param errors:
+   :param str errors:
       Parameter for :func:`io.open`
    :param dumper:
-      Dumper object to use.  Should implement a ``dump()`` method like
-      :class:`JSONDumper` does.
+      Dumper object to use.  Should implement a
+      :meth:`~JSONDumper.dump()` method like :class:`JSONDumper` does.
+      If one isn't provided, a new :class:`JSONDumper` instance is
+      created with additional keyword arguments passed to this function.
 
 Note that the *file* argument in the above functions can either be a file
 object and a file path.  Pretty messed up if you ask me, but still...
