@@ -1,4 +1,4 @@
-"""Main program for my backup project..."""
+"""main program"""
 
 import code
 from contextlib import closing
@@ -11,7 +11,9 @@ import textwrap
 import tempfile
 import time
 
-import config
+from psp.util import import_module
+from pathlib import Path
+config = import_module('config', root=Path(__file__).parent)
 
 
 def main(argv):
@@ -148,15 +150,11 @@ def run_interact(root):
         })
 
 
-def run_update(root, path):
-    print('Loading migration script... ', end='', flush=True)
-    panels = config.load_migration_script(path)
-    print('done')
-    print('Merging panels... ', end='', flush=True)
+def run_update(root):
     merged_panels = config.merge_panels(root, panels)
-    print('done')
     with tempfile.TemporaryDirectory() as tempdir:
-        print('Dumping panels... ', end='', flush=True)
+        print('Dumping merged panels to somewhere temporary... ',
+              end='', flush=True)
         config.dump_panels(tempdir, merged_panels)
         print('done')
         backup_name = config.generate_backup_name(root)
@@ -188,16 +186,16 @@ def run_update(root, path):
 def run_backup_create(root, name):
     if config.backup_exists(root, name):
         raise ValueError(f'backup exists: {name!r}')
-    print(f'Creating backup {name}... ', end='', flush=True)
+    print(f'Creating backup {name!r}... ', end='', flush=True)
     backup_path = config.create_backup(root, name)
     print('done')
 
 
 def run_backup_restore(root, name):
-    print(f'Showing changes after restoring {name}:')
+    print(f'Showing changes after restoring {name!r}:')
     exit_status = config.show_backup_diff(root, name)
     # print a warning if there is diff
-    if exit_status == 1:
+    if exit_status:
         print()
         print('WARNING: ANY FILE NOT IGNORED WILL BE REMOVED IMMEDIATELY.')
     else:

@@ -1,3 +1,4 @@
+"""my stuff!"""
 from psp.processors import JSONLoader, JSONDumper
 from psp.stringify import PanelFormatter
 import psp.timeutil

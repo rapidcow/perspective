@@ -15,12 +15,9 @@ import shutil
 import tempfile
 import textwrap
 
-from ..__init__ import __version__
+from .. import __version__
 from ..timeutil import format_date
-from ..stringify import PanelFormatter
-from ..processors.json_processor import (JSONLoader, JSONDumper,
-                                         load_json, dump_json, LoadError)
-from .tools import load_module_from_file
+from ..util import import_module_from_file
 
 __all__ = ['main', 'create_project']
 
@@ -105,39 +102,8 @@ def main(argv):
     sources = _get_source_files(parser, args)
     with tempfile.TemporaryDirectory() as tempdir:
         create_project(tempdir)
-        del sys.modules['mystuff']
-        with open(os.path.join(tempdir, 'scripts', 'main.py'),
-                  'r+', encoding='utf-8') as fp:
-            content = fp.read().replace(
-                'import config\n',
-                _import_relative('config', '.'),
-            )
-            fp.seek(0)
-            # skipping truncation since everything is going to be
-            # overwritten anyways
-            fp.write(textwrap.dedent("""\
-                import os
-                import importlib.util
-                """))
-            fp.write(content)
-
         with open(os.path.join(tempdir, 'scripts', 'config.py'),
-                  'r+', encoding='utf-8') as fp:
-            content = fp.read().replace(
-                    '    import mystuff\n',
-                    textwrap.indent(
-                        _import_relative('mystuff', '../lib'), ' ' * 4),
-                ).replace(
-                    '    import tools\n',
-                    textwrap.indent(
-                        _import_relative('tools', '../lib'), ' ' * 4),
-                )
-            fp.seek(0)
-            fp.write(textwrap.dedent("""\
-                import os
-                import importlib.util
-                """))
-            fp.write(content)
+                  'a', encoding='utf-8') as fp:
             with open(os.path.join(TEMPL, 'extraconfig.py.txt')) as template:
                 content = template.read().format(
                     config_path=args.config,
@@ -145,11 +111,10 @@ def main(argv):
                     warning_level=args.wlevel,
                     encoding=args.encoding)
                 fp.write(content)
-            fp.seek(0)
 
-        main_mod = load_module_from_file(
+        main_mod = import_module_from_file(
             'main', os.path.join(tempdir, 'scripts', 'main.py'))
-        config_mod = load_module_from_file(
+        config_mod = import_module_from_file(
             'config', os.path.join(tempdir, 'scripts', 'config.py'))
 
         if args.subname == 'print':
@@ -164,7 +129,7 @@ def main(argv):
 
         elif args.subname == 'interact':
             if args.config is not None:
-                config_user = load_module_from_file('config', args.config)
+                config_user = import_module_from_file('config', args.config)
             else:
                 config_user = None
             print('Loading panels... ', end='', flush=True)
@@ -228,7 +193,7 @@ def create_project(project_dir):
               encoding='utf-8') as fp:
         fp.write(f'perspe=={__version__}\n')
 
-    config_mod = load_module_from_file(
+    config_mod = import_module_from_file(
         'config', os.path.join(scripts_dir, 'config.py'))
     config_mod.dump_panels(project_dir, [])
 

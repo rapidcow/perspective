@@ -1,4 +1,4 @@
-"""Configuration file for my backup project!"""
+"""config for my backup project!"""
 
 # Standard library imports
 import calendar
@@ -14,29 +14,39 @@ import shutil
 import sys
 import tempfile
 
+# Perspective imports
+from psp.main import tools
+from psp.util import import_module, merge_panels
+
 # Local library imports
 curdir = Path(__file__).parent
-sys.path.insert(0, str(curdir.parent / 'lib'))
-try:
-    import mystuff
-finally:
-    del sys.path[0]
-
-from psp.main import tools
-import psp.util
-
-# Perspective project version :}
-VERSION = 0
+libdir = curdir.parent / 'lib'
+mystuff = import_module('mystuff', root=libdir)
 
 # Constants
 FILE_ENCODING = 'utf-8'
-DATA_DIRNAME = 'data'
-BASE_DIRNAME = 'resources'
-# Backup stuff
+DATA_NAME = 'data'
+BASE_NAME = 'resources'
+# Directory names for backing up
 BACKUP_NAME = '.backup'
 IGNORE_NAMES = ['scripts', 'lib']
+IGNORE_NAMES.append(BACKUP_NAME)
 
 
+# =================
+# General functions
+# =================
+def open_for_reading(file):
+    return open(file, encoding=FILE_ENCODING)
+
+
+def open_for_writing(file):
+    return open(file, 'x', encoding=FILE_ENCODING)
+
+
+# =======
+# Loading
+# =======
 def request_panel_date(root):
     date_map = {}
     for file, base_dir, source in get_loading_info(root):
@@ -62,7 +72,7 @@ def load_merged_panels(root):
     for date, values in panel_map.items():
         for msg in tools.check_panel_attributes(values):
             raise ValueError(msg)
-        yield psp.util.merge_panels(panel for panel, _ in values)
+        yield merge_panels(panel for panel, _ in values)
 
 
 def load_panels(file, base_dir):
@@ -73,8 +83,8 @@ def load_panels(file, base_dir):
 
 def get_loading_info(root):
     root = Path(root)
-    data_dir = root / DATA_DIRNAME
-    base_dir = root / BASE_DIRNAME
+    data_dir = root / DATA_NAME
+    base_dir = root / BASE_NAME
     with open_for_reading(data_dir / 'sources.txt') as fp:
         sources = fp.read().splitlines()
     for source in sources:
@@ -92,45 +102,13 @@ def get_description(file, base_dir):
         return None
 
 
-# ========
-# Updating
-# ========
-def load_migration_script(path):
-    # XXX: wtf???
-    for modname in 'config', 'mystuff':
-        if modname in sys.modules:
-            del sys.modules[modname]
-    if os.path.isdir(path):
-        config_path = os.path.join(path, 'scripts', 'config.py')
-        if not os.path.exists(config_path):
-            raise ValueError(f'project directory {path!r} does not '
-                             f'have scripts/config.py')
-        # name shadowing >_>
-        config_mod = tools.load_module_from_file('config', config_path)
-        return config_mod.load_merged_panels(path)
-    else:
-        migrate_mod = tools.load_module_from_file('migrate', path)
-        return migrate_mod.get_panels()
-
-
-def merge_panels(root, new_panels):
-    panel_map = collections.defaultdict(list)
-    for panel, source in itertools.chain(
-            zip(new_panels, itertools.repeat('external source')),
-            zip(load_merged_panels(root),
-                itertools.repeat('current project'))):
-        panel_map[panel.date].append((panel, source))
-    merged = []
-    for date, values in panel_map.items():
-        for msg in tools.check_panel_attributes(values):
-            raise ValueError(msg)
-        yield merge_panels(panel for panel, _ in values)
-
-
+# ==================
+# Dumping / updating
+# ==================
 def dump_panels(root, panels):
     root = Path(root)
-    data_dir = root / DATA_DIRNAME
-    base_dir = root / BASE_DIRNAME
+    data_dir = root / DATA_NAME
+    base_dir = root / BASE_NAME
     data_dir.mkdir()
     with open_for_writing(data_dir / 'sources.txt') as fp:
         fp.write('backups/1.json\n')
@@ -148,22 +126,17 @@ def dump_panels(root, panels):
 
 def clean_up_data(root):
     root = Path(root)
-    data_dir = root / DATA_DIRNAME
-    base_dir = root / BASE_DIRNAME
+    data_dir = root / DATA_NAME
+    base_dir = root / BASE_NAME
     if data_dir.exists():
         shutil.rmtree(data_dir)
     if base_dir.exists():
         shutil.rmtree(base_dir)
 
 
-def open_for_reading(file):
-    return open(file, encoding=FILE_ENCODING)
-
-
-def open_for_writing(file):
-    return open(file, 'x', encoding=FILE_ENCODING)
-
-
+# ========
+# Printing
+# ========
 def print_panel(panel, width, file):
     formatter = mystuff.MyPanelFormatter(width)
     print('=' * formatter.width, file=file)
@@ -190,7 +163,7 @@ def create_backup(root, name):
     os.makedirs(backup_dir)
     with os.scandir(root) as it:
         for entry in it:
-            if entry.name == BACKUP_NAME or entry.name in IGNORE_NAMES:
+            if entry.name in IGNORE_NAMES:
                 continue
             src = entry.path
             dst = os.path.join(backup_dir, entry.name)
@@ -204,9 +177,9 @@ def create_backup(root, name):
 def show_backup_diff(root, name):
     backup_dir = os.path.join(root, BACKUP_NAME, name)
     left, right = '.', os.path.join(BACKUP_NAME, name)
-    dcmp = filecmp.dircmp(os.path.join(root, left),
-                          os.path.join(root, right))
-    return _diffdirs_impl(root, dcmp, left, right)
+    return tools.diffdirs(root, left, right,
+                          ignore=IGNORE_NAMES,
+                          encoding=FILE_ENCODING)
 
 
 def restore_backup(root, name):
@@ -215,7 +188,7 @@ def restore_backup(root, name):
         raise ValueError(f'cannot find backup {name!r}')
     with os.scandir(root) as it:
         for entry in it:
-            if entry.name == BACKUP_NAME or entry.name in IGNORE_NAMES:
+            if entry.name in IGNORE_NAMES:
                 continue
             if entry.is_dir():
                 shutil.rmtree(entry)
@@ -275,65 +248,3 @@ def generate_backup_name(root):
         name = f'{base}_{i}'
         i += 1
     return name
-
-
-#
-# borrowed from these:
-#  *  https://docs.python.org/3/library/difflib.html#a-command-line-interface-to-difflib
-#  *  https://docs.python.org/3/library/filecmp.html#filecmp.dircmp
-#
-# implementation, adapted to ignore BACKUP_NAME and IGNORE_NAMES
-#
-def _diffdirs_impl(root, dcmp, left, right):
-    exit_status = 0
-    for name in dcmp.diff_files:
-        left_file = os.path.join(dcmp.left, name)
-        right_file = os.path.join(dcmp.right, name)
-        # picking a random side to get the relative path
-        path = os.path.relpath(left_file, left)
-        try:
-            with open_for_reading(left_file) as fp:
-                left_lines = fp.readlines()
-            with open_for_reading(right_file) as fp:
-                right_lines = fp.readlines()
-        except UnicodeDecodeError:
-            print(f'Binary files {path} in {left} and {right} differ')
-        else:
-            left_mtime = _file_mtime(left_file)
-            right_mtime = _file_mtime(right_file)
-            left_relpath = _relpath(left_file, start=root)
-            right_relpath = _relpath(right_file, start=root)
-            diff = difflib.unified_diff(left_lines, right_lines,
-                                        left_relpath, right_relpath,
-                                        left_mtime, right_mtime)
-            print(f'Diff of {path} below:')
-            sys.stdout.writelines(diff)
-        exit_status = 1
-    for left_name in dcmp.left_only:
-        left_path = os.path.relpath(
-            os.path.join(dcmp.left, left_name), left)
-        if left_path == BACKUP_NAME or left_path in IGNORE_NAMES:
-            continue
-        print(f'Only in {left}: {left_path}')
-        exit_status = 1
-    for right_name in dcmp.right_only:
-        right_path = os.path.relpath(
-            os.path.join(dcmp.right, right_name), right)
-        print(f'Only in {right}: {right_path}')
-        exit_status = 1
-    for sub_dcmp in dcmp.subdirs.values():
-        exit_status |= _diffdirs_impl(root, sub_dcmp, left, right)
-    return exit_status
-
-
-def _file_mtime(path):
-    t = datetime.fromtimestamp(os.stat(path).st_mtime, timezone.utc)
-    return t.astimezone().isoformat()
-
-
-# alternative version of os.path.relpath but doesn't normalize
-# the path (very cheesy i know)
-def _relpath(path, start):
-    if path.startswith(start):
-        return path[len(start):].lstrip(os.sep)
-    return os.path.relpath(path, start)

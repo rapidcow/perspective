@@ -1,10 +1,11 @@
 """Test the psp.processors.json_processor module."""
 import base64
 import collections
-from datetime import datetime
+from datetime import date, datetime, timezone
 import functools
 import json
-import pathlib
+import os, pathlib
+import shutil
 import string
 import tempfile
 from textwrap import dedent
@@ -12,6 +13,7 @@ import types
 import unittest
 import unittest.mock
 
+from psp.types import Entry, Panel
 from psp.processors.json_processor import (
     JSONLoader, LoadError, LoadWarning,
     JSONDumper, DumpError, DumpWarning, InferenceManager,
@@ -58,7 +60,7 @@ class TestJSONLoader(unittest.TestCase):
     """Test the JSONLoader class."""
     @tempdir
     def _test_type(self, root, factory, attr_type, msg_factory,
-                     allow_none=False):
+                   allow_none=False):
         """Test whether TypeError is thrown when a certain JSON field
         takes on different types.
 
@@ -705,6 +707,64 @@ class TestJSONLoader(unittest.TestCase):
 
 class TestJSONDumper(unittest.TestCase):
     """Test the JSONDumper class."""
+
+    @tempdir
+    def test_generate_export_path(self, root):
+        """Test generate_export_path() and related methods"""
+        utc = timezone.utc
+        # Test this dir structure
+        #
+        #   a/1.txt
+        #   b/1.txt
+        #
+
+        # Matching file content and path
+        entry_a = Entry(datetime(2022, 2, 22, 14, 30, tzinfo=utc))
+        entry_a.set_data('sample text', type='type_a')
+
+        class TestDumper(JSONDumper):
+            def get_input_path(self, entry, attrs):
+                paths = attrs['paths']
+                if entry.get_type() == 'type_a':
+                    dirname, base, ext = 'a', '1', '.txt'
+                elif entry.get_type() == 'type_b':
+                    dirname, base, ext = 'b', '1', '.txt'
+                filename = self.generate_export_path(entry, base, ext,
+                                                     dirname, paths)
+                self.export_entry(entry, os.path.join(dirname, filename))
+                return self.compute_input_path(filename, dirname, paths)
+
+        dumper = TestDumper(base_dir=root, paths=['a', 'b'])
+        attrs = dumper.get_top_level_attributes([])
+        for _ in range(2):
+            self.assertEqual(dumper.wrap_entry(entry_a, attrs), {
+                    'date-time': '2022-02-22 14:30+00:00',
+                    'type': 'type_a', 'encoding': 'utf-8',
+                    'input': '1.txt',
+                })
+        with open_with_unicode(root / 'a' / '1.txt') as fp:
+            self.assertEqual(fp.read(), 'sample text')
+        shutil.rmtree(root / 'a')
+
+        # Matching file content and un-matching path
+        entry_b = entry_a.copy()
+        entry_b.set_type('type_b')
+
+        self.assertEqual(dumper.wrap_entry(entry_a, attrs), {
+                'date-time': '2022-02-22 14:30+00:00',
+                'type': 'type_a', 'encoding': 'utf-8',
+                'input': '1.txt',
+            })
+        with open_with_unicode(root / 'a' / '1.txt') as fp:
+            self.assertEqual(fp.read(), 'sample text')
+
+        self.assertEqual(dumper.wrap_entry(entry_b, attrs), {
+                'date-time': '2022-02-22 14:30+00:00',
+                'type': 'type_b', 'encoding': 'utf-8',
+                'input': '1_001.txt',
+            })
+        with open_with_unicode(root / 'b' / '1_001.txt') as fp:
+            self.assertEqual(fp.read(), 'sample text')
 
 
 class TestInferenceManager(unittest.TestCase):

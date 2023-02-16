@@ -563,7 +563,7 @@ an example of good entry order and two examples of bad entry order:
 ...                 { 'date-time': '2021-08-29 11:00',
 ...                   'insight': True, 'data': '' },
 ...                 # This should be an insight
-...                 # vvvvvvvvvvvvvvvvvvvvvvvvv
+...                 # vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv
 ...                 { 'date-time': '2021-08-29 12:00', 'data': '' }
 ...             ]
 ...         }
@@ -602,8 +602,8 @@ psp.processors.json_processor.LoadWarning: inconsistent order in insight entries
 ``warn_ambiguous_paths``
 ''''''''''''''''''''''''
 
-When :class:`JSONLoader` (specifically the :meth:`JSONLoader._find_path`
-method) finds more than one possible resolution for an ``input`` path,
+When :class:`JSONLoader` (with the help of :func:`find_paths`)
+finds more than one possible resolution for an ``input`` path,
 it either returns the first match if ``warn_ambiguous_paths`` is False or
 completes the iteration first and warns when there is more than one path
 found if it is True (default).
@@ -691,7 +691,7 @@ True, :class:`LoadError` will issue a warning:
    ...
    Traceback (most recent call last):
      ...
-   psp.processors.json_processor.LoadWarning: found more than one path for 'a.txt'; using the first path found '.../a/a.txt'
+   psp.processors.json_processor.LoadWarning: found more than one path for 'a.txt'; using the first path found '.../a/a.txt' (base_dir = '...')
 
 (The three dots in the exception message are a mere placeholder.  What's
 actually printed is whatever the absolute path *root* has.)
@@ -707,9 +707,11 @@ inevitable overlapping glob patterns in the ``paths`` attribute.
 ``json_options``
 ''''''''''''''''
 
-The ``json_options`` option is only used when a file path is passed to
-:meth:`JSONLoader.load`.  It's kind of pointless but maybe some people will
-find this useful (perhaps better than subclassing and overriding
+The ``json_options`` option is only used by the
+:meth:`JSONLoader.load_json` method, which describes
+extra keyword arguments to pass to :func:`json.load`.
+It's kind of pointless but maybe some people might find this
+useful (perhaps better than subclassing and overriding
 :meth:`JSONLoader.load_json`, I don't know???)
 
 >>> import decimal
@@ -1402,17 +1404,22 @@ panel (and its entries recursively) in JSON.
    (I'll explain this in a bit)::
 
       def get_input_path(self, entry, attrs):
+          # by default we don't keep entries that don't have
+          # a sufficient text representation.
           if self.use_inline_text(entry):
               return None
           # always export to the 'assets' directory; this is hard-coded
-          base = self.get_export_path_name(entry)
-          ext = self.get_export_path_extension(entry)
+          dirname = 'assets'
+          base, ext = self.get_export_path_name(entry)
           paths = attrs['paths']
           # this is like 'base + ext' but safer (and fancier)
-          filename = self.generate_export_path(base, ext, 'assets', paths)
-          self.export_entry(entry, os.path.join('assets', filename))
+          filename = self.generate_export_path(entry, base, ext, dirname, paths)
+          self.export_entry(entry, os.path.join(dirname, filename))
           # arbitrarily extend the input path by its directory name
-          return self.compute_input_path(filename, 'assets', paths)
+          return self.compute_input_path(filename, dirname, paths)
+
+   .. sorry for breaking the 80 char limit there :c
+      imo i prefer it on one line....
 
    First off, the use of :meth:`use_inline_text` is to simply make sure
    that text entries are never exported.  Generally :class:`JSONDumper`
@@ -1420,8 +1427,7 @@ panel (and its entries recursively) in JSON.
    represented with inline text (determined by :meth:`use_inline_text`
    returning True) cause :meth:`get_input_path` to return None (that is,
    they are kept inside the backup).  The next two lines call
-   :meth:`get_export_path_name` and :meth:`get_export_path_extension` to
-   form an appropriate file name for the entry.
+   :meth:`get_export_path_name` to form an appropriate file name for the entry.
 
    The next three method calls are what I'm going to explain in depth:
    :meth:`generate_export_path`, :meth:`export_entry`, and
@@ -1482,7 +1488,7 @@ panel (and its entries recursively) in JSON.
 
       def get_input_path(self, entry, attrs):
           paths = attrs['paths']
-          name = self.generate_export_path('1', '.txt', 'assets', paths)
+          name = self.generate_export_path(entry, '1', '.txt', 'assets', paths)
           self.export_entry(entry, join('assets', name))
           return self.compute_input_path(name, 'assets', paths)
 
@@ -1550,8 +1556,8 @@ panel (and its entries recursively) in JSON.
 
    .. code-block:: python
 
-      self.generate_export_path('rec/cat', '.mp3', '.', paths)
-      self.generate_export_path('mus/cat', '.mp3', '.', paths)
+      self.generate_export_path(entry, 'rec/cat', '.mp3', '.', paths)
+      self.generate_export_path(entry, 'mus/cat', '.mp3', '.', paths)
 
    This, however, comes at a risk.  By skipping the shorter components
    like ``cat.mp3`` in the process of checking for ambiguity, we are subject
@@ -1560,11 +1566,25 @@ panel (and its entries recursively) in JSON.
    later, :meth:`generate_export_path` would issue a :class:`DumpWarning`
    when such ambiguity becomes problematic.
 
-   .. method:: generate_export_path(base, ext, dirname, paths)
+   .. method:: generate_export_path(entry, base, ext, dirname, paths)
 
-      Generate a file name for exporting by combining ``base`` and ``ext``
+      Generate a file name for exporting by combining *base* and *ext*
       in a way the file name doesn't collide with any existing file.
 
+      .. important::
+
+         The only scenario :meth:`generate_export_path` returns a file
+         name that points to an *existing* file is when that file has
+         matching content compared to *entry*.
+         If you want to have this return a new file every time,
+         override :meth:`export_path_ok`::
+
+            def MyDumper(JSONDumper):
+                def export_path_ok(self, entry_path, entry):
+                    return os.path.exists(entry_path)
+
+      :param entry: The entry that this export path will be generated for
+      :type entry: |Entry| object
       :param str base: The component of the export path that this method
                        should start checking from, stripped of its file
                        extension
@@ -1583,13 +1603,15 @@ panel (and its entries recursively) in JSON.
       For each ``base_0`` in that generator, ``base_0 + ext`` is used to
       form the *name* of the file, and *name* is returned if:
 
-      *   ``join(dirname, name)`` does not point to an existing path,
+      *   ``join(dirname, name)`` does not exist *or* the file exists
+          and has matching content compared to the entry
+          (to change this behavior, see :meth:`export_path_ok`)
       *   *name* is unreachable with the *paths* argument, and
       *   any extended version of *name* with a number of path components from
           *dirname* is unreachable with the *paths* argument.
 
       As an example, here are the file paths checked for when called with
-      arguments ``('d/e/1', '.txt', 'a/b/c', paths)``:
+      arguments ``('d/e/1', '.txt', 'a/b/c', paths)`` (ignoring the entry):
 
       *  ``d/e/1.txt`` (or any file whose base file name is ``1`` in ``d/e``)
       *  ``c/d/e/1.txt`` (similarly from here on)
@@ -1633,12 +1655,12 @@ panel (and its entries recursively) in JSON.
       And the lookup paths expand to ``['a', '.']``.
       To export the first entry, we call ::
 
-         self.generate_export_path('1', '.txt', '.', paths)
+         self.generate_export_path(entry, '1', '.txt', '.', paths)
 
       and ``1.txt`` is returned because ``1.txt`` is reachable when joined
       with the lookup path ``'.'``.  To export the second entry, we call ::
 
-         self.generate_export_path('a/1', '.txt', '.', paths)
+         self.generate_export_path(entry, 'a/1', '.txt', '.', paths)
 
       and ``a/1.txt`` is returned because ``a/1.txt`` is reachable when
       joined with the lookup path ``'a'``.  But notice how because we
@@ -1668,9 +1690,11 @@ panel (and its entries recursively) in JSON.
              def get_input_path(self, entry, attrs):
                  paths = attrs['paths']
                  if entry.get_data() == 'ONE':
-                     filename = self.generate_export_path('1', '.txt', '.', paths)
+                     filename = self.generate_export_path(entry, '1', '.txt',
+                                                          '.', paths)
                  elif entry.get_data() == 'TWO':
-                     filename = self.generate_export_path('a/1', '.txt', '.', paths)
+                     filename = self.generate_export_path(entry, 'a/1', '.txt',
+                                                          '.', paths)
                  # join('.', filename) would be identical to just... filename,
                  # so I'm skipping that here.
                  self.export_entry(entry, filename)
@@ -1721,7 +1745,7 @@ panel (and its entries recursively) in JSON.
       2. Tell :meth:`generate_export_path` to start from the shortest
          reachable path instead, that is::
 
-            filename = self.generate_export_path('1', '.txt', 'a', paths)
+            filename = self.generate_export_path(entry, '1', '.txt', 'a', paths)
 
          Once you've prevented name collisions, then you can call ::
 
@@ -1734,6 +1758,7 @@ panel (and its entries recursively) in JSON.
 
       Export *entry* to an *export_path* relative to the current dumper's
       ``base_dir``, creating intermediary directories as needed.
+      **NOTE**: this does nothing if *export_path* exists.
 
       :param entry: Entry whose data is to be exported
       :type entry: |Entry| object
@@ -1741,11 +1766,10 @@ panel (and its entries recursively) in JSON.
                           within ``base_dir`` that doesn't exist at runtime
 
       :raise DumpError:
-         If the ``base_dir`` option is ``None``, the file path
-         ``join(base_dir, export_path)`` points at a path beyond
+         If the ``base_dir`` option is ``None`` or the file path
+         ``join(base_dir, export_path)`` points to a path beyond
          ``base_dir`` (e.g. ``export_path = '../1.txt'``, or
-         ``export_path`` is absolute), or a file located at that
-         file path exists
+         ``export_path`` is absolute)
 
    .. method:: compute_input_path(name, dirname, paths)
 
@@ -1778,13 +1802,20 @@ panel (and its entries recursively) in JSON.
       returned if the method doesn't return at any of the preceding
       input paths.
 
+   Auxiliary functions:
+
+   .. method:: export_path_ok(export_path, entry)
+
+      Return whether *export_path* is a good export path for
+      :meth:`generate_export_path` to use.  Default implementation
+      returns True if *export_path* doesn't exist or the content
+      matches that of *entry* returned by |stream_raw_data|.
+
+
    .. method:: get_export_path_name(entry)
 
-      Return the base file name for *entry*.
-
-   .. method:: get_export_path_extension(entry)
-
-      Return the file name extension for *entry*.
+      Return a tuple of ``(base, ext)`` as the file base name
+      and file extension for *entry*.
 
    .. method:: get_export_path_candidates(name)
 
@@ -1919,4 +1950,5 @@ they're just there in case you need it.
 
 .. |Panel| replace:: :class:`~psp.types.Panel`
 .. |Entry| replace:: :class:`~psp.types.Entry`
+.. |stream_raw_data| replace:: :meth:`~psp.types.Entry.stream_raw_data`
 .. |Configurable.configure| replace:: :meth:`Configurable.configure() <psp.types.Configurable.configure>`
