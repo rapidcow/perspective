@@ -1,6 +1,7 @@
 # Extra config.py parts for psp main's simple interface
 from psp.processors import JSONLoader
 from psp.stringify import PanelFormatter
+from psp.util import import_module_from_file
 import calendar
 import os, sys
 
@@ -10,7 +11,7 @@ if config_path is None:
     config_parent_dir = os.getcwd()
 else:
     config_path = os.path.abspath(config_path)
-    quick_config = tools.load_module_from_file('config', config_path)
+    quick_config = import_module_from_file('config', config_path)
     config_parent_dir = os.path.dirname(config_path)
 
 try:
@@ -130,7 +131,7 @@ def load_single_panel(root, date):
     if not values:
         raise ValueError(f'cannot find panel on {{date}}')
     tools.check_panel_attributes(values)
-    return psp.util.merge_panels(panel for panel, _ in values)
+    return merge_panels(panel for panel, _ in values)
 
 
 def get_description(file, base_dir):

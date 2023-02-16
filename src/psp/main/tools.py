@@ -1,9 +1,10 @@
-"""Useful tools for psp projects."""
+"""random functions for psp projects"""
 
 import calendar
 import datetime
+import difflib
+import filecmp
 import functools
-import importlib.util
 import itertools
 import os
 import shutil
@@ -12,8 +13,7 @@ import sys
 import textwrap
 
 __all__ = [
-    'termcolor', 'DateRequester',
-    'check_panel_attributes', 'load_module_from_file',
+    'termcolor', 'DateRequester', 'check_panel_attributes', 'diffdirs',
 ]
 
 MONTH_NAMES = [
@@ -396,20 +396,72 @@ def check_panel_attributes(values):
                        f'differing attributes: {msg}')
 
 
-# Requires Python 3.5+
-def load_module_from_file(modname, file):
-    # Resolve the file path so that the module's __file__ attribute
-    # is absolute
-    file = os.path.realpath(file)
-    # https://stackoverflow.com/a/67692
-    spec = importlib.util.spec_from_file_location(modname, file)
-    if spec is None:
-        raise RuntimeError(f'failed to load module at {file!r}')
-    module = importlib.util.module_from_spec(spec)
-    # Put the module's parent directory at the very front in sys.path
-    sys.path.insert(0, os.path.dirname(file))
-    try:
-        spec.loader.exec_module(module)
-    finally:
-        sys.path.pop(0)
-    return module
+#
+# borrowed from these:
+#  *  https://docs.python.org/3/library/difflib.html#a-command-line-interface-to-difflib
+#  *  https://docs.python.org/3/library/filecmp.html#filecmp.dircmp
+#
+# implementation, adapted to ignore BACKUP_NAME and IGNORE_NAMES
+#
+def diffdirs(root, left, right, *, ignore=(), encoding=None):
+    # root dir, left path (relative to root), right path (relative to root)
+    dcmp = filecmp.dircmp(os.path.join(root, left),
+                          os.path.join(root, right))
+    return _diffdirs_impl(root, dcmp, left, right, ignore, encoding)
+
+
+def _diffdirs_impl(root, dcmp, left, right, ignore, encoding):
+    exit_status = 0
+    for name in dcmp.diff_files:
+        left_file = os.path.join(dcmp.left, name)
+        right_file = os.path.join(dcmp.right, name)
+        # picking a random side to get the relative path
+        path = os.path.relpath(left_file, left)
+        try:
+            with open(left_file, encoding=encoding) as fp:
+                left_lines = fp.readlines()
+            with open(right_file, encoding=encoding) as fp:
+                right_lines = fp.readlines()
+        except UnicodeDecodeError:
+            print(f'Binary files {path} in {left} and {right} differ')
+        else:
+            left_mtime = _file_mtime(left_file)
+            right_mtime = _file_mtime(right_file)
+            left_relpath = _relpath(left_file, start=root)
+            right_relpath = _relpath(right_file, start=root)
+            diff = difflib.unified_diff(left_lines, right_lines,
+                                        left_relpath, right_relpath,
+                                        left_mtime, right_mtime)
+            print(f'Diff of {path} below:')
+            sys.stdout.writelines(diff)
+        exit_status = 1
+    for left_name in dcmp.left_only:
+        left_path = os.path.relpath(
+            os.path.join(dcmp.left, left_name), left)
+        if left_path in ignore:
+            continue
+        print(f'Only in {left}: {left_path}')
+        exit_status = 1
+    for right_name in dcmp.right_only:
+        right_path = os.path.relpath(
+            os.path.join(dcmp.right, right_name), right)
+        print(f'Only in {right}: {right_path}')
+        exit_status = 1
+    for sub_dcmp in dcmp.subdirs.values():
+        exit_status |= _diffdirs_impl(root, sub_dcmp, left, right,
+                                      ignore, encoding)
+    return exit_status
+
+
+def _file_mtime(path):
+    return datetime.datetime.fromtimestamp(
+        os.stat(path).st_mtime, datetime.timezone.utc
+    ).astimezone().isoformat()
+
+
+# alternative version of os.path.relpath but doesn't normalize
+# the path (very cheesy i know)
+def _relpath(path, start):
+    if path.startswith(start):
+        return path[len(start):].lstrip(os.sep)
+    return os.path.relpath(path, start)

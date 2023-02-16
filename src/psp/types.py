@@ -202,6 +202,11 @@ class Panel(_AttributeHolder):
         entry._set_panel(self)
         self._entries.append(entry)
 
+    def add_entries(self, entries):
+        """Call add_entry() iteratively."""
+        for entry in entries:
+            self.add_entry(entry)
+
     def remove_entry(self, entry):
         """Remove 'entry' from the current panel.  A ValueError will be
         raised by list.remove() if the entry is not in the current panel.
