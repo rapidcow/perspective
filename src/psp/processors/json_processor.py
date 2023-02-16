@@ -685,8 +685,7 @@ class JSONLoader(Configurable):
         try:
             first = next(finder)
         except StopIteration:
-            raise LoadError(f'cannot find path {path!r} (using '
-                            f'base_dir = {base_dir!r})') from None
+            raise LoadError(f'cannot find path {path!r}') from None
 
         # From the for loop above, since having warn_ambiguous_paths = False
         # would break the loop after the first match, it would imply that
@@ -698,8 +697,7 @@ class JSONLoader(Configurable):
                 pass
             else:
                 self._warn(f'found more than one path for {path!r}; '
-                           f'using the first path found {first!r} '
-                           f'(base_dir = {base_dir!r})', LoadWarning)
+                           f'using the first path found {first!r}', LoadWarning)
         return first
 
     # These are simply convenient checking that I just like to keep here XD
@@ -855,27 +853,24 @@ def get_lookup_paths(base_dir, paths):
 
 
 # Below are implementation details!
-def _can_find_any_other_path(target, prefix, base_dir, paths):
+# TODO: This needs testing; i'm afraid we might miss some
+def _can_find_any_path(prefix, base_dir, paths):
     """return whether any path can be found, ignoring extensions
 
     this is like saying next(find_paths(name, base_dir, paths), None)
     is not None, except any extension is permitted
     """
-    dirname, prefix = os.path.split(prefix)
-    target = os.path.realpath(target)
+    prefix = os.path.normpath(prefix)
     n = len(prefix)
     for dirpath in get_lookup_paths(base_dir, paths):
-        dirpath = os.path.join(dirpath, dirname)
-        if os.path.exists(dirpath):
-            # don't ask me python 3.6 told us to explicitly
-            # close scandir iterators (shrug)
-            # https://docs.python.org/3/whatsnew/3.6.html#os
-            with os.scandir(dirpath) as scanner:
-                for entry in scanner:
-                    if (entry.name.startswith(prefix)
-                            and entry.name[n:n+1] == '.'
-                            and os.path.realpath(entry) != target):
-                        return True
+        for root, dirs, files in os.walk(dirpath):
+            for file in files:
+                filepath = os.path.join(root, file)
+                filename = os.path.relpath(filepath, dirpath)
+                if filename == prefix:
+                    return True
+                if filename.startswith(prefix) and filename[n:n+1] == '.':
+                    return True
     return False
 
 
@@ -1107,7 +1102,7 @@ class JSONDumper(Configurable):
         if entry.has_panel() and entry.panel.date == entry_time.date():
             self.write_entry_time(entry_dict, entry_time)
         else:
-            self.write_entry_date_and_time(entry_dict, entry_time)
+            self.write_entry_date_and_time(entry_dict, entry.time)
         if entry.insight:
             entry_dict['insight'] = True
         # data and input
@@ -1176,34 +1171,39 @@ class JSONDumper(Configurable):
              copy and modify the default implementation!  The 'assets'
              variable is hard-coded just for that reason ;)
         """
-        # by default we don't keep entries that don't have
-        # a sufficient text representation.
+        # by default we don't keep entries that don't have a sufficient
+        # text representation.
         if self.use_inline_text(entry):
             return None
         # always export to the 'assets' directory; this is hard-coded
-        dirname = 'assets'
-        base, ext = self.get_export_path_name(entry)
+        base = self.get_export_path_name(entry)
+        ext = self.get_export_path_extension(entry)
         paths = attrs['paths']
         # this is like 'base + ext' but safer (and fancier)
-        filename = self.generate_export_path(entry, base, ext,
-                                             dirname, paths)
+        filename = self.generate_export_path(base, ext, 'assets', paths)
         self.export_entry(entry, os.path.join('assets', filename))
         # arbitrarily extend the input path by its directory name
         return self.compute_input_path(filename, 'assets', paths)
 
     def get_export_path_name(self, entry):
-        """Return (base, ext) for the export file name of an entry."""
+        """Return the base name (the part of file name excluding extension)
+        for the export path of an entry.
+        """
         etime = entry.time.replace(tzinfo=None)
         name = etime.isoformat('_').replace(':', '-')
         # prepend the panel's date only if entry has a panel whose date
         # differs from its time
         if entry.has_panel() and etime.date() != entry.panel.date:
             name = f'{entry.panel.date}_{name}'
+        return name
+
+    def get_export_path_extension(self, entry):
+        """Return the file extension for the export path of an entry."""
         ctx = filetypes.get_context()
         try:
-            return name, ctx.get_default_extension(entry.get_type())
+            return ctx.get_default_extension(entry.get_type())
         except LookupError:
-            return name, ''
+            return ''
 
     def get_export_path_candidates(self, name):
         """Return an iterator (infinite or finite, depending on what
@@ -1213,9 +1213,10 @@ class JSONDumper(Configurable):
         # file names: 'name.txt', 'name_001.txt', 'name_002.txt', ...
         # (this doesn't return the '.txt' part, but you get the gist.)
         return itertools.chain(
-            [name], (f'{name}_{i:03}' for i in itertools.count(1)))
+            [name],
+            (f'{name}_{i:03}' for i in itertools.count(1)))
 
-    def generate_export_path(self, entry, base, ext, dirname, paths):
+    def generate_export_path(self, base, ext, dirname, paths):
         """Generate a nonexistent, unambiguous file name for exporting.
         (Yes, the function name is a bit misleading, but it does not return
         an actual path.  Sorry but I couldn't think of a better name.)
@@ -1226,9 +1227,6 @@ class JSONDumper(Configurable):
 
         Arguments
         ---------
-        entry : Entry object
-            The entry we want to export
-
         base : str
             The base name, or the part of file name without extension.
             This can contain more than one file component, but a DumpWarning
@@ -1307,10 +1305,8 @@ class JSONDumper(Configurable):
             break
 
         for candidate in self.get_export_path_candidates(base):
-            # test if the path being exported to is OK
-            filename = f'{candidate}{ext}'
-            export_path = os.path.join(abs_dirname, filename)
-            if not self.export_path_ok(export_path, entry):
+            # test if the path being exported to has yet to exist
+            if os.path.exists(os.path.join(abs_dirname, candidate)):
                 continue
             # test if the path with the current numbering matches against
             # none of the existing files.  if any path, with any arbitrarily
@@ -1318,27 +1314,17 @@ class JSONDumper(Configurable):
             matched = False
             for prefix in prefixes:
                 extended = os.path.join(prefix, candidate)
-                if _can_find_any_other_path(
-                        export_path, extended, base_dir, paths):
+                if _can_find_any_path(extended, base_dir, paths):
                     matched = True
                     break
             if not matched:
-                return filename
+                return f'{candidate}{ext}'
 
         # we've tried everything so just give up (lol you can count on
         # me for optimism)
         name = f'{base}{ext}'
         raise DumpError(f'failed to generate a file name for {name!r} '
                         f'(with directory name {dirname!r})')
-
-    def export_path_ok(self, export_path, entry):
-        """Return whether the file at export_path represents the
-        raw data in the entry correctly"""
-        if os.path.exists(export_path):
-            with open(export_path, 'rb') as fp:
-                with entry.stream_raw_data() as fpref:
-                    return util.fileobjequal(fp, fpref)
-        return True
 
     def compute_input_path(self, name, dirname, paths):
         """Compute a (potentially) valid input path.
@@ -1401,12 +1387,6 @@ class JSONDumper(Configurable):
         to the base_dir option.  Intermediary directies are created
         with os.makedirs() even if they exist, although the export path
         must not exist by the time of being exported.
-
-        CHANGE: I uhhh made this a no-op when export_path exists
-        (namely when generate_export_path() returns an existing path)
-        The rationale here is that we make this function simply ENSURE
-        that a path is created, if it exists and has mismatching content
-        wrap_entry() would complain anyways
         """
         base_dir = os.path.abspath(self.get_option('base_dir'))
         # convert base_dir to an absolute path for the following
@@ -1418,11 +1398,12 @@ class JSONDumper(Configurable):
             raise DumpError(msg) from None
         _check_relpath(export_path, base_dir, 'export_path()')
         export_path = os.path.join(base_dir, export_path)
-        if not os.path.exists(export_path):
-            os.makedirs(os.path.dirname(export_path), exist_ok=True)
-            with entry.stream_raw_data() as fsrc:
-                with open(export_path, 'xb') as fdst:
-                    shutil.copyfileobj(fsrc, fdst)
+        if os.path.exists(export_path):
+            raise DumpError(f'export path {export_path!r} exists')
+        os.makedirs(os.path.dirname(export_path), exist_ok=True)
+        with entry.stream_raw_data() as fsrc:
+            with open(export_path, 'xb') as fdst:
+                shutil.copyfileobj(fsrc, fdst)
 
     def __write_entry_data(self, entry_dict, entry):
         """branch of wrap_entry() for inline data"""

@@ -135,22 +135,6 @@ Test the `dump()`, `dump_data()`, and `dump_json()` methods.
     update the JSON backup dumped by `dump()`.  (Similarly for
     `dump_data()`)
 
-TODO: other stuff
-
-*   if time zone offsets agree, `write_entry_*()` should receive a
-    naive object (otherwise aware)
-
-TEST: `generate_export_path()`
------------------------------
-
-only one specific test cuz i can't think
-
-*   If file exists and has matching content, it is accepted
-*   Only the exact file has this privilege so if we have
-    `a/1.txt` and `b/1.txt` also exists and has the same
-    content that does NOT make it okay to give the `1.txt`
-    in `a/` the same name
-
 
 InferenceManager tests
 ======================
