@@ -66,14 +66,10 @@ class Formatter(Configurable):
         If this is omitted and `width` is an int, wrapper will be set to
         a textwrap.TextWrapper() instance.  Be noted that has no effect if
         `width` is None (as mentioned above).
-
-    indent : str, default ''
-        Indentation string
     """
     __slots__ = ('_wrapper', '_width', '_indent')
 
-    def __init__(self, width=80, wrapper=None, indent='',
-                 *args, **kwargs):
+    def __init__(self, width=80, wrapper=None, *args, **kwargs):
         super().__init__(*args, **kwargs)
         if width is None:
             self.width = None
@@ -85,7 +81,7 @@ class Formatter(Configurable):
                 self.wrapper = textwrap.TextWrapper()
             else:
                 self.wrapper = wrapper
-        self.indent = indent
+        self.indent = ''
 
     def format(self, obj):
         """Format an object as a string."""
@@ -130,8 +126,9 @@ class Formatter(Configurable):
             raise ValueError('width should be greater than 0')
         self._width = width
 
-    # i haven't throught this through lol (does this deserve to be
-    # a property in its own right???)
+    # Synonyms of get_option('indent') and configure(indent=...), but...
+    # this is a lot more readable (given just how many times indent is
+    # modified in this code)
     @property
     def indent(self):
         """Indent of the formatter."""
@@ -259,9 +256,8 @@ del strlen_checker, callback_checker
 class PanelFormatter(Formatter):
     __slots__ = ('_entry_formatter',)
 
-    def __init__(self, width=80, wrapper=None, indent='',
-                 *args, **options):
-        super().__init__(width, wrapper, indent, *args)
+    def __init__(self, width=80, wrapper=None, *args, **options):
+        super().__init__(width, wrapper, *args)
         self.configure(**options)
 
     def set_entry_formatter(self, formatter):
@@ -408,9 +404,8 @@ for name, default in dict(
 
 
 class EntryFormatter(Formatter):
-    def __init__(self, width=80, wrapper=None, indent='',
-                 *args, **options):
-        super().__init__(width, wrapper, indent, *args)
+    def __init__(self, width=80, wrapper=None, *args, **options):
+        super().__init__(width, wrapper, *args)
         self.configure(**options)
 
     def wrap(self, entry):
