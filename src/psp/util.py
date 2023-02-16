@@ -1,21 +1,16 @@
 """Random utility functions"""
 from datetime import timezone
 import itertools
-import importlib
-import importlib.util
-import os
 from pprint import pformat
 import shutil
-import sys
 from textwrap import indent
-
-# Prevent circular import: https://stackoverflow.com/a/22210807
+# Circular import!  (But how did this happen???)
+# https://stackoverflow.com/a/22210807
 from . import types
 
 __all__ = [
     'merge_panels', 'checksum', 'fileobjequal', 'copyfileobj',
     'cmppanels', 'cmpentries',
-    'import_module', 'import_module_from_file',
 ]
 
 
@@ -138,7 +133,7 @@ def cmpentries(*args):
     d1 = e1.get_data()
     d2 = e2.get_data()
     if d1 != d2:
-        print(f'  data differ: {_format_data(d1)} and {_format_data(d2)}')
+        print(f'  data differ: {format_data(d1)} and {format_data(d2)}')
     for attr in 'type', 'format', 'encoding':
         v1 = getattr(e1, f'get_{attr}')()
         v2 = getattr(e2, f'get_{attr}')()
@@ -153,51 +148,5 @@ def cmpentries(*args):
         print(indent(pformat(p2.get_attributes()), '    '))
 
 
-def _format_data(s):
+def format_data(s):
     return f'<{type(s).__name__} data of length {len(s)}>'
-
-
-# https://docs.python.org/3/library/importlib.html#importing-a-source-file-directly
-def import_module_from_file(modname, file):
-    # Resolve the file path so that the module's __file__ attribute
-    # is absolute
-    file = os.path.realpath(file)
-    spec = importlib.util.spec_from_file_location(modname, file)
-    if spec is None:
-        raise RuntimeError(f'failed to load module {modname!r} at {file!r}')
-    module = importlib.util.module_from_spec(spec)
-    # Put the module's parent directory at the very front in sys.path
-    sys.path.insert(0, os.path.dirname(file))
-    try:
-        spec.loader.exec_module(module)
-    finally:
-        sys.path.pop(0)
-    return module
-
-
-def import_module(modname, *, package=None, root='.'):
-    # sys.path hacks except we clean stuff up
-    _clean_up_module_namespace(modname)
-    root = os.path.realpath(root)
-    sys.path.insert(0, root)
-    try:
-        spec = importlib.util.find_spec(modname, package=package)
-        module = importlib.util.module_from_spec(spec)
-        absolute_name = (importlib.util.resolve_name(modname, package)
-                         if package is not None else modname)
-        sys.modules[absolute_name] = module
-        spec.loader.exec_module(module)
-    finally:
-        sys.path.pop(0)
-    # make this name available for use by other Python scripts
-    _clean_up_module_namespace(modname)
-    return module
-
-
-def _clean_up_module_namespace(modname):
-    if modname in sys.modules:
-        del sys.modules[modname]
-        prefix = modname + '.'
-        for name in list(sys.modules.keys()):
-            if name.startswith(prefix):
-                del sys.modules[name]
