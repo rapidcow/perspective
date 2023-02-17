@@ -7,6 +7,6 @@ Tutorials
 .. toctree::
    :maxdepth: 1
 
-   backup.rst
+   howto.rst
    cookbook.rst
    extensions.rst

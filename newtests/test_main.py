@@ -75,8 +75,6 @@ class TestDemo(unittest.TestCase):
                 =================================================================
                 """))
 
-            del sys.modules['config']
-
             with open_for_writing(os.path.join(root, 'config.py')) as fp:
                 fp.write(dedent("""\
                     from psp.stringify import PanelFormatter, EntryFormatter
@@ -160,7 +158,11 @@ class TestDemo(unittest.TestCase):
                     """))
 
             with open_for_writing(os.path.join(root, 'something.py')) as fp:
+                # circumvent name collision in sys.modules
                 fp.write(dedent("""\
+                    import sys
+                    if 'config' in sys.modules:
+                        del sys.modules['config']
                     from config import MyPF
 
                     class PanelPrinter:
