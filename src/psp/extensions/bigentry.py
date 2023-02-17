@@ -433,6 +433,7 @@ class ArchiveManager(BigEntryManager):
                 os.unlink(fp.name)
 
     def __extract(self, arcpath, dirpath):
+        self.validate_archive(arcpath, dirpath)
         shutil.unpack_archive(arcpath, dirpath, self.arc_format)
 
     def stream_main_file_data(self, entry):
@@ -454,7 +455,7 @@ class ArchiveManager(BigEntryManager):
             return fp.read()
 
 
-# XXX: How do these decorators make any sense??? :DD
+# XXX: How do these decorators make any sense???
 @staticmethod
 @contextmanager
 def stream_zip_mfdata(filename, mf_name, mf_enc):
@@ -479,6 +480,16 @@ def stream_tar_mfdata(filename, mf_name, mf_enc):
     raise ValueError(f'cannot find main file {filename!r}')
 
 
+def validate_tar_archive(self, arcpath, dirpath):
+    abs_dirpath = os.path.abspath(dirpath)
+    for member in tar.getmembers():
+        member_path = os.path.join(path, member.name)
+        abs_member_path = os.path.abspath(target)
+        prefix = os.path.commonprefix([abs_dirpath, abs_member_path])
+        if prefix != abs_dirpath:
+            raise ValueError('attempted path traversal in tar file')
+
+
 # formats that shutil.unpack_archive() can unpack
 supported_formats = [fmt for (fmt, _, _) in shutil.get_unpack_formats()]
 if 'zip' in supported_formats:
@@ -489,37 +500,15 @@ if 'zip' in supported_formats:
     BigEntry.add_manager('zip', ZipManager())
     del ZipManager
 
-if 'tar' in supported_formats:
-    class TarManager(ArchiveManager):
-        arc_format = 'tar'
-        stream_mfdata = stream_tar_mfdata
+for tar_format in 'tar', 'gztar', 'bztar', 'xztar':
+    if tar_format in supported_formats:
+        class TarManager(ArchiveManager):
+            arc_format = tar_format
+            stream_mfdata = stream_tar_mfdata
+            validate_archive = validate_tar_archive
 
-    BigEntry.add_manager('tar', TarManager())
-    del TarManager
-
-if 'gztar' in supported_formats:
-    class GzTarManager(ArchiveManager):
-        arc_format = 'gztar'
-        stream_mfdata = stream_tar_mfdata
-
-    BigEntry.add_manager('gztar', GzTarManager())
-    del GzTarManager
-
-if 'bztar' in supported_formats:
-    class BzTarManager(ArchiveManager):
-        arc_format = 'bztar'
-        stream_mfdata = stream_tar_mfdata
-
-    BigEntry.add_manager('bztar', BzTarManager())
-    del BzTarManager
-
-if 'xztar' in supported_formats:
-    class XzTarManager(ArchiveManager):
-        arc_format = 'xztar'
-        stream_mfdata = stream_tar_mfdata
-
-    BigEntry.add_manager('xztar', XzTarManager())
-    del XzTarManager
+        BigEntry.add_manager(tar_format, TarManager())
+        del TarManager
 
 del supported_formats
 del stream_zip_mfdata, stream_tar_mfdata
