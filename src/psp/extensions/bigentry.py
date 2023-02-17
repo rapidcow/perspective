@@ -339,6 +339,7 @@ class BigDumper(JSONDumper):
     def get_input_path(self, entry, attrs):
         if not isinstance(entry, BigEntry):
             return super().get_input_path(entry, attrs)
+        # export to the doc directory
         base = self.get_export_path_name(entry)
         ext = self.get_export_path_extension(entry)
         filename = self.generate_export_path(base, ext, 'doc')
@@ -436,17 +437,22 @@ class ArchiveManager(BigEntryManager):
         self.validate_archive(arcpath, dirpath)
         shutil.unpack_archive(arcpath, dirpath, self.arc_format)
 
+    @contextmanager
     def stream_main_file_data(self, entry):
         mf_name = os.path.normpath(entry.get_main_file())
         mf_enc = entry.get_main_file_encoding()
         if entry.has_source():
-            return self.stream_mfdata(entry.get_source(), mf_name, mf_enc)
+            with self.stream_mfdata(
+                    entry.get_source(), mf_name, mf_enc) as mfp:
+                yield mfp
+                return
         fp = tempfile.NamedTemporaryFile(delete=False)
         try:
             with fp:
                 with entry.stream_raw_data() as fsrc:
                     shutil.copyfileobj(fsrc, fp)
-            return self.stream_mfdata(fp.name, mf_name, mf_enc)
+            with self.stream_mfdata(fp.name, mf_name, mf_enc) as mfp:
+                yield mfp
         finally:
             os.unlink(fp.name)
 

@@ -183,7 +183,7 @@ that cannot be changed once it is constructed.
    .. method:: copy()
 
       Return a copy of this panel with no entries.  Equivalent to
-      ``self.from_panel(panel)``.
+      ``self.from_panel(self)``.
 
    .. note::
 
@@ -210,17 +210,26 @@ that cannot be changed once it is constructed.
       (``self``). If the entry belongs to a different entry,
       :meth:`remove_entry` is called to remove that entry from it.
 
-      This is a :class:`ValueError` if *entry* is already added.
+      This is a :class:`ValueError` if *entry* was already added.
+
+   .. method:: Panel.add_entries(entries)
+
+      Iteratively call :meth:`add_entry`.
 
    .. method:: Panel.remove_entry(entry)
 
       Remove *entry* from this panel.  A :class:`ValueError` is raised if the entry
       is not in this panel.
 
-   .. method:: pop_entry(index=-1)
+   .. XXX: weirdly python doesn't have method documentation for
+      list.pop()...
+
+      also there's a weird bug with putting `index=-1` here so ig...
+
+   .. method:: pop_entry([index])
 
       Remove an entry from the current entry by *index* and return it.
-      An :class:`IndexError` will be raised by :meth:`list.pop` if
+      An :class:`IndexError` will be raised by ``list.pop()`` if
       *index* is out of bounds.  By default, pop the last entry.
 
    The idea is that we don't want multiple panels own the same entry, so
@@ -622,7 +631,7 @@ new file types there).
       *  text or binary data (obtained from :meth:`get_data`)
       *  attributes (from the attribute protocol)
 
-      Note that even if two entries have different encodings, they will
+      Note that if two text entries have different encodings, they will
       still compare equal as long as their decoded strings match:
 
       >>> from datetime import datetime, timezone
