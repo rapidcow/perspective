@@ -6,6 +6,7 @@ import functools
 import json
 import pathlib
 import string
+import tempfile
 from textwrap import dedent
 import types
 import unittest
@@ -17,6 +18,40 @@ from psp.processors.json_processor import (
     load_json, dump_json,
     # find_paths, get_lookup_paths,
 )
+
+
+# function decorator that passes the temporary directory
+# as an extra positional argument
+class tempdir:
+    __slots__ = ('f',)
+
+    def __init__(self, f):
+        self.f = f
+
+    # descriptor protocol for instance methods / class methods?
+    # (i forgor how this works)
+    def __get__(self, obj, objtype=None):
+        if hasattr(self.f, '__get__'):
+            meth = self.f.__get__(obj, objtype)
+        else:
+            meth = types.MethodType(self.f, obj)
+        return _tempdir(meth)
+
+    # support for decorating static methods
+    def __call__(self, *args, **kwargs):
+        return _tempdir(self.f)(*args, **kwargs)
+
+
+def _tempdir(f):
+    @functools.wraps(f)
+    def inner(*args, **kwargs):
+        with tempfile.TemporaryDirectory() as tdir:
+            return f(pathlib.Path(tdir), *args, **kwargs)
+    return inner
+
+
+def open_with_unicode(file, mode='r'):
+    return open(file, mode, encoding='utf-8')
 
 
 class TestJSONLoader(unittest.TestCase):
