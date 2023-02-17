@@ -12,6 +12,7 @@ import types
 import unittest
 import unittest.mock
 
+from . import *
 from psp.types import Entry, Panel
 from psp.processors.json_processor import (
     JSONLoader, LoadError, LoadWarning,
