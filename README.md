@@ -1,7 +1,10 @@
 # perspective
 
+**NOTICE**: I'M NOT DOOOOONE please don't count too much on the interface
+i might change :(
+
 A Python library providing backup utility for the iOS journaling app
-[Perspective][] (and diaries in general)![^1]
+[Perspective][] (and diaries in general)!
 
 Documentation in English is available [here][docs].
 
@@ -35,9 +38,6 @@ print the version number.
 
 To uninstall, run `python3 -m pip uninstall perspe`.
 
-For a clumsy demo (WILL BE REPLACED IN THE FUTURE), you can find one
-[here][Demo] at the moment.
-
 
 ## Building documentation
 
@@ -53,14 +53,14 @@ If you find a bug, open a new issue [here][issues], add a Bug label
 
 *   a minimal example that can reproduce the problem
 *   what you expected to happen (link to the [documentation][docs] or
-    whatever could help us understand the issue)
-*   what you actually got (the full traceback and error message)
+    whatever could help me (@rapidcow) understand the issue)
+*   what you actually got (the **full** traceback and error message)
 
 
 ## Development
 
 Assuming that you have activated a [virtual environment][venv], you can
-clone this repo and install with [editable mode][-e] (this is so that any
+clone this repo and install with [editable mode][] (this is so that any
 changes you make here in the repo will be reflected in your Python runtime)
 
 ```sh
@@ -88,19 +88,8 @@ python3 -m twine upload --repository testpypi dist/*
 
 
 [Perspective]: http://blinky.co/perspective_app/
-<!--
-  As long as the file is still named README.md, this link should
-  work...
--->
-[Demo]: https://github.com/rapidcow/perspective/tree/master/src
 [docs]: https://perspe.readthedocs.io/en/latest/
 [venv]: https://docs.python.org/3/library/venv.html
-[-e]: https://pip-python3.readthedocs.io/en/latest/reference/pip_install.html#editable-installs
+[editable mode]: https://pip-python3.readthedocs.io/en/latest/reference/pip_install.html#editable-installs
 
 [issues]: https://github.com/rapidcow/perspective/issues
-
-[^1]: This was not an attempt to replace the app!  My intent was originally
-      to back up my diaries in the app, but since waiting for the devs to
-      update seemed impossible I had to manually back them up on my own....
-      If you have any problem concerning this project, feel free to contact
-      me at <thegentlecow@gmail.com>!

@@ -1,12 +1,22 @@
 """New psp tests"""
+import contextlib
 import functools
 import datetime
 import tempfile
 import pathlib
 
 __all__ = [
-    'tempdir', 'open_with_unicode', 'make_time', 'make_date',
+    'tempdir', 'make_tempdir', 'open_with_unicode',
+    'make_time', 'make_date', 'make_tz',
 ]
+
+
+# modified version of tempfile that returns
+# a pathlib.Path object instead
+@contextlib.contextmanager
+def make_tempdir():
+    with tempfile.TemporaryDirectory() as tmp:
+        yield pathlib.Path(tmp)
 
 
 # function decorator that passes the temporary directory
@@ -34,8 +44,8 @@ class tempdir:
 def _tempdir(f):
     @functools.wraps(f)
     def inner(*args, **kwargs):
-        with tempfile.TemporaryDirectory() as tdir:
-            return f(pathlib.Path(tdir), *args, **kwargs)
+        with make_tempdir() as tmp:
+            return f(tmp, *args, **kwargs)
     return inner
 
 
@@ -49,3 +59,7 @@ def make_time(s):
 
 def make_date(s):
     return datetime.datetime.strptime(s, '%Y-%m-%d').date()
+
+
+def make_tz(**kwargs):
+    return datetime.timezone(datetime.timedelta(**kwargs))

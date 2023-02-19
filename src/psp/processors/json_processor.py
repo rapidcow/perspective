@@ -1180,16 +1180,19 @@ class JSONDumper(Configurable):
         # a sufficient text representation.
         if self.use_inline_text(entry):
             return None
-        # always export to the 'assets' directory; this is hard-coded
-        dirname = 'assets'
+        back, front = self.get_export_path_directory(entry)
         base, ext = self.get_export_path_name(entry)
         paths = attrs['paths']
-        # this is like 'base + ext' but safer (and fancier)
-        filename = self.generate_export_path(entry, base, ext,
-                                             dirname, paths)
-        self.export_entry(entry, os.path.join('assets', filename))
-        # arbitrarily extend the input path by its directory name
-        return self.compute_input_path(filename, 'assets', paths)
+        filename = self.generate_export_path(
+            entry, os.path.join(front, base), ext, back, paths)
+        self.export_entry(entry, os.path.join(back, filename))
+        return self.compute_input_path(filename, back, paths)
+
+    def get_export_path_directory(self, entry):
+        """Return two components (back, front) of the directory
+        we want to export to, where only front is inseparable.
+        """
+        return ('assets', '')
 
     def get_export_path_name(self, entry):
         """Return (base, ext) for the export file name of an entry."""
@@ -1516,8 +1519,8 @@ class JSONDumper(Configurable):
                 return 'UTC'
             # since datetime.timezone is a fixed offset, just pass any
             # arbitrary datetime and we should be good
-            return timeutil.format_offset(
-                tz.utcoffset(datetime.datetime.min))
+            offset = tz.utcoffset(datetime.datetime.min)
+            return timeutil.format_offset(offset)
         raise ValueError(f'cannot serialize time zone {tz!r}')
 
     def format_date(self, date):
