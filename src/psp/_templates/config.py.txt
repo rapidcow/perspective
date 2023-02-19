@@ -69,10 +69,14 @@ def load_merged_panels(root):
         with closing(load_panels(file, base_dir)) as panels:
             for panel in panels:
                 panel_map[panel.date].append((panel, source))
-    for date, values in panel_map.items():
+    # Sort panels by date + sort entries by UTC time
+    for date, values in sorted(panel_map.items()):
         for msg in tools.check_panel_attributes(values):
             raise ValueError(msg)
-        yield merge_panels(panel for panel, _ in values)
+        merged = merge_panels(panel for panel, _ in values)
+        merged.sort_entries(key=lambda e: e.time.astimezone(timezone.utc))
+        merged.sort_entries(key=lambda e: e.insight)
+        yield merged
 
 
 def load_panels(file, base_dir):
