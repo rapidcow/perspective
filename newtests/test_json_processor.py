@@ -674,6 +674,32 @@ class TestJSONLoader(unittest.TestCase):
 class TestJSONDumper(unittest.TestCase):
     """Test the JSONDumper class."""
 
+    # TEST 1
+    # ------
+    def test_top_level_attributes(self):
+        """Test get_top_level_attributes() and prepare_backup()."""
+        for tz in make_tz(hours=8), make_tz(), None:
+            for paths in ['assets'], [], ['.']:
+                dumper = JSONDumper(time_zone=tz, paths=paths)
+                attrs = dumper.get_top_level_attributes([])
+                json_attrs = {}
+                dumper.prepare_backup(json_attrs, attrs)
+
+                # top-level attributes
+                self.assertIs(attrs['tz'], tz)
+                self.assertEqual(attrs['paths'], paths)
+
+                # JSON top-level attributes
+                if paths == ['.']:
+                    self.assertNotIn('paths', json_attrs)
+                else:
+                    self.assertEqual(json_attrs['paths'], paths)
+                if tz is None:
+                    self.assertNotIn('tz', json_attrs)
+                else:
+                    tzstr = dumper.format_timezone(tz)
+                    self.assertEqual(json_attrs['tz'], tzstr)
+
     @tempdir
     def test_generate_export_path(self, root):
         """Test generate_export_path() and related methods"""

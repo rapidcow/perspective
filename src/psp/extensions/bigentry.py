@@ -1,7 +1,6 @@
 """Blog-style entries."""
 
 import abc
-import base64
 import collections
 from contextlib import contextmanager
 import io
@@ -72,6 +71,7 @@ BUFSIZE = 8192
 #       somewhat properly work).  get_raw_data() still works as expected.
 #
 class BigEntry(Entry, extname='big'):
+    """The big entry extension."""
     __slots__ = ()
     _big_managers = {}
 
@@ -79,7 +79,7 @@ class BigEntry(Entry, extname='big'):
         super().__init__(*args, **kwargs)
         self.set_encoding('binary')
         self.set_format(None)
-        # main_file is not set by default...
+        # self.set_main_file(...)
         self.set_main_file_type('plain')
         self.set_main_file_encoding('utf-8')
         self.set_main_file_format(None)
@@ -212,41 +212,8 @@ class BigEntry(Entry, extname='big'):
                 mngmap.update(base._big_managers)
 
 
-#
-# The only difference this loader makes is when an entry dict contains
-# a dictionary for 'data'.  In that case, the dictionary must provide
-#
-#   *  precisely one of 'raw' (paired with 'data-encoding') and 'input'; and
-#   *  the path of the main file within the archive, through 'main-file'.
-#
-# The 'input' attribute, if provided, should be a path to the archive.
-# The 'raw' attribute, if provided, should a base64-encoded ASCII string.
-#
-# At the topmost level of entry (the same level as the 'time' and 'data'
-# attribute), 'type' and 'encoding' are not allowed.  The 'format' takes
-# on a different role, though: the archive format mentioned above.
-#
-# Here is an overview of all the attributes specific to big entries that
-# you can specify (aside from the 'date-time' one, i added it so that it
-# looks better or something idk)
-#
-#     {
-#         "date-time": "2021-12-17 12:00",
-#         "format": "the archive format",
-#         "data": {
-#             "input": "the path to the archive",
-#             "main-file": "main file within archive",
-#             "type": "type of the main file",
-#             "encoding": "encoding of the main file",
-#             "format": "format of the main file"
-#         }
-#     }
-#
-# The inference rules will work as expected!  (I hope...)
-# So if 'main-file' is 'main.md', then you can expect the main file
-# type to be 'markdown'.
-#
 class BigLoader(JSONLoader):
+    """The big entry loader."""
     __slots__ = ()
 
     def get_entry_extensions(self, entry, panel, attrs):
@@ -265,7 +232,7 @@ class BigLoader(JSONLoader):
         for k in ('input', 'type', 'encoding'):
             if k in entry:
                 raise ValueError(f'invalid key for big entry: {k!r}')
-        for k in ('data', 'data-encoding'):
+        for k in ('data',):
             if k in arc_data:
                 raise ValueError(f'invalid key for archive data: {k!r}')
 
@@ -334,17 +301,13 @@ class BigLoader(JSONLoader):
 
 
 class BigDumper(JSONDumper):
+    """The big entry dumper."""
     __slots__ = ()
 
-    def get_input_path(self, entry, attrs):
-        if not isinstance(entry, BigEntry):
-            return super().get_input_path(entry, attrs)
-        # export to the doc directory
-        base = self.get_export_path_name(entry)
-        ext = self.get_export_path_extension(entry)
-        filename = self.generate_export_path(base, ext, 'doc')
-        self.export_entry(entry, os.path.join('doc', filename))
-        return self.compute_input_path(filename, 'doc')
+    def get_export_path_directory(self, entry):
+        if isinstance(entry, BigEntry):
+            return ('doc', '')
+        return super().get_export_path_directory(entry)
 
     def use_inline_text(self, entry):
         if isinstance(entry, BigEntry):
@@ -416,10 +379,11 @@ class BigDumper(JSONDumper):
         return entry_dict
 
 
-# Default big entry to make everyone's lives easier! :D
-
-
 class ArchiveManager(BigEntryManager):
+    """Big entry manager for archives capable of being unpacked by
+    shutil.unpack_archive().
+    """
+
     def extract_all(self, entry, dirpath):
         if entry.has_source():
             self.__extract(entry.get_source(), dirpath)
@@ -429,13 +393,16 @@ class ArchiveManager(BigEntryManager):
                 with fp:
                     with entry.stream_raw_data() as fsrc:
                         shutil.copyfileobj(fsrc, fp)
-                self.__extract(fp.name)
+                self.__extract(fp.name, dirpath)
             finally:
                 os.unlink(fp.name)
 
     def __extract(self, arcpath, dirpath):
         self.validate_archive(arcpath, dirpath)
         shutil.unpack_archive(arcpath, dirpath, self.arc_format)
+
+    def validate_archive(self, arcpath, dirpath):
+        pass
 
     @contextmanager
     def stream_main_file_data(self, entry):
@@ -488,12 +455,13 @@ def stream_tar_mfdata(filename, mf_name, mf_enc):
 
 def validate_tar_archive(self, arcpath, dirpath):
     abs_dirpath = os.path.abspath(dirpath)
-    for member in tar.getmembers():
-        member_path = os.path.join(path, member.name)
-        abs_member_path = os.path.abspath(target)
-        prefix = os.path.commonprefix([abs_dirpath, abs_member_path])
-        if prefix != abs_dirpath:
-            raise ValueError('attempted path traversal in tar file')
+    with tarfile.open(arcpath) as tar:
+        for member in tar.getmembers():
+            member_path = os.path.join(dirpath, member.name)
+            abs_member_path = os.path.abspath(member_path)
+            prefix = os.path.commonprefix([abs_dirpath, abs_member_path])
+            if prefix != abs_dirpath:
+                raise ValueError('attempted path traversal in tar file')
 
 
 # formats that shutil.unpack_archive() can unpack

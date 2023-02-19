@@ -131,6 +131,9 @@ JSONDumper
 *  handle_datetime() and handle_timezone() removed,
    instead now there's write_entry_date_and_time() and format_timezone()
 
+*  input paths are no longer precomputed, see get_input_path() for all
+   related functions
+
 
 Streaming interface
 ^^^^^^^^^^^^^^^^^^^
@@ -212,6 +215,14 @@ Panel and Entry
 *  ``Entry.set_source()`` no longer checks for file existence
 
 
+Main program
+^^^^^^^^^^^^
+
+you can now create projects (STILL very much WIP though)
+
+hacky imports are still a thing (BWAHH WHYYY)
+
+
 Other Changes (TEMP)
 ^^^^^^^^^^^^^^^^^^^^
 
@@ -259,8 +270,6 @@ Other Changes (TEMP)
 *  base_dir in JSONLoader and JSONDumper now take None which activates this
    sort of "restricted" mode that causes an error to be raised whenever
    access to the file system is attempted
-
-
 
 
 .. |load| replace:: ``JSONLoader.load()``

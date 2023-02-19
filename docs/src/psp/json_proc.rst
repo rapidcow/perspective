@@ -1408,15 +1408,16 @@ panel (and its entries recursively) in JSON.
           # a sufficient text representation.
           if self.use_inline_text(entry):
               return None
-          # always export to the 'assets' directory; this is hard-coded
-          dirname = 'assets'
+          back, front = self.get_export_path_directory(entry)
           base, ext = self.get_export_path_name(entry)
           paths = attrs['paths']
-          # this is like 'base + ext' but safer (and fancier)
-          filename = self.generate_export_path(entry, base, ext, dirname, paths)
-          self.export_entry(entry, os.path.join(dirname, filename))
-          # arbitrarily extend the input path by its directory name
-          return self.compute_input_path(filename, dirname, paths)
+          # glue the front component to the base file name
+          filename = self.generate_export_path(
+              entry, os.path.join(front, base), ext, back, paths)
+          # ensure that this new file exists
+          self.export_entry(entry, os.path.join(back, filename))
+          # arbitrarily extend the input path by the back component
+          return self.compute_input_path(filename, back, paths)
 
    .. sorry for breaking the 80 char limit there :c
       imo i prefer it on one line....
@@ -1804,13 +1805,23 @@ panel (and its entries recursively) in JSON.
 
    Auxiliary functions:
 
+   .. method:: get_export_path_directory(entry)
+
+      Return a pair of directory components ``(back, front)`` that,
+      when combined, points to the directory to export *entry*
+      relative to ``base_dir``.
+      ``front`` represents the directory component that must always
+      be included in the input path, and ``back`` represents the
+      component that may be included.
+      Default implementation always returns the string
+      ``('assets', '')``.
+
    .. method:: export_path_ok(export_path, entry)
 
       Return whether *export_path* is a good export path for
       :meth:`generate_export_path` to use.  Default implementation
       returns True if *export_path* doesn't exist or the content
       matches that of *entry* returned by |stream_raw_data|.
-
 
    .. method:: get_export_path_name(entry)
 
@@ -1824,6 +1835,16 @@ panel (and its entries recursively) in JSON.
       ``name``, ``name_001``, ``name_002``, and so forth.
 
    .. method:: format_timezone(tz)
+
+      Format a :class:`~datetime.tzinfo` object as a *str*.
+      The same object should be able to be reconstructed from
+      the *str* by :meth:`~JSONLoader.parse_timezone`.
+
+      Default implementation serializes the only known fixed-offset
+      timezones, :class:`datetime.timezone`.  The
+      :meth:`~datetime.datetime.utcoffset` method will be called
+      on :attr:`datetime.datetime.min` with the given time zone,
+      and the offset is formatted by :func:`psp.timeutil.format_offset`.
 
    .. method:: format_date(date)
 

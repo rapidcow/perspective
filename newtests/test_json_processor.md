@@ -106,25 +106,19 @@ JSONDumper tests
 TEST 1: top-level attributes
 ----------------------------
 
-Test the interaction between `get_top_level_attributes()` and
-the `time_zone` and `paths` options.  These are the top-level (TL)
-attributes.
+Test the interaction between `get_top_level_attributes()`
+(TL attributes) and `prepare_backup()` (JTL attributes) and
+the `time_zone` and `paths` options.
 
-1.  The TL attribute `tz` is the option time_zone precisely
-2.  The TL attribute `paths` is the option paths precisely
-
-
-TEST 2: backup preparation
---------------------------
-
-Test `prepare_backup()` given the top-level attributes.
-These are the JSON top-level (JTL) attributes.
-
-1.  The JTL attribute `tz` is the str returned by calling
+1.  The TL attribute `tz` is the option time_zone precisely;
+    the JTL attribute `tz` is the str returned by calling
     `self.format_timezone()` on the `tz` TL attribute if it
     is not None, otherwise unset
-2.  The JTL attribute `paths` is the `paths` TL attribute
+
+2.  The TL attribute `paths` is the option paths precisely
+    the JTL attribute `paths` is the `paths` TL attribute
     if it is not equal to `['.']`, otherwise unset
+
 
 TEST ???: public interface
 --------------------------
@@ -139,6 +133,7 @@ TODO: other stuff
 
 *   if time zone offsets agree, `write_entry_*()` should receive a
     naive object (otherwise aware)
+
 
 TEST: `generate_export_path()`
 -----------------------------
