@@ -1,11 +1,11 @@
 # Taken from python/cpython/.gitattributes (sorry Q.Q)
 
 # Windows files
-*.bat	dos
+*.bat	    dos
 
-# Language aware diff headers
-*.css   diff=css
-*.html  diff=html
-*.py    diff=python
+# Language-aware diff headers
+*.css       diff=css
+*.html      diff=html
+*.py        python diff=python
 *.py.txt    diff=python
-*.md    diff=markdown
+*.md        diff=markdown

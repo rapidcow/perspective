@@ -3,6 +3,7 @@
 import abc
 import collections
 from contextlib import contextmanager
+import datetime
 import io
 import os
 import tarfile
@@ -11,7 +12,8 @@ import tempfile
 import zipfile
 
 from psp.processors.json_processor import JSONLoader, JSONDumper
-from psp.types import Entry
+from psp.types import Entry, _AttributeHolder
+from psp.util import copyfileobj, fileobjequal
 
 __all__ = [
     'BigEntry', 'BigLoader', 'BigDumper', 'load', 'dump',
@@ -114,20 +116,24 @@ class BigEntry(Entry, extname='big'):
         # XXX: But should a non-big entry be equal to a big entry
         # given they have the attributes set???
         if isinstance(other, BigEntry):
-            with self.stream_raw_data() as fp_1:
-                with other.stream_raw_data() as fp_2:
-                    while True:
-                        b1 = fp_1.read(BUFSIZE)
-                        b2 = fp_2.read(BUFSIZE)
-                        if b1 != b2:
-                            return False
-                        if not b1:
-                            break
-        # NotImplemented is not what we want here since it just
-        # calls other.__eq__(self) and if it is a big entry it
-        # also returns NotImplemented making 'self == other'
-        # essentially 'self is other' which isn't what we want!
-        return super().__eq__(other)
+            with self.stream_raw_data() as self_fp:
+                with other.stream_raw_data() as other_fp:
+                    if not fileobjequal(self_fp, other_fp):
+                        return False
+            # We should just implement the rest to prevent
+            # a second call to stream_data()
+            self_utctime = self.time.astimezone(datetime.timezone.utc)
+            other_utctime = other.time.astimezone(datetime.timezone.utc)
+            if not (self_utctime == other_utctime
+                    and self.insight == other.insight
+                    and self.get_type() == other.get_type()):
+                return False
+            # Resort to attribute comparison (the main file attributes
+            # will be compared here, note that unlike the entry encoding,
+            # we care about main file encoding here)
+            return _AttributeHolder.__eq__(self, other)
+        # Big entries are never equal to a non-big entry
+        return False
 
     def extract_all(self, dirname):
         self.__get_manager().extract_all(self, dirname)
@@ -392,7 +398,7 @@ class ArchiveManager(BigEntryManager):
             try:
                 with fp:
                     with entry.stream_raw_data() as fsrc:
-                        shutil.copyfileobj(fsrc, fp)
+                        copyfileobj(fsrc, fp)
                 self.__extract(fp.name, dirpath)
             finally:
                 os.unlink(fp.name)
@@ -417,7 +423,7 @@ class ArchiveManager(BigEntryManager):
         try:
             with fp:
                 with entry.stream_raw_data() as fsrc:
-                    shutil.copyfileobj(fsrc, fp)
+                    copyfileobj(fsrc, fp)
             with self.stream_mfdata(fp.name, mf_name, mf_enc) as mfp:
                 yield mfp
         finally:
