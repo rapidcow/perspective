@@ -115,17 +115,18 @@ def dump_panels(root, panels):
     base_dir = root / BASE_NAME
     data_dir.mkdir()
     with open_for_writing(data_dir / 'sources.txt') as fp:
-        fp.write('backups/1.json\n')
-    (data_dir / 'backups').mkdir()
+        fp.write('backup.json\n')
     dumper = mystuff.MyJSONDumper()
     # sort all panels and entries because we don't want JSONLoader's
     # check options emitting warnings
     panels = sorted(panels, key=lambda p: p.date)
     for panel in panels:
         panel.sort_entries(key=lambda e: e.time.astimezone(timezone.utc))
-    dumper.configure(base_dir=base_dir, error_on_warning=True)
-    with open_for_writing(data_dir / 'backups' / '1.json') as fp:
+    dumper.configure(base_dir=base_dir, error_on_warning=True,
+                     json_options={'indent': 2})
+    with open_for_writing(data_dir / 'backup.json') as fp:
         dumper.dump(panels, fp)
+        fp.write('\n')
 
 
 def clean_up_data(root):

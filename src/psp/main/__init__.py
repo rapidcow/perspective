@@ -18,6 +18,7 @@ import textwrap
 from .. import __version__
 from ..timeutil import format_date
 from ..util import import_module_from_file
+from ..types import Panel, Entry
 
 __all__ = ['main', 'create_project']
 
@@ -94,7 +95,6 @@ def main(argv):
     args = parser.parse_args(argv)
 
     if args.subname == 'init':
-        os.mkdir(args.target)
         create_project(args.target)
         print(f'Created project at {args.target}')
         return
@@ -178,14 +178,14 @@ def create_project(project_dir):
 
     scripts_dir = os.path.join(project_dir, 'scripts')
     lib_dir = os.path.join(project_dir, 'lib')
-    os.mkdir(scripts_dir)
-    os.mkdir(lib_dir)
+    os.makedirs(scripts_dir)
     with open(os.path.join(scripts_dir, 'main.py'), 'x',
               encoding='utf-8') as fp:
         fp.write(main_py)
     with open(os.path.join(scripts_dir, 'config.py'), 'x',
               encoding='utf-8') as fp:
         fp.write(config_py)
+    os.makedirs(lib_dir)
     with open(os.path.join(lib_dir, 'mystuff.py'), 'x',
               encoding='utf-8') as fp:
         fp.write(mystuff_py)
@@ -195,7 +195,14 @@ def create_project(project_dir):
 
     config_mod = import_module_from_file(
         'config', os.path.join(scripts_dir, 'config.py'))
-    config_mod.dump_panels(project_dir, [])
+    now = (datetime.datetime.now().astimezone()
+           .replace(second=0, microsecond=0))
+    panel = Panel(now.date())
+    entry = Entry(now)
+    panel.add_entry(entry)
+    entry.set_data('hello! this is a dummy entry for '
+                   'you to start with :)')
+    config_mod.dump_panels(project_dir, [panel])
 
 
 def _import_relative(modname, parent):
