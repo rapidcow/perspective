@@ -27,7 +27,8 @@ def main(argv):
     # Command-line options configuration
     # ==================================
     parser_print = subparsers.add_parser('print')
-    parser_print.add_argument('--date', type=config.parse_date, default=None)
+    parser_print.add_argument('--date', '-d',
+                              type=config.parse_date, default=None)
     parser_print.add_argument('--width', '-w', type=int,
                               default=shutil.get_terminal_size().columns)
 
@@ -38,7 +39,6 @@ def main(argv):
     parser_update = subparsers.add_parser('interact')
 
     parser_update = subparsers.add_parser('update')
-    parser_update.add_argument('migrate')
 
     parser_backup = subparsers.add_parser('backup')
     choices = ['list', 'create', 'restore', 'remove']
@@ -57,7 +57,7 @@ def main(argv):
     elif args.name == 'interact':
         run_interact(root)
     elif args.name == 'update':
-        run_update(root, args.migrate)
+        run_update(root)
     elif args.name == 'backup':
         # handle argument that user did not input
         if args.bname is None:
@@ -151,7 +151,7 @@ def run_interact(root):
 
 
 def run_update(root):
-    merged_panels = config.merge_panels(root, panels)
+    merged_panels = config.load_merged_panels(root)
     with tempfile.TemporaryDirectory() as tempdir:
         print('Dumping merged panels to somewhere temporary... ',
               end='', flush=True)
