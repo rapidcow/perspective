@@ -611,7 +611,7 @@ new file types there).
 
    For retrieving the size of an entry:
 
-   .. method:: get_raw_data_size()
+   .. method:: get_size()
 
       Return the number of bytes of the raw data.
 

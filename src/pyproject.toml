@@ -19,6 +19,10 @@ classifiers = [
     "Development Status :: 2 - Pre-Alpha",
     "License :: OSI Approved :: GNU General Public License v3 (GPLv3)",
 ]
+dependencies = [
+    # "colorama~=0.4.6",
+    "termcolor~=2.2.0",
+]
 # XXX: What do I write here? O.o
 # https://python-poetry.org/docs/pyproject/
 license = {text="GPL-3.0-or-later"}

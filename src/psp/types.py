@@ -529,7 +529,7 @@ class Entry(_AttributeHolder):
         with io.open(self._source, 'rb') as fp:
             return fp.read()
 
-    def get_raw_data_size(self):
+    def get_size(self):
         """Return the number of bytes of the raw data."""
         if self.has_source():
             stat = os.stat(self._source)

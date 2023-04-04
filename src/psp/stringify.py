@@ -580,7 +580,7 @@ class EntryFormatter(Formatter):
 
     def wrap_binary_content(self, entry):
         """Default implementation for wrapping binary entries."""
-        file_size = entry.get_raw_data_size()
+        file_size = entry.get_size()
         size_str = format_size(file_size)
         base_dir = self.get_option('base_dir')
         if entry.has_source():
