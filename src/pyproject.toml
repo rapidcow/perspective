@@ -32,6 +32,9 @@ dynamic = ["version"]
 Documentation = "https://perspe.readthedocs.io/en/latest/"
 Source = "https://github.com/rapidcow/perspective/"
 
+[project.scripts]
+psp = "psp.main:main"
+
 # XXX: idk but they say support for tool.setuptools is still beta :I
 [tool.setuptools]
 packages = ["psp", "psp.main", "psp.processors", "psp.extensions"]
