@@ -26,7 +26,7 @@ CURDIR = os.path.dirname(__file__)
 TEMPL = os.path.normpath(os.path.join(CURDIR, '..', '_templates'))
 
 
-def main(argv):
+def main(argv=None):
     parser = argparse.ArgumentParser(
         prog='psp', description='psp library main program')
     parser.add_argument('--version', '-V', action='version',
