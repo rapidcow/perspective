@@ -12,8 +12,10 @@ import subprocess as sp
 import sys
 import textwrap
 
+from termcolor import colored
+
 __all__ = [
-    'termcolor', 'DateRequester', 'check_panel_attributes', 'diffdirs',
+    'DateRequester', 'check_panel_attributes', 'diffdirs',
 ]
 
 MONTH_NAMES = [
@@ -22,34 +24,6 @@ MONTH_NAMES = [
 ]
 
 MONTH_ABBRS = [m[:3] for m in MONTH_NAMES]
-
-
-# Code adapted from: https://gist.github.com/martin-ueding/4007035
-# (plus more colors: https://invisible-island.net/ncurses/man/terminfo.5.html#h3-Color-Handling)
-class termcolor:
-    def _tput(s):
-        try:
-            return sp.check_output(['tput', *s.split()],
-                                   stderr=sp.DEVNULL,
-                                   text=True)
-        except sp.CalledProcessError:
-            return ''
-
-    BOLD = _tput('bold')
-    RESET = _tput('sgr0')
-    # set ANSI foreground (setaf) colors
-    BLACK = _tput('setaf 0')
-    RED = _tput('setaf 1')
-    GREEN = _tput('setaf 2')
-    YELLOW = _tput('setaf 3')
-    BLUE = _tput('setaf 4')
-    MAGENTA = _tput('setaf 5')
-    CYAN = _tput('setaf 6')
-    WHITE = _tput('setaf 7')
-    # High-intensity gray
-    GRAY = _tput('setaf 8')
-
-    del _tput
 
 
 class DateRequester:
@@ -64,7 +38,7 @@ class DateRequester:
 
         request(dates_and_ratings) -- takes a list of (date, rating) and
                                       returns the date user selected
-        colorize_day(day_str, rating)
+        color_day(day_str, rating)
                                    -- returns the colored string of a
                                       panel's day string with ANSI escape
     """
@@ -356,11 +330,11 @@ class DateRequester:
         return title + '\n' + ''.join(buf)
 
     def color_day(self, day_str, rating):
-        color = (termcolor.RED    if rating == ':(' else
-                 termcolor.YELLOW if rating == ':|' else
-                 termcolor.GREEN  if rating == ':)' else
-                 termcolor.GRAY)
-        return f'{termcolor.BOLD}{color}{day_str}{termcolor.RESET}'
+        color = ('red'    if rating == ':(' else
+                 'yellow' if rating == ':|' else
+                 'green'  if rating == ':)' else
+                 'dark_grey')
+        return colored(day_str, color, attrs=['bold'])
 
 
 def check_panel_attributes(values):

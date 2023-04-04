@@ -61,7 +61,7 @@ def checksum(panels):
             panel_count += 1
             for entry in entries:
                 entry_count += 1
-                size += entry.get_raw_data_size()
+                size += entry.get_size()
     return (panel_count, entry_count, size)
 
 
@@ -182,6 +182,8 @@ def import_module(modname, *, package=None, root='.'):
     sys.path.insert(0, root)
     try:
         spec = importlib.util.find_spec(modname, package=package)
+        if not spec:
+            raise ValueError(f'Module {modname!r} not found at path {root!r}')
         module = importlib.util.module_from_spec(spec)
         absolute_name = (importlib.util.resolve_name(modname, package)
                          if package is not None else modname)
