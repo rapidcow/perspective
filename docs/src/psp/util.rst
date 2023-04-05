@@ -4,4 +4,5 @@
 :mod:`util` --- Miscellaneous functions
 =======================================
 
-These are completely random or not that random but just convenient stuff
+Functions that I either don't know where to put or are
+for debugging purposes (like `cmpentries` and `cmppanels`)
