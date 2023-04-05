@@ -19,18 +19,17 @@ You may install globally or [activate a virtual environment][venv] first.
 
 To install, use ONE of the following methods:
 
-*   (from Test PyPI) You can probably try this I'm not sure if
-    this is still up on test.pypi.org
-
-    ```sh
-    python3 -m pip install -i https://test.pypi.org/simple/ perspe==0.2.0a1
-    ```
-
-*   (from this repository directly)
+*   from this repository directly, RECOMMENDED
 
     ```sh
     git clone https://github.com/rapidcow/perspective.git
     python3 -m pip install perspective/src
+    ```
+
+*   from Test PyPI, NOT RECOMMENDED as it is *very* out of date
+
+    ```sh
+    python3 -m pip install -i https://test.pypi.org/simple/ perspe==0.2.0a1
     ```
 
 If you have successfully installed, running `python3 -m psp -V` should
