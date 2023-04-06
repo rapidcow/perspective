@@ -1,8 +1,8 @@
 .. _filetypes:
 
-========================================
-:mod:`filetypes` --- Defining file types
-========================================
+============================================
+:mod:`psp.filetypes` --- Defining file types
+============================================
 
 .. module:: psp.filetypes
    :synopsis: File type mayhem
@@ -62,7 +62,7 @@
    you would want the loader to know that this is pure binary data and is
    also a JPEG file.  This module helps to do exactly that, but the exact
    implementation inference rules are written in the
-   :mod:`psp.processors.json_processor` module.  Here I will only describe
+   :mod:`psp.serializers.json` module.  Here I will only describe
    the functionalities of this module.
 
 

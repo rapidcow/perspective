@@ -8,7 +8,7 @@ import os
 import sys
 import tempfile
 import unittest
-import psp.main as main
+import psp.cli as main
 
 
 def open_for_reading(file):

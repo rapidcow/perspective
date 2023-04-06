@@ -1,5 +1,5 @@
 import unittest
-from psp.extensions import metadata
+from psp.ext import metadata
 
 
 class TestMetaEntry(unittest.TestCase):

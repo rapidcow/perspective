@@ -1,5 +1,5 @@
 # Extra config.py parts for psp main's simple interface
-from psp.processors import JSONLoader
+from psp.serializers import JSONLoader
 from psp.stringify import PanelFormatter
 from psp.util import import_module_from_file
 import calendar

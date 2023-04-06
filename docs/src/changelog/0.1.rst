@@ -1,11 +1,17 @@
-.. _0.2:
+.. we should call this 0.1 because people would ask where
+   0.1 is if otherwise
+
+   also should we have a changelog at all?????
+   this would be very time-consuming to write...
+
+.. _0.1:
 
 ===========
-Release 0.2
+Release 0.1
 ===========
 
 ------------------------------
-Release 0.2.0 (in development)
+Release 0.1.0 (in development)
 ------------------------------
 
 :Author: rapidcow <thegentlecow@gmail.com>
@@ -38,6 +44,16 @@ are kept here exclusively for the record!
    before that anyways, so stating a "change" that never existed is
    just---sigh.  I hope you get the point.
 
+
+Renaming
+^^^^^^^^
+
+Mostly shortenings, meh
+
+*  ``psp.processors.json_processor`` -> ``psp.serializers.json``
+*  ``psp.extensions`` -> ``psp.ext``
+*  ``psp.main`` -> ``psp.cli`` (will be a package with messed-up functions
+   for user-friendliness + show-off)
 
 
 Attribute protocol!

@@ -118,7 +118,7 @@ Save the above file as ``backup.json`` to run these examples:
 *  An API that can do the same thing (but more flexible)::
 
       from psp.stringify import print_panel
-      from psp.processors import load_json
+      from psp.serializers import load_json
 
       panel = load_json('backup.json', date='2020-02-02')
       print_panel(panel, 65)                          # default 12-hour format
@@ -131,7 +131,7 @@ Save the above file as ``backup.json`` to run these examples:
    .. testsetup::
 
       from psp.stringify import print_panel
-      from psp.processors import load_json
+      from psp.serializers import load_json
       from io import StringIO
 
       panel = load_json(StringIO("""\

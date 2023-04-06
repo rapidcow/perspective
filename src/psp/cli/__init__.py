@@ -25,6 +25,12 @@ __all__ = ['main', 'create_project']
 CURDIR = os.path.dirname(__file__)
 TEMPL = os.path.normpath(os.path.join(CURDIR, '..', '_templates'))
 
+# FIXME
+from . import tools
+__all__.extend(tools.__all__)
+from .tools import *
+del tools
+
 
 def main(argv=None):
     parser = argparse.ArgumentParser(

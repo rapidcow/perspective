@@ -2,9 +2,9 @@
 
 .. Using :mod:`types` links to the builtin types module so uhh don't
 
-===============================
-``types`` --- Important objects
-===============================
+======================================
+:mod:`psp.types` --- Important objects
+======================================
 
 .. module:: psp.types
    :synopsis: Define panel and entry classes and some others.
@@ -779,10 +779,11 @@ new file types there).
 Streaming Interface
 ^^^^^^^^^^^^^^^^^^^
 
-:class:`Entry` also offers two alternative methods to :meth:`get_raw_data`
-and :meth:`get_data` in case data only needs to be processed in chunks.
-Instead of returning *bytes* or *str*, these methods return file-like
-objects whose ``read()`` method returns them.
+:class:`Entry` also offers two alternative methods to
+:meth:`~Entry.get_raw_data` and :meth:`~Entry.get_data` in case data
+only needs to be processed in chunks.  Instead of returning *bytes* or
+*str*, these methods return file-like objects whose ``read()`` method
+returns them.
 
 .. method:: Entry.stream_raw_data()
 
@@ -795,9 +796,10 @@ objects whose ``read()`` method returns them.
    ``read()`` method returns the same type as what :meth:`get_data`
    returns.
 
-Here are some examples of how :meth:`stream_raw_data` and
-:meth:`stream_data` can be used.  Note that when the whole buffer is
-read, the result is identical to :meth:`get_raw_data` and :meth:`get_data`.
+Here are some examples of how :meth:`~Entry.stream_raw_data` and
+:meth:`~Entry.stream_data` can be used.  Note that when the whole
+buffer is read, the result is identical to :meth:`~Entry.get_raw_data`
+and :meth:`~Entry.get_data`.
 
 >>> from datetime import datetime, timezone
 >>> entry = Entry(datetime(2022, 2, 22, 14, 22, tzinfo=timezone.utc))
@@ -1011,8 +1013,9 @@ The instance we created earlier, however, isn't affected.
 >>> sorted(a.get_option_names())
 ['foo']
 
-And as described in :meth:`set_option`, an option is considered invalid
-in the scope of an instance, *not* the options the class defines:
+And as described in :meth:`~Configurable.set_option`, an option is
+considered invalid in the scope of an instance, *not* the options
+the class defines:
 
 >>> a.set_option('bar', 420)
 Traceback (most recent call last):
