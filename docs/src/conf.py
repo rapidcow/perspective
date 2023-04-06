@@ -32,10 +32,10 @@ current_project = get_project(multiproject_projects)
 # -- Project information -----------------------------------------------------
 
 project = {
-    'en': 'The Perspective Library',
-    'zh_CN': 'Perspective 库',
+    'en': 'The Perspective Journal',
+    'zh_CN': 'Perspective 日记',
 }[current_project]
-copyright = '2022, rapidcow :)'
+copyright = '2023, rapidcow :)'
 author = 'rapidcow'
 
 
@@ -58,6 +58,11 @@ templates_path = ['_templates']
 # directories to ignore when looking for source files.
 # This pattern also affects html_static_path and html_extra_path.
 exclude_patterns = ['Thumbs.db', '.DS_Store']
+
+# Make Sphinx warn about all undefined references.  See:
+# https://www.sphinx-doc.org/en/master/usage/configuration.html#confval-nitpicky
+# https://stackoverflow.com/a/14735060
+nitpicky = True
 
 
 # -- Options for HTML output -------------------------------------------------

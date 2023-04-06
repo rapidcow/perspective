@@ -6,8 +6,8 @@ __all__ = [
 ]
 
 import itertools
-from psp.processors.json_processor import JSONLoader, JSONDumper
-from psp.processors.json_processor import _assert_type, _ensure_text
+from psp.serializers import JSONLoader, JSONDumper
+from psp.serializers.json import _assert_type, _ensure_text
 from psp.stringify import EntryFormatter
 from psp.types import Entry
 

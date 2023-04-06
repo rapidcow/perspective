@@ -1,5 +1,5 @@
 """Main program :)"""
-from .main import main
+from .cli import main
 import sys
 
 # Do we need the if __name__ == '__main__' guard here?

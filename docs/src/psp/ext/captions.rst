@@ -1,10 +1,10 @@
 .. _ext_captions:
 
-==============================================================
-:mod:`extensions.captions` --- Entries with captions and stuff
-==============================================================
+===========================================================
+:mod:`psp.ext.captions` --- Entries with captions and stuff
+===========================================================
 
-.. module:: psp.extensions.captions
+.. module:: psp.ext.captions
    :synopsis: Entries with captions and stuff
 
 I don't know about you, but whenever I see *this* with stringify it always

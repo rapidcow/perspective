@@ -8,7 +8,7 @@ build-backend = "setuptools.build_meta"
 [project]
 name = "perspe"
 description = "A Python package for backing up entries in the iOS app Perspective"
-readme = "README.md"
+readme = "README.rst"
 requires-python = ">=3.8"
 authors = [
     { name="rapidcow", email="thegentlecow@gmail.com" },
@@ -20,8 +20,7 @@ classifiers = [
     "License :: OSI Approved :: GNU General Public License v3 (GPLv3)",
 ]
 dependencies = [
-    # "colorama~=0.4.6",
-    "termcolor~=2.2.0",
+    "termcolor==2.2.0",
 ]
 # XXX: What do I write here? O.o
 # https://python-poetry.org/docs/pyproject/
@@ -33,11 +32,11 @@ Documentation = "https://perspe.readthedocs.io/en/latest/"
 Source = "https://github.com/rapidcow/perspective/"
 
 [project.scripts]
-psp = "psp.main:main"
+psp = "psp.cli:main"
 
 # XXX: idk but they say support for tool.setuptools is still beta :I
 [tool.setuptools]
-packages = ["psp", "psp.main", "psp.processors", "psp.extensions"]
+packages = ["psp", "psp.cli", "psp.serializers", "psp.ext"]
 
 [tool.setuptools.dynamic]
 version = { attr="psp.__version__" }

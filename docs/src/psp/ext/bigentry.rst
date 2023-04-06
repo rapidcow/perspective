@@ -1,10 +1,10 @@
 .. _ext_bigentry:
 
-=================================================
-:mod:`extensions.bigentry` --- Blog-style entries
-=================================================
+==============================================
+:mod:`psp.ext.bigentry` --- Blog-style entries
+==============================================
 
-.. module:: psp.extensions.bigentry
+.. module:: psp.ext.bigentry
    :synopsis: Very big entries
 
 This module provides support for writing entries that include
@@ -85,13 +85,16 @@ The inference rules will work as expected!  So say if ``main-file`` is
 
 .. class:: BigLoader
 
-   :class:`~psp.processors.json_processor.JSONLoader` subclass
-   that reads big entries.
+   |JSONLoader| subclass that reads big entries.
 
    .. method:: make_entry(entry_class, entry, panel, attrs)
 
       Does something magical at the moment (I won't describe how
       it's too hacky)
+
+   .. method:: process_entry(entry, panel, attrs)
+
+      Almost the same thing?
 
    .. method:: get_export_path_directory(entry)
 
@@ -101,13 +104,13 @@ The inference rules will work as expected!  So say if ``main-file`` is
 
 .. class:: BigDumper
 
-   :class:`~psp.processors.json_processor.JSONDumper` subclass
-   that writes big entries.
+   |JSONDumper| subclass that writes big entries.
 
    .. method:: wrap_entry(entry, attrs)
 
       Magical just like :meth:`BigLoader.process_entry`
 
-.. |JSONLoader| replace:: :class:`~psp.processors.json_processor.JSONLoader`
+.. |JSONLoader| replace:: :class:`~psp.serializers.json.JSONLoader`
+.. |JSONDumper| replace:: :class:`~psp.serializers.json.JSONDumper`
 .. |get_type| replace:: :meth:`~psp.types.Entry.get_type`
 .. |set_type| replace:: :meth:`~psp.types.Entry.set_type`
