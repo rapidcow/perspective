@@ -2,6 +2,9 @@
 The :mod:`psp` Package
 ======================
 
+.. module:: psp
+   :synopsis: Bundle of weird stuff for backing up diaries
+
 Modules!
 
 also please don't blame me for writing some too technically or informally,
@@ -11,10 +14,10 @@ i've already spent weeks on this and i'm going insane already
    :maxdepth: 1
 
    types.rst
-   json_proc.rst
+   serializers/json.rst
    stringify.rst
-   ftypes.rst
+   cli.rst
+   filetypes.rst
    timeutil.rst
    util.rst
-   main.rst
-   exts/index.rst
+   ext/index.rst

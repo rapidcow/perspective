@@ -6,7 +6,7 @@ import copy
 import json
 from collections import OrderedDict
 
-from psp.processors.json_processor import JSONLoader, JSONDumper
+from psp.serializers import JSONLoader, JSONDumper
 from psp.types import Entry
 
 

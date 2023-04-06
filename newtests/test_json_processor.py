@@ -1,4 +1,4 @@
-"""Test the psp.processors.json_processor module."""
+"""Test the psp.serializer.json module."""
 import base64
 import collections
 from datetime import date, datetime, timezone
@@ -14,7 +14,7 @@ import unittest.mock
 
 from . import *
 from psp.types import Entry, Panel
-from psp.processors.json_processor import (
+from psp.serializers.json import (
     JSONLoader, LoadError, LoadWarning,
     JSONDumper, DumpError, DumpWarning, InferenceManager,
     load_json, dump_json,
