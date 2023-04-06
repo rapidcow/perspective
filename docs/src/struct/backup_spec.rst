@@ -17,7 +17,7 @@ Abstract
 
 This is meant to provide a technical specification for the minimal
 syntax of ``backup.json``, as read and written by
-:mod:`psp.processors.json_processor`.
+:mod:`psp.serializers.json`.
 
 .. important::
 
@@ -131,7 +131,7 @@ rating (optional)
 
    .. doctest::
 
-      >>> from psp.processors.json_processor import load_json
+      >>> from psp.serializers.json import load_json
       >>> from io import StringIO
       >>> panels = load_json(StringIO("""\
       ... {
@@ -178,7 +178,7 @@ This will be a reorganized version of the algorithm from
 :ref:`basicproc <basicproc_inference>`.
 
 
-.. |JSONLoader| replace:: :class:`~psp.processors.json_processor.JSONLoader`
-.. |JSONDumper| replace:: :class:`~psp.processors.json_processor.JSONDumper`
-.. |parse_timezone| replace:: :meth:`JSONLoader.parse_timezone() <psp.processors.json_processor.JSONLoader.parse_timezone>`
-.. |parse_date| replace:: :meth:`JSONLoader.parse_date() <psp.processors.json_processor.JSONLoader.parse_date>`
+.. |JSONLoader| replace:: :class:`~psp.serializers.json.JSONLoader`
+.. |JSONDumper| replace:: :class:`~psp.serializers.json.JSONDumper`
+.. |parse_timezone| replace:: :meth:`JSONLoader.parse_timezone() <psp.serializers.json.JSONLoader.parse_timezone>`
+.. |parse_date| replace:: :meth:`JSONLoader.parse_date() <psp.serializers.json.JSONLoader.parse_date>`

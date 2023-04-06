@@ -8,8 +8,8 @@ import unittest
 
 from . import *
 from psp.types import Entry
-from psp.processors.json_processor import JSONDumper
-from psp.extensions.bigentry import BigDumper, BigEntry
+from psp.serializers import JSONDumper
+from psp.ext.bigentry import BigDumper, BigEntry
 
 
 def can_pack_format(fmt):

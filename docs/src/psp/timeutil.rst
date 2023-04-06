@@ -1,8 +1,8 @@
 .. _timeutil:
 
-==========================================
-:mod:`timeutil` --- Time utility functions
-==========================================
+==============================================
+:mod:`psp.timeutil` --- Time utility functions
+==============================================
 
 .. module:: psp.timeutil
    :synopsis: Time utility

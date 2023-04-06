@@ -11,7 +11,7 @@ import shutil
 import tempfile
 import zipfile
 
-from psp.processors.json_processor import JSONLoader, JSONDumper
+from psp.serializers import JSONLoader, JSONDumper
 from psp.types import Entry, _AttributeHolder
 from psp.util import copyfileobj, fileobjequal
 
