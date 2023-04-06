@@ -1,23 +1,24 @@
-.. _processors_json:
+.. _serializers_json:
 
-================================================================
-:mod:`processors.json_processor` --- JSON backup file processors
-================================================================
+===========================================================
+:mod:`psp.serializers.json` --- JSON backup file processors
+===========================================================
 
-.. module:: psp.processors.json_processor
+.. module:: psp.serializers.json
    :synopsis: JSON backup file processors
 
-Some of the classes and functions are imported into the :mod:`processors`
-module.  Specifically::
+Some of the classes and functions are imported into the
+``serializers`` module.  Specifically::
 
-   from psp.processors import load_json, dump_json
-   from psp.processors import JSONLoader, JSONDumper
+   from psp.serializers import load_json, dump_json
+   from psp.serializers import JSONLoader, JSONDumper
 
 can be used instead of the whole long name.
 
 All the examples below will use the following import::
 
-   from psp.processors.json_processor import *
+   from psp.serializers.json import *
+   from psp.serializers.helpers import *
 
 .. important::
 
@@ -28,7 +29,8 @@ All the examples below will use the following import::
 
 .. testsetup::
 
-   from psp.processors.json_processor import *
+   from psp.serializers.json import *
+   from psp.serializers.helpers import *
 
 
 -----------
@@ -156,12 +158,13 @@ two things (opening a file and processing).
       (3)
          A warning is issued if ``t1 > t2`` for any two consecutive entries
          of times ``t1 and t2`` (converted to UTC).  In particular, main
-         entries and insight entries (entries whose :attr:`insight` attribute
-         is False and True respectively) should be ordered *separately*
-         according to the above rule: either all insight entries follow main
-         entries, or all main entries follow insight entries.  But if a
-         transition from insight to main or vice versa occurred more than
-         once, then a warning is issued.
+         entries and insight entries (entries whose
+         :attr:`~psp.types.Entry.insight` attribute is False and True
+         respectively) should be ordered *separately* according to the
+         above rule: either all insight entries follow main entries, or
+         all main entries follow insight entries.  But if a transition
+         from insight to main or vice versa occurred more than once, then
+         a warning is issued.
 
       (4)
          This has no effect if ``suppress_warnings`` is true.
@@ -424,7 +427,7 @@ encountered by the loader isn't detrimental to the output, like this
 .. testsetup:: error_on_warning
 
       # XXX: Why do we have to do this?
-      from psp.processors.json_processor import JSONLoader
+      from psp.serializers.json import JSONLoader
       data = {'data': [{
          'date': '2022-02-22',
          'entries': [{'time': '08:00+00:00',
@@ -450,7 +453,7 @@ encountered by the loader isn't detrimental to the output, like this
    ...     ]
    ... }
    >>> panels = list(JSONLoader().load_data(data))# doctest: +SKIP
-   psp/processors/json_processor.py:761: LoadWarning: ignored entry key: invalid-key
+   psp/serializers/json.py:761: LoadWarning: ignored entry key: invalid-key
    >>> panels
    [<Panel object on 2022-02-22>]
 
@@ -462,7 +465,7 @@ as it prints a useful stack trace that can help locate the problem:
    >>> list(JSONLoader(error_on_warning=True).load_data(data))
    Traceback (most recent call last):
      ...
-   psp.processors.json_processor.LoadWarning: ignored entry key: invalid-key
+   psp.serializers.json.LoadWarning: ignored entry key: invalid-key
 
 On the other hand, if you want all warnings to be ignored, set the
 ``suppress_warning`` option to True.  This always overrides
@@ -483,14 +486,14 @@ hand:
 ... }))
 Traceback (most recent call last):
   ...
-psp.processors.json_processor.LoadWarning: panel #2 (2022-06-02) is after panel #3 (2019-06-03)
+psp.serializers.json.LoadWarning: panel #2 (2022-06-02) is after panel #3 (2019-06-03)
 >>> list(JSONLoader(error_on_warning=True).load_data({
 ...    'data': [{ 'date': '2022-02-02' },
 ...             { 'date': '2022-02-02' }]
 ... }))
 Traceback (most recent call last):
   ...
-psp.processors.json_processor.LoadWarning: panel #1 has the same date as #2 (2022-02-02)
+psp.serializers.json.LoadWarning: panel #1 has the same date as #2 (2022-02-02)
 
 
 ``check_entry_order``
@@ -522,7 +525,7 @@ have equal time (with time zone taken into account, that is):
 >>> list(JSONLoader(error_on_warning=True).load_data(data))
 Traceback (most recent call last):
   ...
-psp.processors.json_processor.LoadWarning: inconsistent order in main entries in panel 2 on 2021-07-27 (entry 2 precedes entry 1 in time)
+psp.serializers.json.LoadWarning: inconsistent order in main entries in panel 2 on 2021-07-27 (entry 2 precedes entry 1 in time)
 
 Note that when stepping through the generator, only the panel being yielded
 is checked for:
@@ -533,7 +536,7 @@ is checked for:
 >>> next(panel_iter)
 Traceback (most recent call last):
   ...
-psp.processors.json_processor.LoadWarning: inconsistent order in main entries in panel 2 on 2021-07-27 (entry 2 precedes entry 1 in time)
+psp.serializers.json.LoadWarning: inconsistent order in main entries in panel 2 on 2021-07-27 (entry 2 precedes entry 1 in time)
 
 Aside from the time being in increasing order, main entries (not insights)
 must always come before insight entries, if there are any at all.
@@ -575,7 +578,7 @@ an example of good entry order and two examples of bad entry order:
 >>> next(panel_iter)
 Traceback (most recent call last):
   ...
-psp.processors.json_processor.LoadWarning: expected entry 3 to be an insight entry, got a main entry (in panel 2 on 2021-08-18)
+psp.serializers.json.LoadWarning: expected entry 3 to be an insight entry, got a main entry (in panel 2 on 2021-08-18)
 >>> data = {
 ...     'tz': 'UTC',
 ...     'data': [
@@ -596,7 +599,7 @@ psp.processors.json_processor.LoadWarning: expected entry 3 to be an insight ent
 >>> next(JSONLoader(error_on_warning=True).load_data(data))
 Traceback (most recent call last):
   ...
-psp.processors.json_processor.LoadWarning: inconsistent order in insight entries in panel 1 on 2021-08-19 (entry 3 precedes entry 2 in time)
+psp.serializers.json.LoadWarning: inconsistent order in insight entries in panel 1 on 2021-08-19 (entry 3 precedes entry 2 in time)
 
 
 ``warn_ambiguous_paths``
@@ -649,7 +652,7 @@ True, :class:`LoadError` will issue a warning:
 .. testsetup:: warn_ambiguous_paths
 
    import os, tempfile
-   from psp.processors.json_processor import *
+   from psp.serializers.json import *
    tdir = tempfile.TemporaryDirectory()
    root = tdir.name
    os.mkdir(os.path.join(root, 'a'))
@@ -691,7 +694,7 @@ True, :class:`LoadError` will issue a warning:
    ...
    Traceback (most recent call last):
      ...
-   psp.processors.json_processor.LoadWarning: found more than one path for 'a.txt'; using the first path found '.../a/a.txt' (base_dir = '...')
+   psp.serializers.json.LoadWarning: found more than one path for 'a.txt'; using the first path found '.../a/a.txt' (base_dir = '...')
 
 (The three dots in the exception message are a mere placeholder.  What's
 actually printed is whatever the absolute path *root* has.)
@@ -740,8 +743,8 @@ Extensions
 
 This section is rather advanced IMO so I put it as the last part of the
 Loading section.  Basically, to add support for panel and entry extensions,
-:meth:`process_panel` and :meth:`process_entry` are broken down into three
-methods:
+:meth:`~JSONLoader.process_panel` and :meth:`~JSONLoader.process_entry` are
+broken down into three methods:
 
 *  ``get_*_extensions()`` receives all arguments from ``process_*()`` and
    returns a list of extensions (subclasses of
@@ -999,14 +1002,14 @@ panel (and its entries recursively) in JSON.
              self.dump_json(data, fp, attrs=attrs)
 
       At first glance, it might seem weird how we have such an
-      asymmetrical option for :meth:`dump` but not :meth:`load`.
-      As we will document shortly, this optional *attrs* parameter is
-      particularly useful when attributes aren't generated dynamically
-      based on the state of the dumper (like a description string);
-      that is the job of :meth:`prepare_backup`.
-      (As an aside, :class:`JSONLoader` gets all the top-level
-      attributes it needs from the JSON data itself, so it doesn't
-      need such an awkward option.)
+      asymmetrical option for :meth:`dump` but not
+      :meth:`~JSONLoader.load`.  As we will document shortly, this
+      optional *attrs* parameter is particularly useful when
+      attributes aren't generated dynamically based on the state of
+      the dumper (like a description string); that is the job of
+      :meth:`prepare_backup`.  (As an aside, :class:`JSONLoader` gets
+      all the top-level attributes it needs from the JSON data itself,
+      so it doesn't need such an awkward option.)
 
    .. method:: dump(panels, fp, *, attrs=None)
 
@@ -1277,7 +1280,7 @@ panel (and its entries recursively) in JSON.
    .. The three JSON values are produced with this
 
       from datetime import timezone
-      from psp.processors import JSONLoader, JSONDumper
+      from psp.serializers import JSONLoader, JSONDumper
       from os.path import join
       from textwrap import indent
       from tempfile import TemporaryDirectory
@@ -1371,7 +1374,7 @@ panel (and its entries recursively) in JSON.
    >>> JSONDumper().wrap_entry(entry, attrs)
    Traceback (most recent call last):
      ...
-   psp.processors.json_processor.DumpError: base_dir must be set when calling generate_export_path()
+   psp.serializers.json.DumpError: base_dir must be set when calling generate_export_path()
 
    .. XXX: One drawback of implementing get_input_path() this way (exhibiting
       behavior as shown above) is that we are forcing the user to export with
@@ -1684,7 +1687,7 @@ panel (and its entries recursively) in JSON.
       To see what we said in action, consider the following code that
       implements the preceding example::
 
-         from psp.processors import JSONLoader, JSONDumper
+         from psp.serializers import JSONLoader, JSONDumper
          import io, json, tempfile
 
          class DemoDumper(JSONDumper):
@@ -1719,7 +1722,7 @@ panel (and its entries recursively) in JSON.
 
       .. code-block:: text
 
-         .../psp/processors/json_processor.py:1291:
+         .../psp/serializers/json.py:1291:
          DumpWarning: 'a/1.txt' is not the shortest reachable path for 'a/1.txt'
          (parent directory 'a' matches the lookup path 'a'); name collisions may occur
            self._warn(

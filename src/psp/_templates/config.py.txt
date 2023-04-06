@@ -15,7 +15,7 @@ import sys
 import tempfile
 
 # Perspective imports
-from psp.main import tools
+import psp.cli as tools
 from psp.util import import_module, merge_panels
 
 # Local library imports

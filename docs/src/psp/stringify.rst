@@ -1,8 +1,8 @@
 .. _stringify:
 
-==============================================
-:mod:`stringify` --- Format panels and entries
-==============================================
+==================================================
+:mod:`psp.stringify` --- Format panels and entries
+==================================================
 
 .. module:: psp.stringify
    :synopsis: Formatter stuff
