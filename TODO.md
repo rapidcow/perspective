@@ -1,4 +1,3 @@
-
 - [ ] make backups optional when running update
 - [ ] only update files that are changed in
     * rename old files to `*.old`
@@ -18,6 +17,8 @@
     * points to scripts/config.py for configuration and scripts/main.py for entry point (ONLY for CLI use, put EVERYTHING else in config.py)
     * make a main function parser that allows custom callbacks to be added for subcommands!!!
     * also python -m psp should be equivalent to psp itself...
+    * richify.py for the stringify.py successor with Will McGugan's rich library????
+    * UPDATE intro.rst WITH THE COOL STUFF TO IMPRESS PEOPLE
 - [ ] more friendly prompting for creating a psp project
     * scripts location? (optional)
         - also put lib with the scripts, awkward import hacks are awkward
