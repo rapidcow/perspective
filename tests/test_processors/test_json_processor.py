@@ -1,4 +1,4 @@
-"""Test the psp.processors.json_processor module."""
+"""Test the psp.serializers.json module."""
 import copy
 from datetime import date, time, datetime, timedelta, timezone
 import io
@@ -9,8 +9,8 @@ import shutil
 import tempfile
 import unittest
 
-from psp import filetypes
-from psp.processors import json_processor as processor
+import psp.filetypes as filetypes
+import psp.serializers.json as processor
 from psp.types import Panel, Entry
 
 

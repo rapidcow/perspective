@@ -1,10 +1,10 @@
 .. _ext_metadata:
 
-====================================================
-:mod:`extensions.metadata` --- Entries with metadata
-====================================================
+=================================================
+:mod:`psp.ext.metadata` --- Entries with metadata
+=================================================
 
-.. module:: psp.extensions.metadata
+.. module:: psp.ext.metadata
    :synopsis: Metadata support for entries
 
 This module defines entries with meta attributes!  The *meta* attribute

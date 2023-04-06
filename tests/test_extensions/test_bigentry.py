@@ -5,7 +5,7 @@ import shutil
 import tempfile
 import unittest
 
-from psp.extensions import bigentry
+from psp.ext import bigentry
 from ..test_processors.test_json_processor import (
     make_backup, add_entries, write_json, write_file,
 )
