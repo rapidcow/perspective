@@ -15,6 +15,7 @@ i've already spent weeks on this and i'm going insane already
 
    types.rst
    serializers/json.rst
+   serializers/text.rst
    stringify.rst
    cli.rst
    filetypes.rst
