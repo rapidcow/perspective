@@ -21,11 +21,16 @@ classifiers = [
 ]
 dependencies = [
     "termcolor==2.2.0",
+    "inquirer==3.1.3",
+    "tomlkit==0.11.7",
 ]
 # XXX: What do I write here? O.o
 # https://python-poetry.org/docs/pyproject/
 license = {text="GPL-3.0-or-later"}
 dynamic = ["version"]
+
+[project.optional-dependencies]
+rich = ["rich==13.3.3"]
 
 [project.urls]
 Documentation = "https://perspe.readthedocs.io/en/latest/"
