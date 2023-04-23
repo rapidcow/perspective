@@ -94,8 +94,8 @@ two things (opening a file and processing).
 
    The JSON backup file loader class.  This class inherits from
    :class:`~psp.types.Configurable`, so you can technically use all the
-   methods there, although we will stick to the |Configurable.configure|
-   method in all the following examples since that has stuck around for a
+   methods there, although we will stick to the |configure| method in
+   all the following examples since that has stuck around for a
    while.
 
    The constructor takes no positional arguments, and all keyword
@@ -103,8 +103,7 @@ two things (opening a file and processing).
 
    .. method:: configure(**options)
 
-      Configure options.
-      This is inherited from :class:`~psp.types.Configurable`.
+      Configure options, inherited from |configure|.
 
       The following is a table of all options.
 
@@ -896,8 +895,8 @@ panel (and its entries recursively) in JSON.
 
    The JSON backup file dumper class.  This class inherits from
    :class:`~psp.types.Configurable` just like :class:`JSONLoader`, though
-   same as before, we will only use the |Configurable.configure| method in
-   the examples that are to follow.
+   same as before, we will only use the |configure| method in the examples
+   that are to follow.
 
    .. warning::
 
@@ -913,8 +912,7 @@ panel (and its entries recursively) in JSON.
 
    .. method:: configure(**options)
 
-      Configure options.
-      This is inherited from :class:`~psp.types.Configurable`.
+      Configure options, inherited from |configure|.
 
       The following is a table of all options.
 
@@ -1975,4 +1973,4 @@ they're just there in case you need it.
 .. |Panel| replace:: :class:`~psp.types.Panel`
 .. |Entry| replace:: :class:`~psp.types.Entry`
 .. |stream_raw_data| replace:: :meth:`~psp.types.Entry.stream_raw_data`
-.. |Configurable.configure| replace:: :meth:`Configurable.configure() <psp.types.Configurable.configure>`
+.. |configure| replace:: :meth:`Configurable.configure() <psp.types.Configurable.configure>`

@@ -1,13 +1,26 @@
 """Plain text processors"""
+from ..types import Configurable
+from .. import timeutil
+
+import datetime
 import logging
 import io
 import itertools
 import json
 import os
-import shlex
 
-from ..types import Configurable
-from .. import timeutil
+# from shlex import shlex
+from collections import deque
+
+logger = logging.getLogger(__name__)
+logger.setLevel(logging.WARNING)
+
+formatter = logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(message)s')
+handler = logging.StreamHandler()
+handler.setLevel(logging.DEBUG)
+
+handler.setFormatter(formatter)
+logger.addHandler(handler)
 
 
 __all__ = ['TextLoader', 'TextDumper', 'load_text', 'dump_text']
@@ -22,10 +35,6 @@ class LoadError(ValueError):
         return f'line {self.lineno}: {self.msg}'
 
 
-def _is_eol(token):
-    return '\n' in token or '\r' in token
-
-
 # I don't know why itertools doesn't define a negated counterpart of this
 def _takeuntil(predicate, iterable):
     return itertools.takewhile(lambda x: not predicate(x), iterable)
@@ -33,7 +42,109 @@ def _takeuntil(predicate, iterable):
 
 # AUGHH i hate different line terminators (LF CRLF CR all that stuff)
 def _count_lines(s):
-    return len(s.splitlines()) + 1
+    return len(s.splitlines()) - 1
+
+
+# neither %m-%d-%Y nor %d-%m-%Y will be accepted
+# --- it would only cost people
+_DATETIME_FORMATS = [
+    '%Y-%m-%d {}', '%Y/%m/%d {}',
+    '%b %d %Y {}', '%a %b %d %Y {}', '%a %b %d {} %Y',
+    '%B %d %Y {}', '%a %B %d %Y {}', '%a %B %d {} %Y',
+]
+_DATETIME_FORMATS_NO_YEAR = [
+    '%m-%d {}', '%m/%d {}',
+    '%b %d {}', '%a %b %d {}',
+    '%B %d {}', '%a %B %d {}',
+]
+_DATE_FORMATS = [
+    ' '.join(fmt.format('').split()) for fmt in _DATETIME_FORMATS
+]
+_DATE_FORMATS_NO_YEAR = [
+    ' '.join(fmt.format('').split()) for fmt in _DATETIME_FORMATS_NO_YEAR
+]
+# we will leave fractional seconds to fromisoformat()
+_TIME_FORMATS = [
+    '%H:%M', '%H:%M:%S', '%H:%M:%S%z',
+    '%I:%M %p', '%I:%M:%S %p', '%I:%M:%S%z %p',
+]
+
+def _parse_datetime(s, year):
+    try:
+        return timeutil.parse_datetime(s)
+    except ValueError:
+        pass
+    for dt_format in _DATETIME_FORMATS:
+        for tm_format in _TIME_FORMATS:
+            fmt = dt_format.format(tm_format)
+            try:
+                return datetime.datetime.strptime(s, fmt)
+            except ValueError:
+                pass
+    if year is None:
+        raise ValueError('unknown year')
+    for dt_format in _DATETIME_FORMATS_NO_YEAR:
+        for tm_format in _TIME_FORMATS:
+            fmt = dt_format.format(tm_format)
+            try:
+                return (datetime.datetime.strptime(s, fmt)
+                        .replace(year=year))
+            except ValueError:
+                pass
+    raise ValueError(f'invalid datetime: {s!r}')
+
+
+def _parse_time(s):
+    try:
+        return timeutil.parse_time(s)
+    except ValueError:
+        pass
+    for fmt in _TIME_FORMATS:
+        try:
+            return datetime.datetime.strptime(s, fmt).time()
+        except ValueError:
+            pass
+    raise ValueError(f'invalid time: {s!r}')
+
+
+def _parse_date(s, year):
+    try:
+        return timeutil.parse_date(s)
+    except ValueError:
+        pass
+    for fmt in _DATE_FORMATS:
+        try:
+            return datetime.datetime.strptime(s, fmt).date()
+        except ValueError:
+            pass
+    if year is None:
+        raise ValueError('unknown year')
+    for fmt in _DATE_FORMATS_NO_YEAR:
+        try:
+            return (datetime.datetime.strptime(s, fmt)
+                    .date().replace(year=year))
+        except ValueError:
+            pass
+    raise ValueError(f'invalid date: {s!r}')
+
+
+def _join_tokens(tokens, wordchars):
+    buffer = []
+    was_word = False
+    for token in tokens:
+        is_word = token[:1] in wordchars
+        if not is_word and was_word:
+            buffer.pop()
+        buffer.append(token)
+        if is_word:
+            buffer.append(' ')
+        was_word = is_word
+    if was_word:
+        buffer.pop()
+    return ''.join(buffer)
+
+
+_DEBUG = 0
 
 
 # XXX More useful docstring
@@ -54,113 +165,277 @@ class TextLoader(Configurable):
         else:
             buffer = io.StringIO(fp.read())
 
-        # punctuation_chars is a Python 3.6+ thing
-        lexer = shlex.shlex(fp, punctuation_chars='\n\r')
+        lexer = shlex(buffer, punctuation_chars='\n\r', posix=True)
+        lexer.whitespace_split = True
+        if _DEBUG:
+            lexer.debug = 69
         lexer.whitespace = ' \t'
 
         # top level attributes?
         attrs = {}
-        last = 0
-        while True:
-            token = lexer.get_token()
-            if token == lexer.eof:
-                break
-            if _is_eol(token):
+        last = buffer.tell() - len(lexer._pushback_chars)
+        lineno = lexer.lineno
+        for token in lexer:
+            if self.is_eol(token):
                 continue
-            elif token.upper() == 'TZ':
-                attrs['tz'] = self.get_string(buffer, lexer)
-            elif token.upper() == 'PATHS':
-                attrs['paths'] = self.get_json(buffer, lexer)
-            else:
-                # preamble over; start parsing the panels
+            if self.process_preamble(attrs, token, buffer, lexer):
                 break
-            last = buffer.tell()
+            last = buffer.tell() - len(lexer._pushback_chars)
+            lineno = lexer.lineno
 
-        buffer.seek(last)
-        return attrs, self.process_panels(buffer, lexer)
+        logger.info('preamble over on line %d', lexer.lineno)
+        buffer.seek(last, os.SEEK_SET)
+        lexer._pushback_chars.clear()
+        lexer.lineno = lineno
+        panels = list(self.process_panels(attrs, buffer, lexer))
+        if panels:
+            attrs['data'] = panels
+        return attrs
 
-    def process_panels(self, buffer, lexer):
-        current_panel = None
-        while True:
-            token = lexer.get_token()
-            if token == lexer.eof:
-                return
+    # calling this differently because it feels less apropos to
+    # call this "top-level ATTRIBUTES" when it's all laid out like this
+    def process_preamble(self, attrs, token, buffer, lexer):
+        if (self.is_panel(token) or
+                (token.startswith('---') and
+                 all(c == '-' for c in token))):
+            return True
+        tup = token.upper()
+        if tup == 'TZ':
+            attrs['tz'] = self.get_string(buffer, lexer)
+        elif tup == 'PATHS':
+            attrs['paths'] = self.get_json(buffer, lexer)
+        elif tup == 'YEAR':
+            assert 'year' not in attrs
+            attrs['year'] = int(self.get_string(buffer, lexer))
+        else:
+            # forbidden tokens: sorry, not allowed to use them :(
+            # (otherwise anything would pass as a valid entry and
+            # that's kind of, like, seriously error-prone)
+            if self.is_entry(token):
+                raise LoadError(lexer.lineno, 'unknown panel')
+            attrs[token.lower()] = self.get_string(buffer, lexer)
+        return False
+
+    def process_panels(self, attrs, buffer, lexer):
+        curr = None
+        date = None
+        for token in lexer:
             # empty line / comment
-            if _is_eol(token):
+            if self.is_eol(token):
                 continue
             if token.upper() in ('PANEL', 'DATE'):
-                if current_panel is not None:
-                    yield current_panel
-                current_panel = self.parse_panel_head(buffer, lexer)
-                print(current_panel)
+                if curr is not None:
+                    yield curr
+                curr, date = self.parse_panel_head(attrs, buffer, lexer)
             else:
-                self.parse_panel_body(current_panel, buffer, lexer)
-        if current_panel is not None:
-            yield current_panel
+                self.parse_panel_body(attrs, curr, date, token, buffer, lexer)
+        if curr is not None:
+            yield curr
 
-    def parse_panel_head(self, buffer, lexer):
+    def parse_panel_head(self, attrs, buffer, lexer):
         """(buffer, lexer) -> panel dict"""
         # keep old line number before we consume the whole line
-        lineno = lexer.lineno
-        tokens = list(self.get_tokens(lexer))
+        tokens = self.get_tokens(buffer, lexer)
         if not tokens:
-            raise LoadError(lineno,
-                            'expected date in panel head')
+            raise LoadError(lexer.lineno, 'expected date in panel head')
         # split date and rating if necessary
+        logger.debug('panel tokens on line %d', lexer.lineno)
+        logger.debug(tokens)
         for i in range(len(tokens), 0, -1):
+            candidate = _join_tokens(tokens[:i], lexer.wordchars)
+            logger.debug('attempting %r', candidate)
             try:
-                date = self.parse_date(' '.join(tokens[:i]))
+                date = self.parse_date(candidate, attrs.get('year'))
             except ValueError:
                 continue
-            rating = None if i == len(tokens) else ' '.join(tokens[i:])
+            if i == len(tokens):
+                rating = None
+            else:
+                rating = _join_tokens(tokens[:i], lexer.wordchars)
             break
         else:
-            raise LoadError(lineno,
+            raise LoadError(lexer.lineno,
                             f'cannot parse tokens: {tokens!r}')
-
-            # this is assuming you don't use alphanumerical stuff
-            # like XD as a "rating"
-        panel = {'date': timeutil.format_date(date)}
+        logger.info('parsed panel of date %s on line %s',
+                    date, lexer.lineno)
+        panel = {'date': self.format_date(date)}
         if rating is not None:
             panel['rating'] = rating
-        return panel
+        return panel, date
 
-    def parse_panel_body(self, panel, buffer, lexer):
-        entries = []
-        # if encountered ENTRY / INSIGHT token,
-        # call process_entry_head() & push into entries
-        #   (in this case assert that "panel is not None")
-        # otherwise we should enter process_entry_body()
-        if entries:
-            panel['entries'] = entries
+    def parse_panel_body(self, attrs, panel, date, token, buffer, lexer):
+        assert panel and date, 'no panel'
+        logger.debug('process token in panel %r', token)
+        if not self.is_entry(token):
+            tup = token.upper()
+            if tup == 'ATTR':
+                attrs = self.get_json(buffer, lexer)
+                panel.update(attrs)
+            elif tup in ('RATE', 'RATING'):
+                panel['rating'] = self.get_string(buffer, lexer)
+            else:
+                raise LoadError(lexer.lineno, 'invalid panel')
 
-    def process_entry_head(self, buffer, lexer):
-        pass
+            if 'entries' in panel:
+                raise LoadError(lexer.lineno,
+                                f'ambiguous token {token!r}; already '
+                                f'encountered at least one entry')
+        # if encountered ENTRY / INSIGHT token:
+        while self.is_entry(token):
+            curr = self.process_entry_head(attrs, date, token, buffer, lexer)
+            logger.debug('created entry:')
+            logger.debug(curr)
+            try:
+                panel['entries'].append(curr)
+            except KeyError:
+                panel['entries'] = [curr]
+            last = buffer.tell() - len(lexer._pushback_chars)
+            lineno = lexer.lineno
+            for token in lexer:
+                if self.is_panel(token):
+                    buffer.seek(last, os.SEEK_SET)
+                    lexer._pushback_chars.clear()
+                    lexer.lineno = lineno
+                    return
+                if self.is_entry(token):
+                    break
+                if not self.is_eol(token):
+                    self.process_entry_body(attrs, curr, token, buffer, lexer)
+                last = buffer.tell() - len(lexer._pushback_chars)
+                lineno = lexer.lineno
 
-    def process_entry_body(self, buffer, lexer):
-        pass
+    def process_entry_head(self, attrs, date, token, buffer, lexer):
+        tup = token.upper()
+        logger.debug('process token in entry head %r', token)
+        if tup == 'INSIGHT':
+            # insight can be optionally followed by 'ENTRY'
+            if self.peek_token(buffer, lexer).upper() == 'ENTRY':
+                next(lexer)
+            is_insight = True
+            logger.info('insight keyword found')
+        else:
+            is_insight = False
+            logger.info('no insight keyword found')
+        time_str = self.get_string(buffer, lexer)
+        logger.info('attempting to parse %r', time_str)
+        time = self.parse_time(time_str, date)
+        logger.info('parsed %s on line %d', time, lexer.lineno)
+        entry = {}
+        if time.date() == date:
+            entry['time'] = self.format_time(time)
+        else:
+            entry['date-time'] = self.format_datetime(time)
+        if not timeutil.is_naive(time):
+            entry['tz'] = timeutil.format_offset(time.utcoffset())
+        if is_insight:
+            entry['insight'] = True
+        return entry
+
+    def process_entry_body(self, attrs, entry, token, buffer, lexer):
+        tup = token.upper()
+        logger.debug('process token in entry %r', token)
+        if tup == 'TYPE':
+            entry['type'] = self.get_string(buffer, lexer)
+        elif tup == 'FORMAT':
+            entry['format'] = self.get_string(buffer, lexer)
+        elif tup == 'QUESTION':
+            entry['question'] = self.get_string(buffer, lexer)
+        elif all(c == '<' for c in token):
+            entry_type = self.get_string(buffer, lexer)
+            logger.info('type of <<< content is %r on line %s',
+                        entry_type, lexer.lineno)
+            if entry_type:
+                entry['type'] = entry_type
+            sentinel = '>' * len(token)
+            lines = []
+            # we want to preserve new lines
+            for line in buffer:
+                lexer.lineno += 1
+                logger.debug('read %r on line %d', line, lexer.lineno)
+                if line.strip() == sentinel:
+                    logger.debug('SENTINEL')
+                    break
+                lines.append(line)
+            else:
+                raise LoadError(lexer.lineno,
+                                'unexpected EOF while scanning '
+                                'for entry data')
+            entry['data'] = ''.join(lines)
+        elif tup == 'ATTR':
+            entry.update(self.get_json(buffer, lexer))
+        else:
+            raise LoadError(lexer.lineno, 'invalid entry line')
 
     # types of fields I think will show up commonly
     # (these aren't supposed to be methods eh)
-    def get_tokens(self, lexer):
-        return _takeuntil(_is_eol, lexer)
+    # XXX should these be static????
+    def is_eol(self, token):
+        return '\n' in token or '\r' in token
 
-    def process_string(self, buffer, lexer):
-        return ' '.join(get_tokens(lexer))
+    def get_tokens(self, buffer, lexer):
+        tokens = list(_takeuntil(self.is_eol, lexer))
+        if buffer.read(1):
+            buffer.seek(buffer.tell() - 2)
+            lastchar = buffer.read(1)
+            try:
+                if lastchar == lexer._pushback_chars[-1]:
+                    lexer._pushback_chars.pop()
+            except IndexError:
+                pass
+            buffer.seek(buffer.tell() - 1)
+        return tokens
 
-    def process_json(self, buffer, lexer):
-        curr = buffer.seek()
+    def peek_token(self, buffer, lexer):
+        pos = buffer.tell()
+        oldchars = deque(lexer._pushback_chars)
+        oldlineno = lexer.lineno
+        token = lexer.get_token()
+        buffer.seek(pos, os.SEEK_SET)
+        lexer._pushback_chars = oldchars
+        lexer.lineno = oldlineno
+        return token
+
+    def is_panel(self, token):
+        return token.upper() in ('PANEL', 'DATE')
+
+    def is_entry(self, token):
+        return token.upper() in ('ENTRY', 'INSIGHT', 'TIME')
+
+    def get_string(self, buffer, lexer):
+        if all(c == '<' for c in self.peek_token(buffer, lexer)):
+            token = self.get_tokens(buffer, lexer)
+            assert self.is_eol(lexer.get_token())
+            sentinel = '>' * len(token)
+            lines = []
+            # again we want to preserve new lines
+            for line in buffer:
+                lexer.lineno += 2
+                if (line.startswith(sentinel)
+                        and line.rstrip() == sentinel):
+                    break
+                lines.append(line)
+            else:
+                raise LoadError(lexer.lineno,
+                                'unexpected EOF while scanning '
+                                'for multiline string')
+            return ''.join(lines)
+        tokens = self.get_tokens(buffer, lexer)
+        return _join_tokens(tokens, lexer.wordchars)
+
+    def get_json(self, buffer, lexer):
+        curr = buffer.tell()
         try:
             obj, idx = (self._json_decoder
                         .raw_decode(buffer.getvalue(), curr))
         except Exception as exc:
-            raise ValueError(lexer.line,
-                             'failed to parse JSON') from exc
-        lexer.lineno += _count_lines(buffer.read(idx))
-        nxt = lexer.get_token()
-        if not _is_eol(nxt):
-            raise ValueError(lexer.lineno,
-                             'expected EOL after JSON literal')
+            raise LoadError(lexer.lineno,
+                            'failed to parse JSON') from exc
+        lexer.lineno += _count_lines(buffer.read(idx - curr))
+        nxt = next(lexer)
+        if not self.is_eol(nxt):
+            raise LoadError(lexer.lineno,
+                            'expected EOL after JSON literal, '
+                            'got %r', nxt)
         return obj
 
     # date & time; they need parsing because we want to
@@ -170,14 +445,28 @@ class TextLoader(Configurable):
     # we will not try to parse time zone as that will be
     # reserved for the purpose of serialization and not for
     # regular use
-    def parse_date(self, s):
-        return timeutil.parse_date(s)  # XXX
+    def parse_date(self, s, year=None):
+        return _parse_date(s, year or self.get_option('year'))  # XXX
 
-    def parse_time(self, s):
-        dt = timeutil.parse_datetime(s)
-        if is_naive(dt):
-            return dt, None
-        return dt, psp.timeutil.format_offset(dt.utcoffset())
+    def parse_time(self, s, date):
+        try:
+            dt = _parse_datetime(s, date.year)
+        except ValueError:
+            t = _parse_time(s)
+            dt = datetime.datetime.combine(date, t)
+        return dt
+
+    def format_date(self, date):
+        return timeutil.format_date(date)
+
+    def format_time(self, time):
+        return timeutil.format_time(time)
+
+    def format_datetime(self, dt):
+        return timeutil.format_datetime(dt)
+
+
+TextLoader.add_option('year', default=None)
 
 
 class TextDumper(Configurable):
@@ -208,3 +497,300 @@ def load_text():
 
 def dump_text():
     pass
+
+
+# Sigh... i have no choice since i accessed the private variables
+# (plus we need to make it so that shlex never attempts to add a
+# line number when it encounters \n in the 'a' state)
+class shlex:
+    "A lexical analyzer class for simple shell-like syntaxes."
+    def __init__(self, instream=None, infile=None, posix=False,
+                 punctuation_chars=False):
+        if isinstance(instream, str):
+            instream = io.StringIO(instream)
+        if instream is not None:
+            self.instream = instream
+            self.infile = infile
+        else:
+            import sys
+            self.instream = sys.stdin
+            self.infile = None
+        self.posix = posix
+        if posix:
+            self.eof = None
+        else:
+            self.eof = ''
+        self.commenters = '#'
+        self.wordchars = ('abcdfeghijklmnopqrstuvwxyz'
+                          'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789_')
+        if self.posix:
+            self.wordchars += ('ßàáâãäåæçèéêëìíîïðñòóôõöøùúûüýþÿ'
+                               'ÀÁÂÃÄÅÆÇÈÉÊËÌÍÎÏÐÑÒÓÔÕÖØÙÚÛÜÝÞ')
+        self.whitespace = ' \t\r\n'
+        self.whitespace_split = False
+        self.quotes = '\'"'
+        self.escape = '\\'
+        self.escapedquotes = '"'
+        self.state = ' '
+        self.pushback = deque()
+        self.lineno = 1
+        self.debug = 0
+        self.token = ''
+        self.filestack = deque()
+        self.source = None
+        if not punctuation_chars:
+            punctuation_chars = ''
+        elif punctuation_chars is True:
+            punctuation_chars = '();<>|&'
+        self._punctuation_chars = punctuation_chars
+        if punctuation_chars:
+            # _pushback_chars is a push back queue used by lookahead logic
+            self._pushback_chars = deque()
+            # these chars added because allowed in file names, args, wildcards
+            self.wordchars += '~-./*?='
+            #remove any punctuation chars from wordchars
+            t = self.wordchars.maketrans(dict.fromkeys(punctuation_chars))
+            self.wordchars = self.wordchars.translate(t)
+
+    @property
+    def punctuation_chars(self):
+        return self._punctuation_chars
+
+    def push_token(self, tok):
+        "Push a token onto the stack popped by the get_token method"
+        if self.debug >= 1:
+            print("shlex: pushing token " + repr(tok))
+        self.pushback.appendleft(tok)
+
+    def push_source(self, newstream, newfile=None):
+        "Push an input source onto the lexer's input source stack."
+        if isinstance(newstream, str):
+            newstream = io.StringIO(newstream)
+        self.filestack.appendleft((self.infile, self.instream, self.lineno))
+        self.infile = newfile
+        self.instream = newstream
+        self.lineno = 1
+        if self.debug:
+            if newfile is not None:
+                print('shlex: pushing to file %s' % (self.infile,))
+            else:
+                print('shlex: pushing to stream %s' % (self.instream,))
+
+    def pop_source(self):
+        "Pop the input source stack."
+        self.instream.close()
+        (self.infile, self.instream, self.lineno) = self.filestack.popleft()
+        if self.debug:
+            print('shlex: popping to %s, line %d' \
+                  % (self.instream, self.lineno))
+        self.state = ' '
+
+    def get_token(self):
+        "Get a token from the input stream (or from stack if it's nonempty)"
+        if self.pushback:
+            tok = self.pushback.popleft()
+            if self.debug >= 1:
+                print("shlex: popping token " + repr(tok))
+            return tok
+        # No pushback.  Get a token.
+        raw = self.read_token()
+        # Handle inclusions
+        if self.source is not None:
+            while raw == self.source:
+                spec = self.sourcehook(self.read_token())
+                if spec:
+                    (newfile, newstream) = spec
+                    self.push_source(newstream, newfile)
+                raw = self.get_token()
+        # Maybe we got EOF instead?
+        while raw == self.eof:
+            if not self.filestack:
+                return self.eof
+            else:
+                self.pop_source()
+                raw = self.get_token()
+        # Neither inclusion nor EOF
+        if self.debug >= 1:
+            if raw != self.eof:
+                print("shlex: token=" + repr(raw))
+            else:
+                print("shlex: token=EOF")
+        return raw
+
+    def read_token(self):
+        quoted = False
+        escapedstate = ' '
+        while True:
+            if self.punctuation_chars and self._pushback_chars:
+                nextchar = self._pushback_chars.pop()
+            else:
+                nextchar = self.instream.read(1)
+            if nextchar == '\n' and self.state != 'a':
+                self.lineno += 1
+                if self.debug == 69:
+                    print('shlex(144): LINE += 1 => %d' % self.lineno)
+            if self.debug >= 3:
+                print("shlex: in state %r I see character: %r" % (self.state,
+                                                                  nextchar))
+            if self.state is None:
+                self.token = ''        # past end of file
+                break
+            elif self.state == ' ':
+                if not nextchar:
+                    self.state = None  # end of file
+                    break
+                elif nextchar in self.whitespace:
+                    if self.debug >= 2:
+                        print("shlex: I see whitespace in whitespace state")
+                    if self.token or (self.posix and quoted):
+                        break   # emit current token
+                    else:
+                        continue
+                elif nextchar in self.commenters:
+                    self.instream.readline()
+                    if self.debug == 69:
+                        print('shlex(165): LINE += 1 => %d' % self.lineno)
+                    self.lineno += 1
+                elif self.posix and nextchar in self.escape:
+                    escapedstate = 'a'
+                    self.state = nextchar
+                elif nextchar in self.wordchars:
+                    self.token = nextchar
+                    self.state = 'a'
+                elif nextchar in self.punctuation_chars:
+                    self.token = nextchar
+                    self.state = 'c'
+                elif nextchar in self.quotes:
+                    if not self.posix:
+                        self.token = nextchar
+                    self.state = nextchar
+                elif self.whitespace_split:
+                    self.token = nextchar
+                    self.state = 'a'
+                else:
+                    self.token = nextchar
+                    if self.token or (self.posix and quoted):
+                        break   # emit current token
+                    else:
+                        continue
+            elif self.state in self.quotes:
+                quoted = True
+                if not nextchar:      # end of file
+                    if self.debug >= 2:
+                        print("shlex: I see EOF in quotes state")
+                    # XXX what error should be raised here?
+                    raise ValueError("No closing quotation")
+                if nextchar == self.state:
+                    if not self.posix:
+                        self.token += nextchar
+                        self.state = ' '
+                        break
+                    else:
+                        self.state = 'a'
+                elif (self.posix and nextchar in self.escape and self.state
+                      in self.escapedquotes):
+                    escapedstate = self.state
+                    self.state = nextchar
+                else:
+                    self.token += nextchar
+            elif self.state in self.escape:
+                if not nextchar:      # end of file
+                    if self.debug >= 2:
+                        print("shlex: I see EOF in escape state")
+                    # XXX what error should be raised here?
+                    raise ValueError("No escaped character")
+                # In posix shells, only the quote itself or the escape
+                # character may be escaped within quotes.
+                if (escapedstate in self.quotes and
+                        nextchar != self.state and nextchar != escapedstate):
+                    self.token += self.state
+                self.token += nextchar
+                self.state = escapedstate
+            elif self.state in ('a', 'c'):
+                if not nextchar:
+                    self.state = None   # end of file
+                    break
+                elif nextchar in self.whitespace:
+                    if self.debug >= 2:
+                        print("shlex: I see whitespace in word state")
+                    self.state = ' '
+                    if self.token or (self.posix and quoted):
+                        break   # emit current token
+                    else:
+                        continue
+                elif nextchar in self.commenters:
+                    self.instream.readline()
+                    if self.debug == 69:
+                        print('shlex(237): LINE += 1 => %d' % self.lineno)
+                    self.lineno += 1
+                    if self.posix:
+                        self.state = ' '
+                        if self.token or (self.posix and quoted):
+                            break   # emit current token
+                        else:
+                            continue
+                elif self.state == 'c':
+                    if nextchar in self.punctuation_chars:
+                        self.token += nextchar
+                    else:
+                        if nextchar not in self.whitespace:
+                            self._pushback_chars.append(nextchar)
+                        self.state = ' '
+                        break
+                elif self.posix and nextchar in self.quotes:
+                    self.state = nextchar
+                elif self.posix and nextchar in self.escape:
+                    escapedstate = 'a'
+                    self.state = nextchar
+                elif (nextchar in self.wordchars or nextchar in self.quotes
+                      or (self.whitespace_split and
+                          nextchar not in self.punctuation_chars)):
+                    self.token += nextchar
+                else:
+                    if self.punctuation_chars:
+                        self._pushback_chars.append(nextchar)
+                    else:
+                        self.pushback.appendleft(nextchar)
+                    if self.debug >= 2:
+                        print("shlex: I see punctuation in word state")
+                    self.state = ' '
+                    if self.token or (self.posix and quoted):
+                        break   # emit current token
+                    else:
+                        continue
+        result = self.token
+        self.token = ''
+        if self.posix and not quoted and result == '':
+            result = None
+        if self.debug > 1:
+            if result:
+                print("shlex: raw token=" + repr(result))
+            else:
+                print("shlex: raw token=EOF")
+        return result
+
+    def sourcehook(self, newfile):
+        "Hook called on a filename to be sourced."
+        if newfile[0] == '"':
+            newfile = newfile[1:-1]
+        # This implements cpp-like semantics for relative-path inclusion.
+        if isinstance(self.infile, str) and not os.path.isabs(newfile):
+            newfile = os.path.join(os.path.dirname(self.infile), newfile)
+        return (newfile, open(newfile, "r"))
+
+    def error_leader(self, infile=None, lineno=None):
+        "Emit a C-compiler-like, Emacs-friendly error-message leader."
+        if infile is None:
+            infile = self.infile
+        if lineno is None:
+            lineno = self.lineno
+        return "\"%s\", line %d: " % (infile, lineno)
+
+    def __iter__(self):
+        return self
+
+    def __next__(self):
+        token = self.get_token()
+        if token == self.eof:
+            raise StopIteration
+        return token

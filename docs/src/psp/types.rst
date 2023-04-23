@@ -523,7 +523,8 @@ new file types there).
    .. property:: panel
 
       The panel this entry belongs to; None if this entry does not belong
-      to a panel.  This is an immutable property.
+      to a panel.  This is an immutable property, since changing panels
+      is done through :meth:`Panel.add_entry`.
 
    .. method:: has_panel()
 
