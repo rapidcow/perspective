@@ -45,10 +45,8 @@ def _count_lines(s):
     return len(s.splitlines()) - 1
 
 
-# neither %m-%d-%Y nor %d-%m-%Y will be accepted
-# --- it would only cost people
 _DATETIME_FORMATS = [
-    '%Y-%m-%d {}', '%Y/%m/%d {}',
+    '%Y-%m-%d {}', '%Y/%m/%d {}', '%Y.%m.%d {}',
     '%b %d %Y {}', '%a %b %d %Y {}', '%a %b %d {} %Y',
     '%B %d %Y {}', '%a %B %d %Y {}', '%a %B %d {} %Y',
 ]
@@ -169,10 +167,12 @@ class TextLoader(Configurable):
         lexer.whitespace_split = True
         if _DEBUG:
             lexer.debug = 69
+            print(self.get_tokens(buffer, lexer))
+            return True
         lexer.whitespace = ' \t'
 
         # top level attributes?
-        attrs = {}
+        attrs = self.get_option('attrs').copy()
         last = buffer.tell() - len(lexer._pushback_chars)
         lineno = lexer.lineno
         for token in lexer:
@@ -183,7 +183,8 @@ class TextLoader(Configurable):
             last = buffer.tell() - len(lexer._pushback_chars)
             lineno = lexer.lineno
 
-        logger.info('preamble over on line %d', lexer.lineno)
+        logger.info('preamble over on line %d:', lexer.lineno)
+        logger.info(attrs)
         buffer.seek(last, os.SEEK_SET)
         lexer._pushback_chars.clear()
         lexer.lineno = lineno
@@ -202,18 +203,27 @@ class TextLoader(Configurable):
         tup = token.upper()
         if tup == 'TZ':
             attrs['tz'] = self.get_string(buffer, lexer)
+            logger.info('set time zone to %s', attrs['tz'])
         elif tup == 'PATHS':
             attrs['paths'] = self.get_json(buffer, lexer)
+            logger.info('set paths to %s', attrs['paths'])
         elif tup == 'YEAR':
-            assert 'year' not in attrs
             attrs['year'] = int(self.get_string(buffer, lexer))
+            logger.info('set year to %d', attrs['year'])
+        elif tup == 'TIME':
+            if self.peek_token(buffer, lexer).upper() == 'ZONE':
+                lexer.get_token()  # dispose ZONE token
+                attrs['tz'] = self.get_string(buffer, lexer)
+                logger.info('set time zone to %s', attrs['tz'])
+        elif tup == 'ATTR':
+            attrs.update(self.get_json(buffer, lexer))
         else:
             # forbidden tokens: sorry, not allowed to use them :(
             # (otherwise anything would pass as a valid entry and
             # that's kind of, like, seriously error-prone)
             if self.is_entry(token):
                 raise LoadError(lexer.lineno, 'unknown panel')
-            attrs[token.lower()] = self.get_string(buffer, lexer)
+            attrs[token] = self.get_string(buffer, lexer)
         return False
 
     def process_panels(self, attrs, buffer, lexer):
@@ -251,12 +261,14 @@ class TextLoader(Configurable):
             if i == len(tokens):
                 rating = None
             else:
-                rating = _join_tokens(tokens[:i], lexer.wordchars)
+                rating = _join_tokens(tokens[i:], lexer.wordchars)
             break
         else:
-            raise LoadError(lexer.lineno,
-                            f'cannot parse tokens: {tokens!r}')
-        logger.info('parsed panel of date %s on line %s',
+            msg = f'cannot parse tokens: {tokens!r}'
+            if not (attrs.get('year') or self.get_option('year')):
+                msg += ' (did you forget to specify the year somewhere?)'
+            raise LoadError(lexer.lineno, msg)
+        logger.info('parsed panel of date %s on line %d',
                     date, lexer.lineno)
         panel = {'date': self.format_date(date)}
         if rating is not None:
@@ -340,9 +352,15 @@ class TextLoader(Configurable):
             entry['format'] = self.get_string(buffer, lexer)
         elif tup == 'QUESTION':
             entry['question'] = self.get_string(buffer, lexer)
+        elif tup == 'DATA':
+            entry['data'] = self.get_string(buffer, lexer)
+        elif tup == 'DATA-ENCODING':
+            entry['data-encoding'] = self.get_string(buffer, lexer)
+        elif tup == 'INPUT':
+            entry['input'] = self.get_string(buffer, lexer)
         elif all(c == '<' for c in token):
             entry_type = self.get_string(buffer, lexer)
-            logger.info('type of <<< content is %r on line %s',
+            logger.info('type of <<< content is %r on line %d',
                         entry_type, lexer.lineno)
             if entry_type:
                 entry['type'] = entry_type
@@ -373,7 +391,10 @@ class TextLoader(Configurable):
         return '\n' in token or '\r' in token
 
     def get_tokens(self, buffer, lexer):
+        """Consume and return all tokens up until EOL."""
         tokens = list(_takeuntil(self.is_eol, lexer))
+        # shlex gobbled extra characters after EOL,
+        # so make sure it "regurgitates"
         if buffer.read(1):
             buffer.seek(buffer.tell() - 2)
             lastchar = buffer.read(1)
@@ -386,6 +407,7 @@ class TextLoader(Configurable):
         return tokens
 
     def peek_token(self, buffer, lexer):
+        """Return the next token without consuming it."""
         pos = buffer.tell()
         oldchars = deque(lexer._pushback_chars)
         oldlineno = lexer.lineno
@@ -402,16 +424,27 @@ class TextLoader(Configurable):
         return token.upper() in ('ENTRY', 'INSIGHT', 'TIME')
 
     def get_string(self, buffer, lexer):
+        """Parse a string field."""
         if all(c == '<' for c in self.peek_token(buffer, lexer)):
-            token = self.get_tokens(buffer, lexer)
-            assert self.is_eol(lexer.get_token())
+            token = lexer.get_token()
+            # line terminator should be pushed inside lookahead chars
+            # if that's the case, buffer should also be pointing to
+            # the next line, so we can just continue
+            # XXX: does this work for \r\n???
+            assert self.is_eol(''.join(lexer._pushback_chars))
+            logger.debug('start multiline string with '
+                         'token %r on line %d',
+                         token, lexer.lineno)
             sentinel = '>' * len(token)
             lines = []
             # again we want to preserve new lines
             for line in buffer:
-                lexer.lineno += 2
+                lexer.lineno += 1
                 if (line.startswith(sentinel)
                         and line.rstrip() == sentinel):
+                    logger.debug('end multiline string with '
+                                 '%r on line %d',
+                                 line, lexer.lineno)
                     break
                 lines.append(line)
             else:
@@ -423,6 +456,7 @@ class TextLoader(Configurable):
         return _join_tokens(tokens, lexer.wordchars)
 
     def get_json(self, buffer, lexer):
+        """Parse a JSON field."""
         curr = buffer.tell()
         try:
             obj, idx = (self._json_decoder
@@ -467,6 +501,7 @@ class TextLoader(Configurable):
 
 
 TextLoader.add_option('year', default=None)
+TextLoader.add_option('attrs', default={})
 
 
 class TextDumper(Configurable):
@@ -647,10 +682,7 @@ class shlex:
                     else:
                         continue
                 elif nextchar in self.commenters:
-                    self.instream.readline()
-                    if self.debug == 69:
-                        print('shlex(165): LINE += 1 => %d' % self.lineno)
-                    self.lineno += 1
+                    self.__handle_comment(nextchar)
                 elif self.posix and nextchar in self.escape:
                     escapedstate = 'a'
                     self.state = nextchar
@@ -719,16 +751,7 @@ class shlex:
                     else:
                         continue
                 elif nextchar in self.commenters:
-                    self.instream.readline()
-                    if self.debug == 69:
-                        print('shlex(237): LINE += 1 => %d' % self.lineno)
-                    self.lineno += 1
-                    if self.posix:
-                        self.state = ' '
-                        if self.token or (self.posix and quoted):
-                            break   # emit current token
-                        else:
-                            continue
+                    self.__handle_comment(nextchar)
                 elif self.state == 'c':
                     if nextchar in self.punctuation_chars:
                         self.token += nextchar
@@ -768,6 +791,20 @@ class shlex:
             else:
                 print("shlex: raw token=EOF")
         return result
+
+    # XXX: i seriously don't know how this works
+    def __handle_comment(self, nextchar):
+        self.token += nextchar
+        comment = self.instream.readline()
+        logger.debug('COMMENT YIPEE %r', comment)
+        logger.debug('CURRENT TOKEN IS A %r', self.token)
+        if self.debug == 69:
+            print('shlex(165): LINE += 1 => %d' % self.lineno)
+        self.lineno += 1
+        if all(c in '\r\n' for c in comment[-2:]):
+            self._pushback_chars.extend(comment[-2:])
+        else:
+            self._pushback_chars.extend(comment[-1:])
 
     def sourcehook(self, newfile):
         "Hook called on a filename to be sourced."

@@ -6,7 +6,8 @@ import copy
 import json
 from collections import OrderedDict
 
-from psp.serializers import JSONLoader, JSONDumper
+from psp.serializers.json import JSONLoader, JSONDumper
+from psp.serializers.text import TextLoader, TextDumper
 from psp.types import Entry
 
 
@@ -162,3 +163,16 @@ class MetaJSONDumper(JSONDumper):
     # is immutable and lists and dicts are newly constructed every time)
     def wrap_metadata(self, entry, attrs):
         return entry.get_meta_attributes() or None
+
+
+class TextLoader:
+    def process_entry_body(self, attrs, entry, token, buffer, lexer):
+        if token.upper() == 'META':
+            entry['meta'] = self.get_json(buffer, lexer)
+            return
+        return super().process_entry_body(attrs, entry, token,
+                                          buffer, lexer)
+
+
+class TextDumper:
+    pass

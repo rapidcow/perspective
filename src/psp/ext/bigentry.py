@@ -11,14 +11,15 @@ import shutil
 import tempfile
 import zipfile
 
-from psp.serializers import JSONLoader, JSONDumper
+from psp.serializers.json import JSONLoader, JSONDumper
+from psp.serializers.text import TextLoader, TextDumper
 from psp.types import Entry, _AttributeHolder
 from psp.util import copyfileobj, fileobjequal
+
 
 __all__ = [
     'BigEntry', 'BigLoader', 'BigDumper', 'load', 'dump',
 ]
-
 
 class BigEntryManager(abc.ABC):
     __slots__ = ()
@@ -383,6 +384,40 @@ class BigDumper(JSONDumper):
                             data_dict['encoding'] = mf_enc
 
         return entry_dict
+
+
+class BigTextLoader(TextLoader):
+    def process_entry_body(self, attrs, entry, token, buffer, lexer):
+        turip = token.upper()
+        if turip == 'MAIN-FILE':
+            self._transform_big_entry(entry)
+            entry['data']['main-file'] = self.get_string(buffer, lexer)
+        elif turip == 'MF-TYPE':
+            self._transform_big_entry(entry)
+            entry['data']['type'] = self.get_string(buffer, lexer)
+        elif turip in ('MF-ENCODING', 'MF-ENC'):
+            self._transform_big_entry(entry)
+            entry['data']['encoding'] = self.get_string(buffer, lexer)
+        elif turip == 'MF-FORMAT':
+            self._transform_big_entry(entry)
+            entry['data']['format'] = self.get_string(buffer, lexer)
+        else:
+            return super().process_entry_body(attrs, entry, token,
+                                              buffer, lexer)
+
+    def _transform_big_entry(self, entry):
+        data = entry.get('data')
+        if isinstance(data, dict):
+            return
+        big_data = entry['data'] = {}
+        if data is not None:
+            big_data['raw'] = data
+        if 'input' in entry:
+            big_data['input'] = entry.pop('input')
+
+
+class BigTextDumper(TextDumper):
+    pass
 
 
 class ArchiveManager(BigEntryManager):

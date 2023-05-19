@@ -1,10 +1,9 @@
 """Test... text serializer"""
 import datetime
 from textwrap import dedent
+import logging
 import unittest
 import psp.serializers.text as text
-
-import logging
 
 # logging.getLogger('psp.serializers.text').setLevel(logging.DEBUG)
 
@@ -13,8 +12,73 @@ class TestTextLoader(unittest.TestCase):
     maxDiff = 10000
 
     def test_documentation(self):
-        # whitespace should have no effect on time parsing
+        # some vile file
         loader = text.TextLoader()
+        # text._DEBUG = 69
+        data = loader.loads(dedent("""\
+        # shell-like comments are supported! :D
+        YEAR 2023           # default year
+        TIME ZONE +08:00    # corresponds to the "tz" field
+        PATHS [".", "doc"]  # corresponds to the "paths" field
+
+        DATE Mar 14 :(
+        TIME 3:29 pm
+        <<< markdown
+        this  is an  entry with   *s t u f f*
+        # this is not a comment
+        >>>
+
+        TIME Mar 15 18:20
+        QUESTION what are you
+        TYPE plain
+        INPUT someVileFile.txt
+
+        DATE Feb 14 2022
+        INSIGHT Mar 15 2023 5:17 pm
+        <<<
+        oh
+          and
+            many lines too
+        >>>
+        """))
+        self.assertEqual(
+            data, {
+              'tz': '+08:00',
+              'paths': [ '.', 'doc' ],
+              'year': 2023,
+              'data': [
+                {
+                  'date': '2023-03-14',
+                  'rating': ':(',
+                  'entries': [
+                    {
+                      'time': '15:29',
+                      'type': 'markdown',
+                      'data': ('this  is an  entry with   *s t u f f*\n'
+                               '# this is not a comment\n')
+                    },
+                    {
+                      'date-time': '2023-03-15 18:20',
+                      'question': 'what are you',
+                      'type': 'plain',
+                      'input': 'someVileFile.txt'
+                    }
+                  ]
+                },
+                {
+                  'date': '2022-02-14',
+                  'entries': [
+                    {
+                      'date-time': '2023-03-15 17:17',
+                      'insight': True,
+                      'data': 'oh\n  and\n    many lines too\n'
+                    }
+                  ]
+                }
+              ]
+            })
+
+        # whitespace should have no effect on time parsing
         data = loader.loads(dedent("""\
         DATE apr  1      2023
                 TIME      12:30
@@ -86,7 +150,6 @@ class TestTextLoader(unittest.TestCase):
               }]
             })
 
-
         data = loader.loads(dedent("""\
         DATE Apr 21 2023
         TIME 22:40
@@ -122,8 +185,9 @@ class TestTextLoader(unittest.TestCase):
               }]
             })
 
+    def test_custom_attrs(self):
+        loader = text.TextLoader()
         # test custom attributes
-
         data = loader.loads(dedent("""\
         DATE APRIL 1 2023
         # panel attributes
@@ -160,6 +224,26 @@ class TestTextLoader(unittest.TestCase):
                     'custom-attribute': 'bar!'
                 }]
               }]
+            })
+
+        # ratings
+        data = loader.loads(dedent("""\
+        DATE APRIL 1 2023 :(
+        DATE APRIL 2 2023 O o
+        """))
+
+        self.assertEqual(
+            data, {
+              'data': [
+                {
+                  'date': '2023-04-01',
+                  'rating': ':('
+                },
+                {
+                  'date': '2023-04-02',
+                  'rating': 'O o'
+                }
+              ]
             })
 
         # TEST ERRORS?

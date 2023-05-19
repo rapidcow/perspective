@@ -22,8 +22,8 @@ does --- converting from a plain text format like this:
 
    # shell-like comments are supported! :D
    YEAR 2023           # default year
-   TIME ZONE +08:00    # optional stuff
-   PATHS [".", "doc"]
+   TIME ZONE +08:00    # corresponds to the "tz" field
+   PATHS [".", "doc"]  # corresponds to the "paths" field
 
    DATE Mar 14 :(
    TIME 3:29 pm
@@ -34,7 +34,8 @@ does --- converting from a plain text format like this:
 
    TIME Mar 15 18:20
    QUESTION what are you
-   INPUT someVileFile.txt (plain)
+   TYPE plain
+   INPUT someVileFile.txt
 
    DATE Feb 14 2022
    INSIGHT Mar 15 2023 5:17 pm
@@ -55,7 +56,7 @@ like this:
        ".",
        "doc"
      ],
-     "year": "2023",
+     "year": 2023,
      "data": [
        {
          "date": "2023-03-14",
@@ -128,7 +129,8 @@ on whitespace, quote it like so:
    # spaces are preserved verbatim
    DATE " march  03  2023 "
 
-(Again, comments are valid and completely ignored;
+(Again, comments are valid and are completely ignored, as long
+as they are not in a multiline string (starts with ``>>>``);
 they start with a ``#`` character.)
 
 
@@ -147,6 +149,8 @@ The general structure is as follows:
       DATE Apr 20 2023
       # same panel but with rating :(
       DATE Apr 20 2023 :(
+      # multiple tokens are concatenated with spaces
+      DATE Apr 20 2023 O o???
 
    .. ) this is for vim highlighting, sorry
 
@@ -164,9 +168,23 @@ The general structure is as follows:
    applies.
 
 *  Before encountering any panel or entry keyword, any keyword
-   is recognized as a *top-level attribute*, much like the ones
-   with JSON archives.  (This is mostly an effort serialization
-   with this format possible...)
+   is recognized as a *top-level attribute* (also the preamble
+   section in text file terminology), much like the ones with JSON
+   archives.  (This is mostly an effort to make serialization with
+   this format possible...)
+
+   While the detection for top-level attributes implicitly
+   terminates when ``DATE`` is encountered, it may also explicitly
+   terminated by three or more contiguous ``-``, like so:
+
+   .. code-block:: text
+
+      PATH [ "1", "2" ]
+      desc This is a cool preamble
+      ---
+      DATE March 14 2015
+      # continued...
+
 
 As an example, here's how the panel and entry keywords divide up
 such plain text format:
@@ -198,8 +216,9 @@ such plain text format:
 
 *  The content of an entry (corresponding to the "data" tag)
    is fenced by ``<<<`` and ``>>>`` appearing on a separate line.
-   The number of ``<`` may vary from one to as many as you wish,
-   but the number of terminating ``<`` must match that number:
+   The number of ``<`` may vary from one to as many as you wish
+   (at least three is recommended though), but the number of
+   terminating ``<`` must match that number:
 
    .. code-block:: text
 
@@ -215,16 +234,30 @@ such plain text format:
       but precisely, this:
       >>>>>
 
-   Content is read in verbatim, *including* more than one whitespace
-   characters (space/tab), escape (``\\``) and comment (``#``)
-   characters, line-terminating characters (``\r\n``), and
-   as well as ``<<<`` and ``>>>`` themselves (this is one reason
+   All content from the line immediately following ``<<<`` and just
+   before the first character of ``>>>`` is read in *verbatim*, including
+   *any* whitespace character occurring anywhere, escape (``\\``) and
+   comment (``#``) characters, line-terminating characters (``\r\n``),
+   and as well as ``<<<`` and ``>>>`` themselves (this is one reason
    for allowing varying lengths!)
 
-*  Besides these guys, there are panel attributes and entry
-   attributes.  Parsing of panel attributes ends as soon as an
-   entry is begun by a keyword like ``TIME``.  Here is an
-   example of some of the common ones:
+   Alternatively, entry content may also be supplied with the key
+   ``DATA``.  It works as you would expect any string fields would:
+
+   .. code-block:: text
+
+      # one-line string (has no line terminator)
+      DATA hello world
+      # multiline string (has line terminator)
+      DATA <<<
+      hello world
+      >>>
+
+*  Besides these guys, there are special names for known panel
+   attributes and entry attributes!  Parsing of panel and entry
+   attributes ends as soon as a panel or entry is begun by a keyword
+   like ``DATE`` or ``TIME``.
+   Here is an example of some of the common ones:
 
    .. code-block:: text
 
@@ -240,9 +273,7 @@ such plain text format:
       TYPE markdown
       FORMAT pandoc
       QUESTION How was your day?
-      <<<
-      ok!
-      >>>
+      DATA ok!
       ATTR {
         "custom-attribute": "bar!"
       }
@@ -272,8 +303,9 @@ such plain text format:
       }
 
    Every attribute here should be self-explanatory
-   (note that more than one whitespace is always ignored
-   unless you quote them like so: ``"hello  world"``).
+   (note that any length of whitespace will be collapsed
+   into a single space character unless you quote them
+   like so: ``"hello  world"``).
    ``ATTR`` is basically a hopeless attempt at converting
    anything that isn't recognized by the parser by default.
 
@@ -281,7 +313,48 @@ such plain text format:
 Definition
 ~~~~~~~~~~
 
-String and JSON arguments (ye important)
+.. warning::
+
+   Currently it is impossible to serialize multiline strings
+   that don't terminate in a newline....
+
+   TODO: scan for escape characters that appear *right* before
+   *the last contiguous* EOLs and kill all line terminators
+   (CR and LF) after them
+
+   Ignore the escape character in all other scenarios.  Here are
+   some vile edge cases I thought of:
+
+   *  two or more ``\\`` right before last EOL:
+      copy the number of ``\\`` verbatim and reserve one more
+      to escape the last EOL
+
+   *  ``\\`` then LF (gosh why would anyone do this):
+      serialize it like this: ``'\\\n\\\n'`` (only the last escape
+      is interpreted)
+
+**String fields**
+
+*  Examples: ``ENTRY``, ``PANEL`` (a bit modified since it uses
+   :meth:`~TextLoader.get_tokens` instead), ``QUESTION``, ``DATA``
+   (most fields you see are string fields and thus satisfy the
+   rules outlined below)
+*  This is the default for top-level attributes
+*  Implemented in :meth:`~TextLoader.get_string`
+*  One-line string: ends at new line, never contains line terminator
+*  Multiline string: everything between ``<<<\n`` and ``>>>\n``
+   is included; strings are inevitably terminated with a new line
+
+**JSON fields**
+
+*  Only JSON fields are ``ATTR`` at top-level, panel level, and entry level (no more!  This is sort of a desperate fallback
+   for unrecognized keys)
+*  Implemented in :meth:`~TextLoader.get_json`
+   (ask :class:`json.JSONDecoder` about the legal syntax
+   for that the method uses that to scan for JSON...
+*  To list some guaranteed valid values:
+   can be a JSON object (:class:`dict`) or an array (:class:`list`)
+*  **Can span across multiple lines!!!**
 
 
 -------
@@ -297,7 +370,6 @@ Classes
    to copy the source code of :class:`shlex.shlex`, so maybe
    it'll work in older verions too.
 
-
 .. XXX i think composition isn't needed...? (it'd get confusing)
    we can just do loader.load_data(text_loader()) or something...
 
@@ -312,13 +384,48 @@ Classes
 
    .. method:: load(fp)
 
-      Convert a text backup into its JSON-equivalence that can be
-      parsed by :class:`~psp.serializers.json.JSONLoader`.
+      Convert a text backup into its JSON-equivalence Python dict
+      that can be parsed by the |json_load| method of
+      :class:`~psp.serializers.json.JSONLoader`.
 
    .. method:: loads(s)
 
-      Same as :meth:`load`, except reads from the content of
+      Same as :meth:`load`, except it reads from the content of
       a string.
+
+   .. method:: is_eol(token)
+
+      Return True if this token indicates the end of line (EOL).
+
+      More specifically, checks if *token* is one of CRLF or a
+      comment (``#``).
+
+      .. note::
+
+         To test end of file (EOF), ``token == lexer.eof`` is enough.
+
+   .. method:: get_tokens(buffer, lexer)
+
+      Consume and return all tokens on this line.
+
+   .. method:: peek_token(buffer, lexer)
+
+      Return the next token without consuming it.
+
+      (The implementation is hacky, don't bother)
+
+   .. method:: get_string(buffer, lexer)
+
+      Parse a string field.
+
+      If the next token consists entirely of ``'<'``, it is
+      parsed as a multiline string.
+      Else, return a string of tokens acquired from :meth:`get_tokens`
+      joined with the space character (``' '``).
+
+   .. method:: get_json(buffer, lexer)
+
+      Parse a JSON field.
 
 
 This class has not yet been implemented
@@ -335,6 +442,28 @@ This class has not yet been implemented
    .. method:: dumps(obj, fp)
 
    .. method:: dump(fp)
+
+
+.. class:: shlex
+   :noindex:
+
+   Modified version of :class:`shlex.shlex` from Python 3.8.?
+   (I forgot where I got it from)
+
+   One tiny modification made is that comments are emit their own token
+   the comment character ``#`` (see stuff I changed in the ``read_token()``
+   method).  Without this, the lexer would work as if the comments were
+   "deleted" from the stream entirely, and
+   :meth:`~TextLoader.get_tokens` would propogate to the next line
+   (which was really bad when I tested it!)
+
+   Another thing is ``_pushback_chars``, the mechanism behind
+   :class:`~shlex.shlex`'s lookahead magic, is heavily exploited
+   to make token lookahead possible
+   (e.g. :meth:`~TextLoader.peek_token`).
+   This also meant that the input stream actually has to be seekable,
+   forcing me to use a :class:`~io.StringIO` in all cases regardless of the
+   input stream given to :meth:`~TextLoader.load`.
 
 .. |configure| replace:: :meth:`Configurable.configure() <psp.types.Configurable.configure>`
 .. |json_load| replace:: :meth:`JSONLoader.load_data() <psp.serializers.json.JSONLoader.load_data>`
