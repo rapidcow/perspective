@@ -175,7 +175,7 @@ The general structure is as follows:
 
    While the detection for top-level attributes implicitly
    terminates when ``DATE`` is encountered, it may also explicitly
-   terminated by three or more contiguous ``-``, like so:
+   terminated by one or more contiguous ``-``, like so:
 
    .. code-block:: text
 
@@ -185,6 +185,8 @@ The general structure is as follows:
       DATE March 14 2015
       # continued...
 
+   (Again, strictly speaking this should be 3 or more...
+   but I'm lazy =n=;)
 
 As an example, here's how the panel and entry keywords divide up
 such plain text format:

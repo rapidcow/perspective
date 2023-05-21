@@ -165,15 +165,13 @@ class TextLoader(Configurable):
 
         lexer = shlex(buffer, punctuation_chars='\n\r', posix=True)
         lexer.whitespace_split = True
-        if _DEBUG:
-            lexer.debug = 69
-            print(self.get_tokens(buffer, lexer))
-            return True
         lexer.whitespace = ' \t'
+        if _DEBUG == 69:
+            lexer.debug = 69
 
         # top level attributes?
         attrs = self.get_option('attrs').copy()
-        last = buffer.tell() - len(lexer._pushback_chars)
+        last = 0
         lineno = lexer.lineno
         for token in lexer:
             if self.is_eol(token):
@@ -183,11 +181,14 @@ class TextLoader(Configurable):
             last = buffer.tell() - len(lexer._pushback_chars)
             lineno = lexer.lineno
 
-        logger.info('preamble over on line %d:', lexer.lineno)
-        logger.info(attrs)
-        buffer.seek(last, os.SEEK_SET)
-        lexer._pushback_chars.clear()
-        lexer.lineno = lineno
+        if all(c == '-' for c in token):
+            self.get_string(buffer, lexer)
+        else:
+            logger.info('preamble over on line %d:', lexer.lineno)
+            logger.info(attrs)
+            buffer.seek(last, os.SEEK_SET)
+            lexer._pushback_chars.clear()
+            lexer.lineno = lineno
         panels = list(self.process_panels(attrs, buffer, lexer))
         if panels:
             attrs['data'] = panels
@@ -196,10 +197,13 @@ class TextLoader(Configurable):
     # calling this differently because it feels less apropos to
     # call this "top-level ATTRIBUTES" when it's all laid out like this
     def process_preamble(self, attrs, token, buffer, lexer):
-        if (self.is_panel(token) or
-                (token.startswith('---') and
-                 all(c == '-' for c in token))):
+        if (self.is_panel(token) or all(c == '-' for c in token)):
             return True
+        # forbidden tokens: sorry, not allowed to use them :(
+        # (otherwise anything would pass as a valid entry and
+        # that's kind of, like, seriously error-prone)
+        if self.is_entry(token):
+            raise LoadError(lexer.lineno, 'unknown panel')
         tup = token.upper()
         if tup == 'TZ':
             attrs['tz'] = self.get_string(buffer, lexer)
@@ -218,11 +222,6 @@ class TextLoader(Configurable):
         elif tup == 'ATTR':
             attrs.update(self.get_json(buffer, lexer))
         else:
-            # forbidden tokens: sorry, not allowed to use them :(
-            # (otherwise anything would pass as a valid entry and
-            # that's kind of, like, seriously error-prone)
-            if self.is_entry(token):
-                raise LoadError(lexer.lineno, 'unknown panel')
             attrs[token] = self.get_string(buffer, lexer)
         return False
 
@@ -388,7 +387,7 @@ class TextLoader(Configurable):
     # (these aren't supposed to be methods eh)
     # XXX should these be static????
     def is_eol(self, token):
-        return '\n' in token or '\r' in token
+        return '\n' in token or '\r' in token or token == '#'
 
     def get_tokens(self, buffer, lexer):
         """Consume and return all tokens up until EOL."""
@@ -683,6 +682,7 @@ class shlex:
                         continue
                 elif nextchar in self.commenters:
                     self.__handle_comment(nextchar)
+                    break
                 elif self.posix and nextchar in self.escape:
                     escapedstate = 'a'
                     self.state = nextchar
@@ -752,6 +752,7 @@ class shlex:
                         continue
                 elif nextchar in self.commenters:
                     self.__handle_comment(nextchar)
+                    break
                 elif self.state == 'c':
                     if nextchar in self.punctuation_chars:
                         self.token += nextchar
@@ -792,19 +793,18 @@ class shlex:
                 print("shlex: raw token=EOF")
         return result
 
-    # XXX: i seriously don't know how this works
+    # XXX: i still don't know how this works
+    # but at least now i know it consumes a whole line and
+    # propogates the line counter :D
     def __handle_comment(self, nextchar):
-        self.token += nextchar
+        self.token = nextchar
+        self.state = ' '
         comment = self.instream.readline()
         logger.debug('COMMENT YIPEE %r', comment)
         logger.debug('CURRENT TOKEN IS A %r', self.token)
-        if self.debug == 69:
-            print('shlex(165): LINE += 1 => %d' % self.lineno)
+        logger.debug('LINENO = %d, PUSHBACK = %r',
+                     self.lineno, self._pushback_chars)
         self.lineno += 1
-        if all(c in '\r\n' for c in comment[-2:]):
-            self._pushback_chars.extend(comment[-2:])
-        else:
-            self._pushback_chars.extend(comment[-1:])
 
     def sourcehook(self, newfile):
         "Hook called on a filename to be sourced."
