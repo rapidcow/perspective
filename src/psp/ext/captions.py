@@ -9,6 +9,7 @@ import itertools
 from psp.serializers.json import JSONLoader, JSONDumper
 from psp.serializers.text import TextLoader, TextDumper
 from psp.serializers.json import _assert_type, _ensure_text
+from psp.serializers.text import _add_attr
 from psp.stringify import EntryFormatter
 from psp.types import Entry
 
@@ -222,9 +223,10 @@ for name, default in dict(
 
 class CaptionTextLoader(TextLoader):
     def process_entry_body(self, attrs, entry, token, buffer, lexer):
-        for candidate in ('title', 'caption', 'transcription'):
-            if token.upper() == candidate.upper():
-                entry[candidate.lower()] = self.get_string(buffer, lexer)
+        for field in ('title', 'caption', 'transcription'):
+            if token.upper() == field.upper():
+                _add_attr(entry, field, self.get_string(buffer, lexer),
+                          lexer.lineno, 'caption entry')
                 return
         return super().process_entry_body(attrs, entry, token,
                                           buffer, lexer)

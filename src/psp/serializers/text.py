@@ -142,6 +142,12 @@ def _join_tokens(tokens, wordchars):
     return ''.join(buffer)
 
 
+def _add_attr(obj, key, value, lineno, name):
+    if key in obj:
+        raise LoadError(lineno, f'got duplicate {name} value for {key!r}')
+    obj[key] = value
+
+
 _DEBUG = 0
 
 
@@ -205,19 +211,24 @@ class TextLoader(Configurable):
         if self.is_entry(token):
             raise LoadError(lexer.lineno, 'unknown panel')
         tup = token.upper()
+        lineno = lexer.lineno
         if tup == 'TZ':
-            attrs['tz'] = self.get_string(buffer, lexer)
+            value = self.get_string(buffer, lexer)
+            _add_attr(attrs, 'tz', value, lineno, 'top-level')
             logger.info('set time zone to %s', attrs['tz'])
         elif tup == 'PATHS':
-            attrs['paths'] = self.get_json(buffer, lexer)
+            value = self.get_json(buffer, lexer)
+            _add_attr(attrs, 'paths', value, lineno, 'top-level')
             logger.info('set paths to %s', attrs['paths'])
         elif tup == 'YEAR':
-            attrs['year'] = int(self.get_string(buffer, lexer))
+            value = int(self.get_string(buffer, lexer))
+            _add_attr(attrs, 'year', value, lineno, 'top-level')
             logger.info('set year to %d', attrs['year'])
         elif tup == 'TIME':
             if self.peek_token(buffer, lexer).upper() == 'ZONE':
                 lexer.get_token()  # dispose ZONE token
-                attrs['tz'] = self.get_string(buffer, lexer)
+                value = self.get_string(buffer, lexer)
+                _add_attr(attrs, 'tz', value, lineno, 'top-level')
                 logger.info('set time zone to %s', attrs['tz'])
         elif tup == 'ATTR':
             attrs.update(self.get_json(buffer, lexer))
@@ -277,15 +288,17 @@ class TextLoader(Configurable):
     def parse_panel_body(self, attrs, panel, date, token, buffer, lexer):
         assert panel and date, 'no panel'
         logger.debug('process token in panel %r', token)
+        lineno = lexer.lineno
         if not self.is_entry(token):
             tup = token.upper()
             if tup == 'ATTR':
                 attrs = self.get_json(buffer, lexer)
                 panel.update(attrs)
             elif tup in ('RATE', 'RATING'):
-                panel['rating'] = self.get_string(buffer, lexer)
+                value = self.get_string(buffer, lexer)
+                _add_attr(panel, 'rating', value, lineno, 'panel')
             else:
-                raise LoadError(lexer.lineno, 'invalid panel')
+                raise LoadError(lineno, 'invalid panel')
 
             if 'entries' in panel:
                 raise LoadError(lexer.lineno,
@@ -345,43 +358,47 @@ class TextLoader(Configurable):
     def process_entry_body(self, attrs, entry, token, buffer, lexer):
         tup = token.upper()
         logger.debug('process token in entry %r', token)
-        if tup == 'TYPE':
-            entry['type'] = self.get_string(buffer, lexer)
-        elif tup == 'FORMAT':
-            entry['format'] = self.get_string(buffer, lexer)
-        elif tup == 'QUESTION':
-            entry['question'] = self.get_string(buffer, lexer)
-        elif tup == 'DATA':
-            entry['data'] = self.get_string(buffer, lexer)
-        elif tup == 'DATA-ENCODING':
-            entry['data-encoding'] = self.get_string(buffer, lexer)
-        elif tup == 'INPUT':
-            entry['input'] = self.get_string(buffer, lexer)
-        elif all(c == '<' for c in token):
+        lineno = lexer.lineno
+        for field in ('type', 'format', 'question',
+                      'data', 'data-encoding', 'input'):
+            if tup == field.upper():
+                value = self.get_string(buffer, lexer)
+                _add_attr(entry, field, value, lineno, 'entry')
+                return
+        if all(c == '<' for c in token[:-1]) and token[-1] in '<|':
             entry_type = self.get_string(buffer, lexer)
             logger.info('type of <<< content is %r on line %d',
                         entry_type, lexer.lineno)
             if entry_type:
                 entry['type'] = entry_type
-            sentinel = '>' * len(token)
+            clip = token[-1] == '|'
+            if logger.isEnabledFor(logging.DEBUG):
+                logger.debug('start multiline content with on line %d%s',
+                             lexer.lineno, clip * ' (last EOL clipped)')
+            sentinel = '>' * (len(token) - clip)
             lines = []
             # we want to preserve new lines
             for line in buffer:
                 lexer.lineno += 1
-                logger.debug('read %r on line %d', line, lexer.lineno)
                 if line.strip() == sentinel:
-                    logger.debug('SENTINEL')
+                    logger.debug('end multiline string with '
+                                 '%r on line %d',
+                                 line, lexer.lineno)
                     break
                 lines.append(line)
             else:
                 raise LoadError(lexer.lineno,
                                 'unexpected EOF while scanning '
                                 'for entry data')
-            entry['data'] = ''.join(lines)
+            if clip and lines:
+                lines[-1] = lines[-1].rstrip('\r\n')
+            _add_attr(entry, 'data', ''.join(lines),
+                      lineno, 'entry')
         elif tup == 'ATTR':
             entry.update(self.get_json(buffer, lexer))
         else:
-            raise LoadError(lexer.lineno, 'invalid entry line')
+            raise LoadError(lexer.lineno,
+                            f'invalid entry line (token {token!r})')
 
     # types of fields I think will show up commonly
     # (these aren't supposed to be methods eh)
@@ -424,17 +441,21 @@ class TextLoader(Configurable):
 
     def get_string(self, buffer, lexer):
         """Parse a string field."""
-        if all(c == '<' for c in self.peek_token(buffer, lexer)):
+        token = self.peek_token(buffer, lexer)
+        if all(c == '<' for c in token[:-1]) and token[-1] in '<|':
             token = lexer.get_token()
             # line terminator should be pushed inside lookahead chars
             # if that's the case, buffer should also be pointing to
             # the next line, so we can just continue
             # XXX: does this work for \r\n???
             assert self.is_eol(''.join(lexer._pushback_chars))
-            logger.debug('start multiline string with '
-                         'token %r on line %d',
-                         token, lexer.lineno)
-            sentinel = '>' * len(token)
+            clip = token[-1] == '|'
+            if logger.isEnabledFor(logging.DEBUG):
+                logger.debug('start multiline string with '
+                             'token %r on line %d%s',
+                             token, lexer.lineno,
+                             clip * ' (last EOL clipped)')
+            sentinel = '>' * (len(token) - clip)
             lines = []
             # again we want to preserve new lines
             for line in buffer:
@@ -450,6 +471,8 @@ class TextLoader(Configurable):
                 raise LoadError(lexer.lineno,
                                 'unexpected EOF while scanning '
                                 'for multiline string')
+            if clip and lines:
+                lines[-1] = lines[-1].rstrip('\r\n')
             return ''.join(lines)
         tokens = self.get_tokens(buffer, lexer)
         return _join_tokens(tokens, lexer.wordchars)

@@ -12,13 +12,15 @@ import tempfile
 import zipfile
 
 from psp.serializers.json import JSONLoader, JSONDumper
-from psp.serializers.text import TextLoader, TextDumper
+from psp.serializers.text import TextLoader, TextDumper, _add_attr
 from psp.types import Entry, _AttributeHolder
 from psp.util import copyfileobj, fileobjequal
 
 
 __all__ = [
-    'BigEntry', 'BigLoader', 'BigDumper', 'load', 'dump',
+    'BigEntry', 'BigLoader', 'BigDumper',
+    'BigTextLoader', # 'BigTextDumper',
+    'load', 'dump',
 ]
 
 class BigEntryManager(abc.ABC):
@@ -388,22 +390,22 @@ class BigDumper(JSONDumper):
 
 class BigTextLoader(TextLoader):
     def process_entry_body(self, attrs, entry, token, buffer, lexer):
-        turip = token.upper()
-        if turip == 'MAIN-FILE':
-            self._transform_big_entry(entry)
-            entry['data']['main-file'] = self.get_string(buffer, lexer)
-        elif turip == 'MF-TYPE':
-            self._transform_big_entry(entry)
-            entry['data']['type'] = self.get_string(buffer, lexer)
-        elif turip in ('MF-ENCODING', 'MF-ENC'):
-            self._transform_big_entry(entry)
-            entry['data']['encoding'] = self.get_string(buffer, lexer)
-        elif turip == 'MF-FORMAT':
-            self._transform_big_entry(entry)
-            entry['data']['format'] = self.get_string(buffer, lexer)
-        else:
-            return super().process_entry_body(attrs, entry, token,
-                                              buffer, lexer)
+        tup = token.upper()
+        for target, field in {
+            'MAIN-FILE': 'main-file',
+            'MF-TYPE': 'type',
+            'MF-ENCODING': 'encoding',
+            'MF-ENC': 'encoding',
+            'MF-FORMAT': 'format',
+        }.items():
+            if tup == target:
+                self._transform_big_entry(entry)
+                value = self.get_string(buffer, lexer)
+                _add_attr(entry['data'], field, value,
+                          lexer.lineno, 'big entry')
+                return
+        return super().process_entry_body(attrs, entry, token,
+                                          buffer, lexer)
 
     def _transform_big_entry(self, entry):
         data = entry.get('data')

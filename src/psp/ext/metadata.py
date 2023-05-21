@@ -1,6 +1,9 @@
 """Entries with metadata."""
 
-__all__ = ['MetaEntry', 'MetaJSONLoader', 'MetaJSONDumper']
+__all__ = [
+    'MetaEntry', 'MetaJSONLoader', 'MetaJSONDumper',
+    'MetaTextLoader', # 'MetaTextDumper',
+]
 
 import copy
 import json
@@ -165,14 +168,18 @@ class MetaJSONDumper(JSONDumper):
         return entry.get_meta_attributes() or None
 
 
-class TextLoader:
+class MetaTextLoader(TextLoader):
     def process_entry_body(self, attrs, entry, token, buffer, lexer):
         if token.upper() == 'META':
-            entry['meta'] = self.get_json(buffer, lexer)
+            try:
+                meta = entry['meta']
+            except KeyError:
+                meta = entry['meta'] = {}
+            meta.update(self.get_json(buffer, lexer))
             return
         return super().process_entry_body(attrs, entry, token,
                                           buffer, lexer)
 
 
-class TextDumper:
+class MetaTextDumper(TextDumper):
     pass
