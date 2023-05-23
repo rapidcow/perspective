@@ -48,12 +48,13 @@ except ImportError:
     Image = None
 
 import psp.timeutil
+import psp.util
 import psp.filetypes
 from psp.stringify import PanelFormatter, EntryFormatter
-from psp.processors import JSONLoader, JSONDumper
-from psp.extensions.bigentry import BigEntry
-from psp.extensions.captions import CaptionEntry
-from psp.extensions.metadata import MetaEntry
+from psp.serializers.json import JSONLoader, JSONDumper
+from psp.ext.bigentry import BigEntry
+from psp.ext.captions import CaptionEntry
+from psp.ext.metadata import MetaEntry
 import tqdm
 
 __all__ = ['write_panel_html', 'export_panels']
@@ -462,21 +463,13 @@ def get_entry_html(entry, dirpath, relpath, time_zone):
         entry_tail(parts, entry, time_zone)
         return ''.join(parts)
     if (entry_type in {'png', 'jpeg'}
-            or entry_type == 'heif' and Image and pyheif):
+            or entry_type == 'heif' and can_convert_heif(entry)):
         os.mkdir(dirpath)
         basename = get_basename(entry, default='image')
         if entry_type == 'heif':
             ext = '.jpg'
             filename = basename + ext
-            heif_file = pyheif.read(entry.get_data())
-            im = Image.frombytes(
-                heif_file.mode,
-                heif_file.size,
-                heif_file.data,
-                'raw',
-                heif_file.mode,
-                heif_file.stride)
-            im.save(os.path.join(dirpath, filename), format='jpeg')
+            target = heif_to_jpg(entry, os.path.join(dirpath, filename))
         else:
             ext = _TYPE2EXT[entry_type]
             filename = basename + ext
@@ -560,7 +553,7 @@ def get_status_html(panel, time_zone):
 # The real work
 def entry_head(parts, entry, time_zone):
     # global time_format    # not really needed since
-                            # we're not mutating it
+                            # we're not mutating) it
     title = (EntryFormatter(time_format=time_format, time_zone=time_zone)
              .get_title(entry.panel.date, entry.time))
     parts.append('<h2>')
@@ -581,19 +574,24 @@ def entry_head(parts, entry, time_zone):
         else:
             attrs.append(('Type', ent_type))
 
-    desc = get_meta_attribute(entry, 'desc', '')
+    try:
+        meta = entry.get_meta_attributes()
+    except AttributeError:
+        meta = {}
+
+    desc = meta.pop('desc', '')
     if desc:
         attrs.append(('Description', desc))
 
-    created = get_meta_attribute(entry, 'created', None)
+    created = meta.pop('created', None)
     if created is not None:
         attrs.append(('Created', str(created)))
 
-    modified = get_meta_attribute(entry, 'modified', None)
+    modified = meta.pop('modified', None)
     if modified is not None:
         attrs.append(('Modified', str(modified)))
 
-    posted = get_meta_attribute(entry, 'posted', None)
+    posted = meta.pop('posted', None)
     if posted is not None and posted != entry.time:
         attrs.append(('Posted', str(posted)))
 
@@ -605,7 +603,7 @@ def entry_head(parts, entry, time_zone):
     if tr:
         attrs.append(('Transcription', tr))
 
-    hide = get_meta_attribute(entry, 'hide', False)
+    hide = meta.pop('hide', False)
     if hide:
         parts.append('<details>\n')
         if not isinstance(hide, bool):
@@ -615,6 +613,13 @@ def entry_head(parts, entry, time_zone):
         else:
             parts.append('<summary>Here lies a mysterious hidden '
                          'entry...</summary>\n')
+
+    # ignore empty tags (DON'T put this out there!)
+    if 'tags' in meta and not meta['tags']:
+        meta.pop('tags')
+
+    for key, value in meta.items():
+        attrs.append((key, repr(value)))
 
     for term, value in attrs:
         parts.append('<div class="card-attr">\n')
@@ -665,6 +670,9 @@ def plain_to_html(entry, time_zone):
 
 def markdown_to_html(entry, dirpath, relpath, time_zone):
     pandoc_format = get_meta_attribute(entry, 'pandoc-format', 'markdown')
+    # if entry.panel.date.timetuple()[:3] == (2023, 2, 13) and \
+    #         entry.time.timetuple()[:5] == (2023, 2, 13, 20, 16):
+    #     breakpoint()
     doc = convert_markdown(get_entry_text(entry), format=pandoc_format)
     if doc is None:
         return None
@@ -746,6 +754,48 @@ def tex_to_html(entry, dirpath, relpath, time_zone):
     return ''.join(parts)
 
 
+def heif_to_jpg(entry, target):
+    try:
+        heif_file = pyheif.read(entry.get_data())
+        im = Image.frombytes(
+            heif_file.mode,
+            heif_file.size,
+            heif_file.data,
+            'raw',
+            heif_file.mode,
+            heif_file.stride)
+        im.save(target, format='jpeg')
+        return target
+    # this is supposed to just catch ffi.error but
+    # i don't know how the fuck i am going to import
+    # a C extension module
+    except Exception:
+        pass
+    with tempfile.NamedTemporaryFile(
+            suffix='.heif', delete=False) as file:
+        with entry.stream_raw_data() as fp:
+            shutil.copyfileobj(fp, file)
+    try:
+        subprocess.check_call(['convert', file.name, target],
+                              # stdout=subprocess.DEVNULL,
+                              # stderr=subprocess.DEVNULL,
+                              )
+    finally:
+        os.unlink(file.name)
+
+
+def can_convert_heif(entry):
+    file = tempfile.NamedTemporaryFile(delete=False)
+    file.close()
+    try:
+        heif_to_jpg(entry, file.name)
+    except ValueError:
+        return False
+    finally:
+        os.unlink(file.name)
+    return True
+
+
 def convert_markdown(doc, *, format='markdown'):
     """Convert markdown with pandoc"""
     if shutil.which('pandoc') is None:
@@ -767,7 +817,7 @@ def get_basename(entry, default=default_filename):
     if ctx.has_type(e_type):
         _, exts, _ = ctx.get_type(e_type)
         for ext in exts:
-            if filename.lower().endswith(ext):
+            if filename.endswith(ext):
                 return filename[:-len(ext)]
     return filename
 
