@@ -176,13 +176,13 @@ class TextLoader(Configurable):
             lexer.debug = 69
 
         # top level attributes?
-        attrs = self.get_option('attrs').copy()
+        attrs = {}
         last = 0
         lineno = lexer.lineno
         for token in lexer:
             if self.is_eol(token):
                 continue
-            if self.process_preamble(attrs, token, buffer, lexer):
+            if self.parse_preamble(attrs, token, buffer, lexer):
                 break
             last = buffer.tell() - len(lexer._pushback_chars)
             lineno = lexer.lineno
@@ -196,20 +196,17 @@ class TextLoader(Configurable):
             lexer._pushback_chars.clear()
             lexer.lineno = lineno
         panels = list(self.process_panels(attrs, buffer, lexer))
+        for key, value in self.get_option('attrs').items():
+            attrs.setdefault(key, value)
         if panels:
             attrs['data'] = panels
         return attrs
 
     # calling this differently because it feels less apropos to
     # call this "top-level ATTRIBUTES" when it's all laid out like this
-    def process_preamble(self, attrs, token, buffer, lexer):
+    def parse_preamble(self, attrs, token, buffer, lexer):
         if (self.is_panel(token) or all(c == '-' for c in token)):
             return True
-        # forbidden tokens: sorry, not allowed to use them :(
-        # (otherwise anything would pass as a valid entry and
-        # that's kind of, like, seriously error-prone)
-        if self.is_entry(token):
-            raise LoadError(lexer.lineno, 'unknown panel')
         tup = token.upper()
         lineno = lexer.lineno
         if tup == 'TZ':
@@ -224,33 +221,75 @@ class TextLoader(Configurable):
             value = int(self.get_string(buffer, lexer))
             _add_attr(attrs, 'year', value, lineno, 'top-level')
             logger.info('set year to %d', attrs['year'])
-        elif tup == 'TIME':
-            if self.peek_token(buffer, lexer).upper() == 'ZONE':
-                lexer.get_token()  # dispose ZONE token
+        elif tup == 'ATTR':
+            attrs.update(self.get_json(buffer, lexer))
+        elif self.is_entry(token):
+            if (tup == 'TIME' and
+                    self.peek_token(buffer, lexer).upper() == 'ZONE'):
+                lexer.get_token()  # dispose the ZONE token
                 value = self.get_string(buffer, lexer)
                 _add_attr(attrs, 'tz', value, lineno, 'top-level')
                 logger.info('set time zone to %s', attrs['tz'])
-        elif tup == 'ATTR':
-            attrs.update(self.get_json(buffer, lexer))
+            else:
+                raise LoadError(lexer.lineno, 'no known panel')
         else:
             attrs[token] = self.get_string(buffer, lexer)
         return False
 
     def process_panels(self, attrs, buffer, lexer):
-        curr = None
+        panel = None
         date = None
         for token in lexer:
             # empty line / comment
             if self.is_eol(token):
                 continue
-            if token.upper() in ('PANEL', 'DATE'):
-                if curr is not None:
-                    yield curr
-                curr, date = self.parse_panel_head(attrs, buffer, lexer)
+            if self.is_panel(token):
+                if panel is not None:
+                    yield panel
+                panel, date = self.parse_panel_head(attrs, buffer, lexer)
             else:
-                self.parse_panel_body(attrs, curr, date, token, buffer, lexer)
-        if curr is not None:
-            yield curr
+                if not (panel and date):
+                    raise LoadError(lexer.lineno, 'no known panel')
+                logger.debug('process token in panel %r', token)
+                lineno = lexer.lineno
+                if not self.is_entry(token):
+                    self.parse_panel_body(
+                        attrs, panel, date, token, buffer, lexer)
+
+                # if encountered ENTRY / INSIGHT token:
+                in_panel = True
+                while self.is_entry(token) and in_panel:
+                    entry = self.parse_entry_head(
+                        attrs, date, token, buffer, lexer)
+                    logger.debug('created entry:')
+                    logger.debug(entry)
+                    try:
+                        panel['entries'].append(entry)
+                    except KeyError:
+                        panel['entries'] = [entry]
+
+                    # keep the necessary information to rewind state
+                    # (now that this is in the same function we can
+                    # probably do this in a better way, but well...)
+                    last = buffer.tell() - len(lexer._pushback_chars)
+                    lineno = lexer.lineno
+                    for token in lexer:
+                        if self.is_panel(token):
+                            buffer.seek(last, os.SEEK_SET)
+                            lexer._pushback_chars.clear()
+                            lexer.lineno = lineno
+                            in_panel = False
+                            break
+                        if self.is_entry(token):
+                            break
+                        if not self.is_eol(token):
+                            self.process_entry_body(
+                                attrs, entry, token, buffer, lexer)
+                        last = buffer.tell() - len(lexer._pushback_chars)
+                        lineno = lexer.lineno
+
+        if panel is not None:
+            yield panel
 
     def parse_panel_head(self, attrs, buffer, lexer):
         """(buffer, lexer) -> panel dict"""
@@ -286,49 +325,23 @@ class TextLoader(Configurable):
         return panel, date
 
     def parse_panel_body(self, attrs, panel, date, token, buffer, lexer):
-        assert panel and date, 'no panel'
-        logger.debug('process token in panel %r', token)
+        tup = token.upper()
         lineno = lexer.lineno
-        if not self.is_entry(token):
-            tup = token.upper()
-            if tup == 'ATTR':
-                attrs = self.get_json(buffer, lexer)
-                panel.update(attrs)
-            elif tup in ('RATE', 'RATING'):
-                value = self.get_string(buffer, lexer)
-                _add_attr(panel, 'rating', value, lineno, 'panel')
-            else:
-                raise LoadError(lineno, 'invalid panel')
+        if tup == 'ATTR':
+            attrs = self.get_json(buffer, lexer)
+            panel.update(attrs)
+        elif tup in ('RATE', 'RATING'):
+            value = self.get_string(buffer, lexer)
+            _add_attr(panel, 'rating', value, lineno, 'panel')
+        else:
+            raise LoadError(lineno, 'invalid panel')
 
-            if 'entries' in panel:
-                raise LoadError(lexer.lineno,
-                                f'ambiguous token {token!r}; already '
-                                f'encountered at least one entry')
-        # if encountered ENTRY / INSIGHT token:
-        while self.is_entry(token):
-            curr = self.process_entry_head(attrs, date, token, buffer, lexer)
-            logger.debug('created entry:')
-            logger.debug(curr)
-            try:
-                panel['entries'].append(curr)
-            except KeyError:
-                panel['entries'] = [curr]
-            last = buffer.tell() - len(lexer._pushback_chars)
-            lineno = lexer.lineno
-            for token in lexer:
-                if self.is_panel(token):
-                    buffer.seek(last, os.SEEK_SET)
-                    lexer._pushback_chars.clear()
-                    lexer.lineno = lineno
-                    return
-                if self.is_entry(token):
-                    break
-                if not self.is_eol(token):
-                    self.process_entry_body(attrs, curr, token, buffer, lexer)
-                last = buffer.tell() - len(lexer._pushback_chars)
-                lineno = lexer.lineno
+        if 'entries' in panel:
+            raise LoadError(lexer.lineno,
+                            f'ambiguous token {token!r}; already '
+                            f'encountered at least one entry')
 
-    def process_entry_head(self, attrs, date, token, buffer, lexer):
+    def parse_entry_head(self, attrs, date, token, buffer, lexer):
         tup = token.upper()
         logger.debug('process token in entry head %r', token)
         if tup == 'INSIGHT':
