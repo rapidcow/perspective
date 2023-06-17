@@ -447,3 +447,14 @@ MAIN-FILE some other
                 }]
               }]
             })
+
+    def test_weirdos(self):
+        # this is technically an illegal entry
+        # but welp, at least it reveals a buggy behavior
+        loader = text.TextLoader()
+        data = loader.loads(dedent("""\
+        DATE June 18 2023
+        TIME 04:46
+        """))
+        # from pprint import pp
+        # pp(data)

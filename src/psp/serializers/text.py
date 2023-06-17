@@ -269,12 +269,13 @@ class TextLoader(Configurable):
                         panel['entries'] = [entry]
 
                     # keep the necessary information to rewind state
-                    # (now that this is in the same function we can
+                    # (XXX now that this is in the same function we can
                     # probably do this in a better way, but well...)
                     last = buffer.tell() - len(lexer._pushback_chars)
                     lineno = lexer.lineno
                     for token in lexer:
                         if self.is_panel(token):
+                            # restore state for the panel to process
                             buffer.seek(last, os.SEEK_SET)
                             lexer._pushback_chars.clear()
                             lexer.lineno = lineno
@@ -287,6 +288,9 @@ class TextLoader(Configurable):
                                 attrs, entry, token, buffer, lexer)
                         last = buffer.tell() - len(lexer._pushback_chars)
                         lineno = lexer.lineno
+                    # EOF reached; nothing left to parse
+                    else:
+                        in_panel = False
 
         if panel is not None:
             yield panel
@@ -455,6 +459,8 @@ class TextLoader(Configurable):
     def get_string(self, buffer, lexer):
         """Parse a string field."""
         token = self.peek_token(buffer, lexer)
+        if token == lexer.eof:
+            return ''
         if all(c == '<' for c in token[:-1]) and token[-1] in '<|':
             token = lexer.get_token()
             # line terminator should be pushed inside lookahead chars
