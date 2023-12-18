@@ -438,7 +438,9 @@ def get_entry_html(entry, dirpath, relpath, time_zone):
     if isinstance(entry, BigEntry):
         file_type = entry.get_main_file_type()
         file_format = entry.get_main_file_format()
-        if file_type == 'markdown':
+        if file_type == 'html':
+            content = sanitize_html(entry, dirpath, relpath, time_zone)
+        elif file_type == 'markdown':
             content = markdown_to_html(entry, dirpath, relpath, time_zone)
         elif file_type == 'tex':
             content = tex_to_html(entry, dirpath, relpath, time_zone)
@@ -664,6 +666,19 @@ def plain_to_html(entry, time_zone):
     parts.append('<pre class="no-bg">\n')
     parts.append(html.escape(get_entry_text(entry)))
     parts.append('</pre>')
+    entry_tail(parts, entry, time_zone)
+    return ''.join(parts)
+
+
+def sanitize_html(entry, dirpath, relpath, time_zone):
+    parts = []
+    entry_head(parts, entry, time_zone)
+    if isinstance(entry, BigEntry):
+        entry.extract_all(dirpath)
+        os.unlink(os.path.join(dirpath, entry.get_main_file()))
+    doc = get_entry_text(entry)
+    doc = replace_urls(doc, dirpath, relpath)
+    parts.append(replace_stuff_for_monospace(doc))
     entry_tail(parts, entry, time_zone)
     return ''.join(parts)
 
