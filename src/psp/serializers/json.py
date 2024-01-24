@@ -1108,6 +1108,10 @@ class JSONDumper(Configurable):
         None is returned when an entry is to be kept inside the backup dict.
         Otherwise, a str is returned.
 
+        Default implementation returns None if the entry cannot be
+        fully represented by text (i.e. use_inline_text() returns
+        True) OR if the base_dir option is None.
+
         Several notes on the implementation:
 
           *  get_input_path() should create the appropriate file it is
@@ -1117,11 +1121,11 @@ class JSONDumper(Configurable):
           *  It is unnecessary to raise any exceptions when get_input_path()
              fails to generate an input path.  Just return an arbitrary
              string and let wrap_entry() do its job.
-
-          *  (JSONDumper) When overriding this method, feel free to just
-             copy and modify the default implementation!  The 'assets'
-             variable is hard-coded just for that reason ;)
         """
+        # if the user forbids us to interact with the file
+        # system, then simply keep all entries in the archive
+        if self.get_option('base_dir') is None:
+            return None
         # by default we don't keep entries that don't have
         # a sufficient text representation.
         if self.use_inline_text(entry):

@@ -870,7 +870,7 @@ will *always* hold regardless of what ``panels`` is.
 For a proper pair of loader and dumper like this, I recommend making
 sure that:
 
-*  their ``base_dir`` options point to the same directory path
+*  their ``base_dir`` options point to a consistent directory
    (unless all data is encapsulated within the backup and no entries
    are exported),
 *  their inference managers are identical, and
@@ -898,18 +898,6 @@ panel (and its entries recursively) in JSON.
    :class:`~psp.types.Configurable` just like :class:`JSONLoader`, though
    same as before, we will only use the |Configurable.configure| method in
    the examples that are to follow.
-
-   .. warning::
-
-      Since the default option for ``base_dir`` is ``'.'``, i.e. the
-      current working directory, be cautious when you don't explicitly
-      provide one!  With default implementation of :meth:`get_input_path`,
-      and :meth:`use_inline_text`, entries whose |is_text| method returns
-      False are always exported to the ``assets`` directory relative to
-      ``base_dir``.  So make sure all entries have their |is_text| method
-      return True when you choose to omit the ``base_dir``!
-
-      .. |is_text| replace:: :meth:`~psp.types.Entry.is_text`
 
    .. method:: configure(**options)
 
@@ -965,6 +953,11 @@ panel (and its entries recursively) in JSON.
          *  :meth:`generate_export_path`
          *  :meth:`export_entry`
          *  :meth:`compute_input_path`
+
+         You will still be able to use the dumper normally though:
+         it's just that all binary entries will be encoded within
+         the backup by default.  See :meth:`get_input_path` describe
+         this mechanism in more details.
 
       (2)
          The function in the ``data_encoder`` option should take the entry
@@ -1183,8 +1176,6 @@ panel (and its entries recursively) in JSON.
       >>> # make this a text entry otherwise it will be exported
       >>> entry.set_data('hi')
       >>> panel.add_entry(entry)
-      >>> # we know that no exporting will happen so it's okay to
-      >>> # not provide a base_dir
       >>> dumper = JSONDumper()
       >>> attrs = dumper.get_top_level_attributes([])
       >>> dumper.wrap_entry(entry, attrs)
@@ -1339,7 +1330,8 @@ panel (and its entries recursively) in JSON.
 
    Note that returning False is always applicable, but returning True isn't.
 
-   Whether an entry is exported is controlled by :meth:`get_input_path`,
+   Whether an entry is exported or kept in backup is
+   controlled by :meth:`get_input_path`,
    which receives the same arguments as :meth:`wrap_entry` and either
    returns a *str* to be used in the ``input`` attribute (after the file
    it refers to exists) or None, which would fall back to inline text or
@@ -1355,13 +1347,16 @@ panel (and its entries recursively) in JSON.
    However, if an entry is not exported and None is being returned,
    :meth:`get_input_path` should not create any files.
 
-   In addition, if ``base_dir`` is set to None, any attempt to generate a
-   new path immediately fails.  As an example, observe what happens when we
-   export a binary entry:
+   Note that if ``base_dir`` is set to None, :class:`JSONDumper`
+   will unconditionally store all entry content inline within
+   the backup.  This is the default behavior as we do not want
+   accidentally pollute the user's file system without being
+   told explicitly to do so.
 
    >>> from psp.types import Entry
    >>> from datetime import datetime, timezone
    >>> entry = Entry(datetime(2022, 2, 22, tzinfo=timezone.utc))
+   >>> entry.set_raw_data(b'hello world')
    >>> dumper = JSONDumper()
    >>> # is_text() returns False, so by the implementation of
    >>> # get_path() dumper will see this as a binary entry
@@ -1370,27 +1365,19 @@ panel (and its entries recursively) in JSON.
    >>> # the default value is None
    >>> dumper.get_option('base_dir') is None
    True
+   >>> # so when we try to export...
    >>> attrs = dumper.get_top_level_attributes([])
    >>> JSONDumper().wrap_entry(entry, attrs)
-   Traceback (most recent call last):
-     ...
-   psp.serializers.json.DumpError: base_dir must be set when calling generate_export_path()
-
-   .. XXX: One drawback of implementing get_input_path() this way (exhibiting
-      behavior as shown above) is that we are forcing the user to export with
-      the default implementation...
-      I guess it depends on what users like in general, given how anyone who
-      prefers using binary inline would necessarily have to override the
-      class, which is of little cost IMO compared to having users forget to
-      provide a base_dir and end up getting a bunch of base64 junk in their
-      backup file :/
+   {'date-time': '2022-02-22 00:00+00:00', 'data': 'aGVsbG8gd29ybGQ=', 'data-encoding': 'base64'}
+   >>> # ... we get an inline binary entry.
 
    .. method:: get_input_path(entry, attrs)
 
       Get an input path for the entry.  The arguments passed are the
       exact same from :meth:`wrap_entry`.  Return a *str* for using
-      ``input`` to include an external path or None for using inline
-      text/binary.
+      ``input`` to use input path pointing to an already exported
+      file or None for keeping the entry in the backup with
+      inline text/binary.
 
    .. note::
 
@@ -1407,6 +1394,10 @@ panel (and its entries recursively) in JSON.
    (I'll explain this in a bit)::
 
       def get_input_path(self, entry, attrs):
+          # if the user forbids us to interact with the file
+          # system, then simply keep all entries in the archive
+          if self.get_option('base_dir') is None:
+              return None
           # by default we don't keep entries that don't have
           # a sufficient text representation.
           if self.use_inline_text(entry):
@@ -1425,7 +1416,9 @@ panel (and its entries recursively) in JSON.
    .. sorry for breaking the 80 char limit there :c
       imo i prefer it on one line....
 
-   First off, the use of :meth:`use_inline_text` is to simply make sure
+   First off, if the user did not explicitly set a ``base_dir``,
+   we simply abort the process of input path generation.
+   Next, the use of :meth:`use_inline_text` is to make sure
    that text entries are never exported.  Generally :class:`JSONDumper`
    prefers exporting to inline binary, so only entries that can be fully
    represented with inline text (determined by :meth:`use_inline_text`
@@ -1816,8 +1809,8 @@ panel (and its entries recursively) in JSON.
       ``front`` represents the directory component that must always
       be included in the input path, and ``back`` represents the
       component that may be included.
-      Default implementation always returns the string
-      ``('assets', '')``.
+      Default implementation always returns the hard-coded
+      string ``('assets', '')``.
 
    .. method:: export_path_ok(export_path, entry)
 
