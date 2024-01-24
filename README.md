@@ -71,8 +71,20 @@ pip install -e .
 Although weirdly enough if you import `psp` it tells you that it is a
 namespace package... (because it can't find `__init__.py` somehow??
 
-Use `python3 -m unittest` in the repository directory to run tests in
-`tests/` and `newtests/`.
+
+## Unit tests
+
+In this directory, run:
+
+```python
+# old tests
+python3 -m unittest discover -s tests -t .
+# new tests
+python3 -m unittest discover -s newtests -t .
+```
+
+Due to the use of packages calling without the `-t` option
+would give import errors...
 
 
 ## Publishing on <s>PyPI</s> Test PyPI
