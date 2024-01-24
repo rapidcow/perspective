@@ -1080,13 +1080,13 @@ class JSONDumper(Configurable):
             else:
                 self._warn(f'more than one path found for input '
                            f'path {input_path!r}', DumpWarning)
-            with (open(first, 'rb') as fp1,
-                    entry.stream_raw_data() as fp2):
-                if not util.fileobjequal(fp1, fp2):
-                    raise DumpError(
-                        f'entry raw data differs from the content '
-                        f'of {first!r} (from the input path '
-                        f'{input_path!r})')
+            with open(first, 'rb') as fp1:
+                with entry.stream_raw_data() as fp2:
+                    if not util.fileobjequal(fp1, fp2):
+                        raise DumpError(
+                            f'entry raw data differs from the '
+                            f'content of {first!r} (from the '
+                            f'input path {input_path!r})')
             self.__write_entry_input(entry_dict, entry, input_path)
         # extra attributes (just question)
         if entry.has_question():
