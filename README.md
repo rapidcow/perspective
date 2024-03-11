@@ -92,11 +92,12 @@ would give import errors...
 From [this](https://packaging.python.org/en/latest/tutorials/packaging-projects/):
 
 ```sh
-python3 -m install --update build twine
+python3 -m pip install --upgrade build twine
 python3 -m build
 python3 -m twine upload --repository testpypi dist/*
 ```
 
+(you will need your password for the last command)
 
 [Perspective]: http://blinky.co/perspective_app/
 [docs]: https://perspe.readthedocs.io/en/latest/
