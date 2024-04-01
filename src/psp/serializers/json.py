@@ -359,7 +359,7 @@ class JSONLoader(Configurable):
         # -------
         entries = panel.pop('entries', [])
 
-        if panel:
+        if panel and self.get_option('warn_unused_keys'):
             # I know map(str, ...) is totally redundant, but debugging
             # would suck if some mysterious object mixed in causing this
             # line to fail...
@@ -611,7 +611,7 @@ class JSONLoader(Configurable):
             _assert_type(question, str, 'question')
             obj.set_question(question)
 
-        if entry:
+        if entry and self.get_option('warn_unused_keys'):
             keys_str = ', '.join(sorted(map(str, entry.keys())))
             plural = '' if len(entry) == 1 else 's'
             self._warn(f'ignored entry key{plural}: {keys_str}',
@@ -1616,11 +1616,10 @@ JSONLoader.add_option('base_dir', None, base_dir_checker)
 JSONLoader.add_option('json_options', {}, dict_checker)
 JSONLoader.add_option('check_panel_order', True, bool_checker)
 JSONLoader.add_option('check_entry_order', True, bool_checker)
-# When check_panel_order is disabled, one may enable this to
-# merely check for duplicate panels
 JSONLoader.add_option('suppress_warnings', False, bool_checker)
 JSONLoader.add_option('error_on_warning', False, bool_checker)
 JSONLoader.add_option('warn_ambiguous_paths', True, bool_checker)
+JSONLoader.add_option('warn_unused_keys', True, bool_checker)
 JSONLoader.add_option('data_decoders', data_decoders, dict_checker)
 
 JSONDumper.add_option('base_dir', None, base_dir_checker)
