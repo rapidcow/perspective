@@ -29,7 +29,7 @@ dynamic = ["version"]
 
 [project.urls]
 Documentation = "https://perspe.readthedocs.io/en/latest/"
-Source = "https://github.com/rapidcow/perspective/"
+Source = "https://git.rapidcow.org/perspective"
 
 [project.scripts]
 psp = "psp.cli:main"
