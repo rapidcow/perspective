@@ -43,11 +43,9 @@ timezone recognition.)
 
 You may install globally or [activate a virtual environment][venv] first.
 
-To install, do this (??? I forgot the syntax - plus this isn't
-good since it fetches from the current commit :c I will figure
-out a way to publish releases...)
+To install, do this:
 
-    python3 -m pip install git+https://rapidcow.org/perspective
+    python3 -m pip install git+https://rapidcow.org/perspective@v0.1#subdirectory=src
 
 (Actually you need subdirectory, nevermind - just clone it
 and cd into it and do `pip install src/` for maybe)
@@ -275,5 +273,6 @@ if you report stuff you find:
 Suggestions are equally welcome, although please be practical
 since there's just the one of me
 
+[Perspective]: http://blinky.co/perspective_app/
 [docs]: https://perspe.readthedocs.io/en/latest/
 [venv]: https://docs.python.org/3/library/venv.html
