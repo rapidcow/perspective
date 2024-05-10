@@ -45,10 +45,7 @@ You may install globally or [activate a virtual environment][venv] first.
 
 To install, do this:
 
-    python3 -m pip install git+https://rapidcow.org/perspective@v0.1#subdirectory=src
-
-(Actually you need subdirectory, nevermind - just clone it
-and cd into it and do `pip install src/` for maybe)
+    python3 -m pip install git+https://rapidcow.org/perspective.git@v0.1#subdirectory=src
 
 If you have successfully installed, running `python3 -m psp -V`
 should print the version number.
