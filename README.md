@@ -136,7 +136,7 @@ and the stringify package is perhaps the best example of this.
 You can, for example, tell it to convert everything into
 the same time zone for you:
 
-```
+```pycon
 >>> # the indent argument allows any arbitrary prefix:
 >>> formatter = PanelFormatter(width=46, indent='# ')
 >>> # set time zone to +08:00 from the 3rd entry
@@ -163,7 +163,7 @@ the same time zone for you:
 
 Or maybe you want to just display the time zones as is:
 
-```
+```pycon
 >>> formatter.configure(coerce_time_zone=False)
 >>> formatted = formatter.format(panels[1])
 >>> print('#' + '=' * 47); print(formatted); print('#' + '=' * 47)
@@ -187,7 +187,7 @@ the time zone we passed, and so the formatter hides it.
 By default, time zones are either entirely hidden only if they
 have the same offset (as in our first case) or entirely shown:
 
-```
+```pycon
 >>> # unset the time zone - this is the default
 >>> formatter.configure(time_zone=None)
 >>> formatted = formatter.format(panels[1])
