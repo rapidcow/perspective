@@ -1,4 +1,4 @@
-# perspective - my personal diary helper
+# perspective - diary backup helper
 
 Heyoooooooo I'm hosting this project on my own cgit server!
 (That means no more GitHub bots, teehee >:)
@@ -10,12 +10,13 @@ The current README.md is preserved for the time being
 (well, mostly - there are big modifications as I am
 very excited ;)
 If you a curious to see how you can help me code,
-I've moved that part of the readme to CONTRIB.md.
+I've moved that part of the readme to
+[CONTRIB.md](/perspective/about/CONTRIB.md).
 
 ---
 
-A Python library providing backup utility for the iOS journaling app
-[Perspective][] (and diaries in general)!
+A Python library providing backup utility inspired by the
+iOS journaling app [Perspective][] (and diaries in general)!
 
 To clear things up, I often refer to the library as simply the
 Perspective library, though please understand that I am by no
