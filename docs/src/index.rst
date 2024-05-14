@@ -4,8 +4,6 @@
 The Perspective Journal documentation!
 ======================================
 
-.. TODO: UPDATE THIS calling this a library just drives people off
-
 Welcome!  This is a pure Python library providing backup utility for the
 iOS journaling app `Perspective`_, as well as backing up and processing
 diaries in general!

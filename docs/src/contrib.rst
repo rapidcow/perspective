@@ -2,47 +2,18 @@
 Contributing
 ============
 
-TODO: Bugs?  Pull requests?
+Since the home page for this homepage isn't quite up in the
+web yet besides this documentation site I'll have to leave
+this page in.
 
-Setup
------
+Still, for the purpose of putting things in one place,
+go to these pages in my Git server for:
 
-The source code, documentation, as well as test cases, are all on `GitHub`_.
-To start messing things around, I recommend cloning the repo, create a
-virtual environment and install it there:
+*  Development and contribution guides:
+   `<https://git.rapidcow.org/perspective/about/CONTRIB.md>`_
 
-.. code-block:: sh
-
-   git clone https://git.rapidcow.org/perspective.git
-   python -m venv .env
-   # Activate the virtual environment, e.g. for Bash it looks like this:
-   source .env/bin/activate
-   # Install in editable mode (so that any changes you make here in the
-   # source code will automatically work!)
-   cd perspective/src
-   pip install -e .
-
-.. _GitHub: https://github.com/rapidcow/perspective
-
-
-Code guidelines
----------------
-
-Good code is hard to write, and I get that.  It's hard to even say that
-I know what I am doing either!  Despite this, I will still list out a few
-things I would like us to follow:
-
-*   Adhere to `PEP 8`_ whenever possible.  This includes: proper naming
-    style (``like_this`` for variables and ``LikeThis`` for classes),
-    use a leading underscore ``_like_this`` for private methods), four-space
-    indentation, adding spaces for readability (except in keyword arguments),
-    using Python idioms, using comments to explain the code when the reader
-    might not get the purpose of the code right away.
-*   Above all else, be consistent!
-*   Docstrings aren't a must but are most certainly welcomed :D
-
-.. _PEP 8: https://peps.python.org/pep-0008/
-
+*  Similar guides but for this very documentation:
+   `<https://git.rapidcow.org/perspective/about/DOCS_CONTRIB.md>`_
 
 Documentation
 -------------
