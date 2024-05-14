@@ -21,7 +21,7 @@ To install, run the following commands in your terminal:
 
 .. code-block:: sh
 
-   git clone https://github.com/rapidcow/perspective.git
+   git clone https://git.rapidcow.org/perspective.git
    python3 -m pip install perspective/src
 
 Remember to replace ``python3`` with the name of your Python 3 interpreter!

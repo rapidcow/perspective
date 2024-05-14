@@ -6,8 +6,10 @@ What is this?
 
 The Perspective library is one of my personal coding projects which I
 decided to upload to `a GitHub repository
-<https://github.com/rapidcow/perspective>`_ due to how useful it has become
-to me.  This right here is a little documentation for all the gibberish
+<https://github.com/rapidcow/perspective>`_ (**note: now moved to
+`my own cgit server <https://git.rapidcow.org/perspective/about/>`_!**)
+due to how useful it has become to me.
+This right here is a little documentation for all the gibberish
 source code and stuff I have.
 
 As for basicproc.py_, well, you can say it was a prototype of the library.

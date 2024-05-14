@@ -13,7 +13,7 @@ virtual environment and install it there:
 
 .. code-block:: sh
 
-   git clone https://github.com/rapidcow/perspective.git
+   git clone https://git.rapidcow.org/perspective.git
    python -m venv .env
    # Activate the virtual environment, e.g. for Bash it looks like this:
    source .env/bin/activate

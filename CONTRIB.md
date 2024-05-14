@@ -7,7 +7,7 @@ clone this repo and install with [editable mode][] (this is so that any
 changes you make here in the repo will be reflected in your Python runtime)
 
 ```sh
-git clone https://github.com/rapidcow/perspective.git
+git clone https://git.rapidcow.org/perspective.git
 cd perspective/src
 pip install -e .
 ```
