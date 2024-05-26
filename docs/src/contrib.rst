@@ -13,7 +13,7 @@ go to these pages in my Git server for:
    `<https://git.rapidcow.org/perspective/about/CONTRIB.md>`_
 
 *  Similar guides but for this very documentation:
-   `<https://git.rapidcow.org/perspective/about/DOCS_CONTRIB.md>`_
+   `<https://git.rapidcow.org/perspective/about/docs/README.md>`_
 
 Documentation
 -------------

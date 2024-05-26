@@ -1,8 +1,10 @@
 # Documentation
 
 This is the source of the documentation for the Perspective library,
-including [`basicproc.py`][] (archived), this `psp` package, and the
-structure of `backup.json`!
+including [`basicproc.py`][] (currently considered to be
+moved to rapidcow.org/projects/perspective), this `psp` package
+(considered for the same reason due to its excessive length),
+and the structure of `backup.json`!
 
 This documentation written in reStructuredText and compiled with [Sphinx][].
 HTML theme used there is [Furo](https://github.com/pradyunsg/furo) since it
