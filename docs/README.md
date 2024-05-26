@@ -149,6 +149,10 @@ to go through, as described [here](https://stackoverflow.com/a/44440757))
 Read the Doc already adds webhooks that trigger whenever the repo is
 updated, so you shouldn't have to worry about it (:
 
+NOTE: this was the case when the project was on GitHub though I don't
+think it happens now... I can still rebuild the site on my end, so
+things should still be good. Yeah :D
+
 
 ## About translation
 
