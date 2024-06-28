@@ -7,10 +7,13 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "perspe"
-description = "A Python package for backing up entries in the iOS app Perspective"
-readme = "README.rst"
+description = "A Python package for diary backups and "
+readme = { file = "README.rst", type = "text/x-rst" }
 requires-python = ">=3.8"
 authors = [
+    { name="rapidcow", email="devel@rapidcow.org" },
+]
+maintainers = [
     { name="rapidcow", email="devel@rapidcow.org" },
 ]
 # https://pypi.org/classifiers/
@@ -22,14 +25,17 @@ classifiers = [
 dependencies = [
     "termcolor==2.2.0",
 ]
-# XXX: What do I write here? O.o
-# https://python-poetry.org/docs/pyproject/
-license = {text="GPL-3.0-or-later"}
+license = { file = "LICENSE", type = "text/plain" }
 dynamic = ["version"]
 
+# thanks pypa qvq
+# https://packaging.python.org/en/latest/guides/writing-pyproject-toml/#urls
 [project.urls]
 Documentation = "https://perspe.readthedocs.io/en/latest/"
-Source = "https://git.rapidcow.org/perspective"
+Repository = "https://git.rapidcow.org/perspective"
+Homepage = "https://git.rapidcow.org/perspective/about/"
+Issues = "https://codeberg.org/rapidcow/perspective/issues"
+#Changelog = "https://git.rapidcow.org/perspective/tree/CHANGELOG"
 
 [project.scripts]
 psp = "psp.cli:main"
