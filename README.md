@@ -1,17 +1,28 @@
 # perspective - diary backup helper
 
 Heyoooooooo I'm hosting this project on my own cgit server!
-(That means no more GitHub bots, teehee >:)
 
-Info about this project will also be available on
-<http://rapidcow.org/projects/perspective> one day!
+I am also trying out Codeberg so uh hi if you are reading
+this README on Codeberg :)
 
 The current README.md is preserved for the time being
 (well, mostly - there are big modifications as I am
 very excited ;)
 If you a curious to see how you can help me code,
 I've moved that part of the readme to
-[CONTRIB.md](/perspective/about/CONTRIB.md).
+`CONTRIB.md`
+([relative link](CONTRIB.md))
+([Codeberg link](https://codeberg.org/rapidcow/perspective/src/branch/main/CONTRIB.md)).
+There's also more on issues and stuff on `CONTRIB_CODEBERG.md`
+([relative link](CONTRIB_CODEBERG.md))
+([Codeberg link](https://codeberg.org/rapidcow/perspective/src/branch/main/CONTRIB_CODEBERG.md)).
+
+Also - just a sincere personal request - please don't put my code
+back on GitHub. I mean there is [this](https://giveupgithub.org),
+that's a part of why. Though this isn't a protest or anything;
+I myself just *really* don't like Microsoft is all.
+
+Thanks! ^^ -rapid
 
 ---
 
@@ -44,9 +55,10 @@ timezone recognition.)
 
 You may install globally or [activate a virtual environment][venv] first.
 
-To install, do this:
+To install, do any one of these:
 
-    python3 -m pip install git+https://rapidcow.org/perspective.git@v0.1#subdirectory=src
+    python3 -m pip install git+https://git.rapidcow.org/perspective.git@v0.1#subdirectory=src
+    python3 -m pip install git+https://codeberg.org/rapidcow/perspective.git@v0.1#subdirectory=src
 
 If you have successfully installed, running `python3 -m psp -V`
 should print the version number.
@@ -256,20 +268,6 @@ And even MORE I have in mind but haven't implemented
 If you want to learn more, check out my largely unfinished
 [documentation][docs]. I gave a few examples there too, which
 might be of more interest to you.
-
-## Bugs
-
-Email <dev@rapidcow.org>! I might figure out how to create
-a mailing list one day, but here are some basic expectations
-if you report stuff you find:
-
-*   a minimal example that can reproduce the problem
-*   what you expected to happen (link to the [documentation][docs] or
-    whatever could help me understand the issue)
-*   what you actually got (the **full** traceback and error message)
-
-Suggestions are equally welcome, although please be practical
-since there's just the one of me
 
 [Perspective]: http://blinky.co/perspective_app/
 [docs]: https://perspe.readthedocs.io/en/latest/

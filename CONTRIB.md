@@ -2,6 +2,12 @@
 
 more README for the curious :)
 
+NOTE: if you are not very comfortable with command-line stuff, you are
+always welcome to try out the (provisional) issue tracker on Codeberg!
+More on that in `CONTRIB_CODEBERG.md`
+([relative link](CONTRIB_CODEBERG.md))
+([Codeberg link](https://codeberg.org/rapidcow/perspective/src/branch/main/CONTRIB_CODEBERG.md)).
+
 ## Setup
 
 Assuming that you have activated a [virtual environment][venv], you can
@@ -10,6 +16,8 @@ changes you make here in the repo will be reflected in your Python runtime)
 
 ```sh
 git clone https://git.rapidcow.org/perspective.git
+# or if that doesn't work...
+git clone https://codeberg.org/rapidcow/perspective.git
 cd perspective/src
 pip install -e .
 ```
@@ -19,7 +27,9 @@ namespace package... (because it can't find `__init__.py` somehow??
 
 ## How do I...
 
-**Build documentation?** See `docs/README.md`.
+**Build documentation?** See `docs/README.md`
+([relative link](docs/README.md))
+([Codeberg link](https://codeberg.org/rapidcow/perspective/src/branch/main/docs)).
 
 **Run tests?** At the root of this worktree:
 
@@ -44,6 +54,24 @@ python3 -m twine upload --repository testpypi dist/*
 ```
 
 (you will need your password for the last command)
+
+**Got questions?** Send [me](mailto:dev@rapidcow.org) an email (and
+include the word "Perspective" somewhere so I know what you are
+talking about). Please note that while I plan to keep track of our
+conversations (by that I mean assigning each email I get with
+a number), I will not make it public on a mailing list (if there will
+ever be one) unless you explicitly allow me to.  And even if you do,
+you can choose to remain anonymous and I will replace your email with
+a random but consistent identifier (so we know who is talking - at least
+within the same thread.)
+
+The only thing I ask you for is this... try to use a consistent name
+and email.  And if you can, skim through [Codeberg issues][] to see
+if your question has been asked before.  (It's empty - I know,
+But maybe one day through some miraculous means it won't....)
+
+[Codeberg issues]: https://codeberg.org/rapidcow/perspective/issues
+
 
 ## Pull requests
 
@@ -105,10 +133,10 @@ Your Name (7):
       Descriptions
       of your commits
 
-(from here it's output of git diff --stat grc/<branch>..<branch>)
+[from here it's output of git diff --stat grc/<branch>..<branch>]
 ```
 
-and you are set! just email this output to me at <dev@rapidcow.org> :)
+and you are set! just send this output to <dev@rapidcow.org> :)
 
 Alternatively you can also send me patches:
 
@@ -116,8 +144,9 @@ Alternatively you can also send me patches:
 git format-patch grc/<branch>..<branch>
 ```
 
-(A mailing list will be here when I receive anything on this address
-an empty mailing list would be kind of boring...)
+PS: If you don't have a MUA you feel comfortable to use with Git
+I *highly* recommend checking out [aerc](https://aerc-mail.org/)!
+It works with command-line stuff very smoothly.
 
 ## Code guidelines
 
