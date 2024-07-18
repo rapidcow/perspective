@@ -39,8 +39,9 @@ much code, and I have to call it something.
 The code, of course, is written from scratch by me independently
 of the developers of Perspective (Blinky, IIRC?)
 (I hope I'm not doing anything wrong here, but you must let
-me know something, well, email me at <yizzy@rapidcow.org> or
-<ethan@rapidcow.org> idk...)
+me know something, well, email me at <dev@rapidcow.org> or
+<ethan@rapidcow.org> or whatever (I don't really have a special
+address for this sort of things)...)
 
 The Perspective library is released under GPLv3.
 Do whatever crazy stuff you want with it; as long as you
@@ -270,5 +271,5 @@ If you want to learn more, check out my largely unfinished
 might be of more interest to you.
 
 [Perspective]: http://blinky.co/perspective_app/
-[docs]: https://perspe.readthedocs.io/en/latest/
+[docs]: https://docs.rapidcow.org/perspective
 [venv]: https://docs.python.org/3/library/venv.html

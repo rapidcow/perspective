@@ -10,8 +10,11 @@ This documentation written in reStructuredText and compiled with [Sphinx][].
 HTML theme used there is [Furo](https://github.com/pradyunsg/furo) since it
 has dark mode that protects my eyes from going blind Ovo
 
-The web version of this documentation can be found [here][perspe] (hosted by
-[Read The Docs][]!)
+The web version of this documentation can be found [here][perspe]
+(hosted by [Read The Docs][]!)  **EDIT**: it still is hosted by readthedocs,
+but if you want a more permanent URL, use
+<https://docs.rapidcow.org/perspective>.  I will try my best to
+make this accessible for as long as I can. :D
 
 
 ## Build

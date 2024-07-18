@@ -31,7 +31,7 @@ dynamic = ["version"]
 # thanks pypa qvq
 # https://packaging.python.org/en/latest/guides/writing-pyproject-toml/#urls
 [project.urls]
-Documentation = "https://perspe.readthedocs.io/en/latest/"
+Documentation = "https://docs.rapidcow.org/perspective"
 Repository = "https://git.rapidcow.org/perspective"
 Homepage = "https://git.rapidcow.org/perspective/about/"
 Issues = "https://codeberg.org/rapidcow/perspective/issues"
