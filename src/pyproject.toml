@@ -1,8 +1,7 @@
 # https://setuptools.pypa.io/en/latest/userguide/pyproject_config.html
-# https://flit.pypa.io/en/latest/pyproject_toml.html
 # https://packaging.python.org/en/latest/tutorials/packaging-projects/#creating-pyproject-toml
 [build-system]
-requires = ["setuptools>=61.0", "setuptools-scm"]
+requires = ["setuptools>=61.0"]
 build-backend = "setuptools.build_meta"
 
 [project]
