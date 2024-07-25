@@ -6,7 +6,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "perspe"
-description = "A Python package for diary backups and "
+description = "A Python package for diary backups and, uh, stuff"
 readme = { file = "README.rst", content-type = "text/x-rst" }
 requires-python = ">=3.8"
 authors = [

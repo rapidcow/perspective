@@ -1,31 +1,5 @@
 # perspective - diary backup helper
 
-Heyoooooooo I'm hosting this project on my own cgit server!
-
-I am also trying out Codeberg so uh hi if you are reading
-this README on Codeberg :)
-
-The current README.md is preserved for the time being
-(well, mostly - there are big modifications as I am
-very excited ;)
-If you a curious to see how you can help me code,
-I've moved that part of the readme to
-`CONTRIB.md`
-([relative link](CONTRIB.md))
-([Codeberg link](https://codeberg.org/rapidcow/perspective/src/branch/main/CONTRIB.md)).
-There's also more on issues and stuff on `CONTRIB_CODEBERG.md`
-([relative link](CONTRIB_CODEBERG.md))
-([Codeberg link](https://codeberg.org/rapidcow/perspective/src/branch/main/CONTRIB_CODEBERG.md)).
-
-Also - just a sincere personal request - please don't put my code
-back on GitHub. I mean there is [this](https://giveupgithub.org),
-that's a part of why. Though this isn't a protest or anything;
-I myself just *really* don't like Microsoft is all.
-
-Thanks! ^^ -rapid
-
----
-
 A Python library providing backup utility inspired by the
 iOS journaling app [Perspective][] (and diaries in general)!
 
@@ -43,10 +17,8 @@ me know something, well, email me at <dev@rapidcow.org> or
 <ethan@rapidcow.org> or whatever (I don't really have a special
 address for this sort of things)...)
 
-The Perspective library is released under GPLv3.
-Do whatever crazy stuff you want with it; as long as you
-don't use it for something locked behind a paywall and
-I will be happy. :)
+The Perspective library is not open-source but anyone is free
+to ask for a demo.  Just don't redistribute on my behalf. :)
 
 ## Installation
 
@@ -267,9 +239,9 @@ And even MORE I have in mind but haven't implemented
    moment doing it means that... you'd have to be on your own :/)
 
 If you want to learn more, check out my largely unfinished
-[documentation][docs]. I gave a few examples there too, which
-might be of more interest to you.
+documentation in the docs/ directory. (You will have to install
+extra dependencies and build it yourself.) I gave a few examples
+there too, which might be of more interest to you.
 
 [Perspective]: http://blinky.co/perspective_app/
-[docs]: https://docs.rapidcow.org/perspective
 [venv]: https://docs.python.org/3/library/venv.html

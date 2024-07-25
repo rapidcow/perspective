@@ -2,7 +2,7 @@
 ==========================================
 
 The ``psp`` package, named after the iOS journaling app `Perspective`_,
-helps you backup entries in the app Perspective (or any electronic
-diary you may have, really).
+helps back up entries in the app Perspective (or any electronic
+diary, really).
 
 .. _Perspective: http://blinky.co/perspective_app/
