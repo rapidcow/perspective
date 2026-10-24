@@ -11,11 +11,8 @@ I stop using my iPhone one day - and well, I've written so
 much code, and I have to call it something.
 
 The code, of course, is written from scratch by me independently
-of the developers of Perspective (Blinky, IIRC?)
-(I hope I'm not doing anything wrong here, but you must let
-me know something, well, email me at <dev@rapidcow.org> or
-<ethan@rapidcow.org> or whatever (I don't really have a special
-address for this sort of things)...)
+of the developers of Perspective (Blinky, IIRC?)  It is licensed
+under GNU General Public License version 3 or later (GPLv3+).
 
 ## Installation
 
@@ -27,7 +24,7 @@ You may install globally or [activate a virtual environment][venv] first.
 
 To install, do any one of these:
 
-    python3 -m pip install git+https://git.rapidcow.org/perspective.git@v0.1#subdirectory=src
+    python3 -m pip install git+https://git.rapidcow.org/pub/project/perspective.git@v0.1#subdirectory=src
     python3 -m pip install git+https://codeberg.org/rapidcow/perspective.git@v0.1#subdirectory=src
 
 If you have successfully installed, running `python3 -m psp -V`
