@@ -17,9 +17,6 @@ me know something, well, email me at <dev@rapidcow.org> or
 <ethan@rapidcow.org> or whatever (I don't really have a special
 address for this sort of things)...)
 
-The Perspective library is not open-source but anyone is free
-to ask for a demo.  Just don't redistribute on my behalf. :)
-
 ## Installation
 
 The Perspective library is written for Python 3.8 and above.
