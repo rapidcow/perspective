@@ -12,8 +12,10 @@ dist/
 *.egg
 
 # Environment
+.python-version
 .env*
-.venv
+.venv*
+venv*
 
 # Translations
 *.mo
