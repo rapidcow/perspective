@@ -23,6 +23,7 @@ device.  Hopefully you'll find these links helpful:
 *  LaTeX: https://www.latex-project.org/get/
 """
 
+import collections
 import datetime
 import html
 import json
@@ -31,6 +32,7 @@ import re
 import shutil
 import subprocess
 import tempfile
+import urllib.parse
 
 import bs4
 
@@ -47,24 +49,30 @@ except ImportError:
 
 import psp.timeutil
 import psp.util
-import psp.datatypes
+import psp.filetypes
 from psp.stringify import PanelFormatter, EntryFormatter
-from psp.extensions.bigentry import BigEntry, BigLoader, BigDumper
+from psp.serializers.json import JSONLoader, JSONDumper
+from psp.ext.bigentry import BigEntry
+from psp.ext.captions import CaptionEntry
+from psp.ext.metadata import MetaEntry
 import tqdm
 
 __all__ = ['write_panel_html', 'export_panels']
 
+# Configuration
 time_format = '24 hour'
 default_filename = 'file'
+
+MATHJAX_URL = 'https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-chtml.js'
 
 TEMPLATE = """<!DOCTYPE html>
 <html lang="en-US">
 <head>
   <meta charset="utf-8">
   <title>{TITLE}</title>
-  <link rel="stylesheet" href="stylesheet.css" />
+  <link rel="stylesheet" href="{CSS}" />
   <script type="text/javascript" id="MathJax-script" async
-    src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-chtml.js">
+    src="{MATHJAX}">
   </script>
 </head>
 
@@ -119,12 +127,16 @@ STYLESHEET = """body {
   padding-left: 20px;
 }
 
-img {
+img, video {
   padding: 0 3ex 0 3ex;
   width: 80%;
   /* Centering */
   display: block;
   margin: 0 auto;
+}
+
+figcaption {
+  margin-top: 1ex;
 }
 
 pre {
@@ -197,6 +209,15 @@ pre code {
 
 .sourceCode {
   color: black;
+}
+
+/* nasty hacks: https://css-tricks.com/two-issues-styling-the-details-element-and-how-to-solve-them/ */
+details > summary:first-of-type {
+  cursor: pointer;
+}
+
+details > summary:first-of-type > * {
+  display: inline;
 }
 
 /* Copied from pandoc */
@@ -273,15 +294,68 @@ code span.wa { color: #60a0b0; font-weight: bold; font-style: italic; } \
 
 INSIGHT_CARD = """<div class="card insight"><h1>Insights</h1></div>"""
 
-def by_entry_time(entry):
-    return entry.date_time
+_TYPE2EXT = {
+    'png': '.png',
+    'jpeg': '.jpg',
+    'mp4': '.mp4',
+    'ogg': '.ogg',
+    'webm': '.webm',
+    'mp3': '.mp3',
+    'aac': '.aac',
+}
+
+UTC = datetime.timezone.utc
 
 
-def write_panel_html(panel, dirpath, filename='main.html', *,
-                     time_zone=None, sidebar_extra='', encoding='utf-8'):
+def get_meta_attribute(entry, name, default):
+    if isinstance(entry, MetaEntry):
+        return entry.get_meta_attribute(name, default)
+    return default
+
+
+def get_rating(panel):
+    if panel.has_rating():
+        return panel.get_rating()
+    return None
+
+
+def get_question(entry):
+    if entry.has_question():
+        return entry.get_question()
+    return ''
+
+def get_caption(entry):
+    if isinstance(entry, CaptionEntry) and entry.has_caption():
+        return entry.get_caption()
+    return ''
+
+
+def get_transcription(entry):
+    if isinstance(entry, CaptionEntry) and entry.has_transcription():
+        return entry.get_transcription()
+    return ''
+
+
+def has_title(entry):
+    return isinstance(entry, CaptionEntry) and entry.has_title()
+
+
+def get_title(entry):
+    return entry.get_title()
+
+
+def export_entry(entry, filepath):
+    with open(filepath, 'xb') as fdst:
+        with entry.stream_raw_data() as fsrc:
+            shutil.copyfileobj(fsrc, fdst)
+
+
+def write_panel_html(panel, dirpath, filename='index.html', *,
+                     time_zone=None, sidebar_extra='', encoding='utf-8',
+                     css=None, mathjax=None):
     """Export a panel to an HTML file inside the directory 'dirpath'."""
     panel_title = panel.date.strftime('%A, %B %e, %Y')
-    rating = panel.get_attribute('rating', None)
+    rating = get_rating(panel)
     if rating is not None:
         panel_title += ' ' + str(rating)
     title_html = f'<h2>{panel_title}</h2>'
@@ -294,15 +368,15 @@ def write_panel_html(panel, dirpath, filename='main.html', *,
             insight_entries.append(entry)
         else:
             main_entries.append(entry)
-    main_entries.sort(key=by_entry_time)
-    insight_entries.sort(key=by_entry_time)
+    main_entries.sort(key=lambda e: e.time.astimezone(UTC))
+    insight_entries.sort(key=lambda e: e.time.astimezone(UTC))
 
     # See if the panel has a common time zone
     if panel.has_entries():
         entries = panel.entries()
-        first = next(entries).date_time
-        if all(e.date_time.tzinfo == first.tzinfo or
-               e.date_time.utcoffset() == first.utcoffset()
+        first = next(entries).time
+        if all(e.time.tzinfo == first.tzinfo or
+               e.time.utcoffset() == first.utcoffset()
                for e in entries):
             time_zone = first.tzinfo
 
@@ -321,13 +395,16 @@ def write_panel_html(panel, dirpath, filename='main.html', *,
 
     sidebar = get_status_html(panel, time_zone) + sidebar_extra
     text = TEMPLATE.format(TITLE=panel_title, HEADER=title_html,
-                           LEFT=entries_html, RIGHT=sidebar)
+                           LEFT=entries_html, RIGHT=sidebar,
+                           CSS=html.escape(css or 'stylesheet.css'),
+                           MATHJAX=html.escape(mathjax or MATHJAX_URL))
     with open(os.path.join(dirpath, filename), 'x',
               encoding=encoding) as fp:
         fp.write(text)
-    with open(os.path.join(dirpath, 'stylesheet.css'), 'x',
-              encoding=encoding) as fp:
-        fp.write(STYLESHEET)
+    if css is None:
+        with open(os.path.join(dirpath, 'stylesheet.css'), 'x',
+                  encoding=encoding) as fp:
+            fp.write(STYLESHEET)
 
 
 def add_entries(parts, entries, parent_dir, dircount, lefttag, righttag,
@@ -383,50 +460,82 @@ def get_entry_html(entry, dirpath, relpath, time_zone):
         parts.append('<pre class="no-bg">')
         parts.append(html.escape(get_entry_text(entry)))
         parts.append('</pre>\n')
+        entry_tail(parts, entry, time_zone)
         return ''.join(parts)
     if (entry_type in {'png', 'jpeg'}
-            or entry_type == 'heif' and Image and pyheif):
+            or entry_type == 'heif' and can_convert_heif(entry)):
         os.mkdir(dirpath)
-        ext = psp.datatypes.get_extension(entry_type)
         basename = get_basename(entry, default='image')
         if entry_type == 'heif':
             ext = '.jpg'
             filename = basename + ext
-            heif_file = pyheif.read(entry.get_data())
-            im = Image.frombytes(
-                heif_file.mode,
-                heif_file.size,
-                heif_file.data,
-                'raw',
-                heif_file.mode,
-                heif_file.stride)
-            im.save(os.path.join(dirpath, filename), format='jpeg')
+            target = heif_to_jpg(entry, os.path.join(dirpath, filename))
         else:
+            ext = _TYPE2EXT[entry_type]
             filename = basename + ext
-            entry.export(os.path.join(dirpath, filename))
+            export_entry(entry, os.path.join(dirpath, filename))
         parts = []
         entry_head(parts, entry, time_zone)
         parts.append('<img')
-        caption = entry.get_attribute('caption', '')
+        caption = get_caption(entry)
         if caption:
             parts.append(f' alt="{html.escape(caption)}"')
         srcpath = html.escape(os.path.join(relpath, filename))
         parts.append(f' src="{srcpath}" />\n')
+        entry_tail(parts, entry, time_zone)
+        return ''.join(parts)
+    # Audio
+    if entry_type in {'mp3', 'aac'}:
+        os.mkdir(dirpath)
+        basename = get_basename(entry, default='audio')
+        ext = _TYPE2EXT[entry_type]
+        filename = basename + ext
+        srcpath = html.escape(os.path.join(relpath, filename))
+        export_entry(entry, os.path.join(dirpath, filename))
+        parts = []
+        entry_head(parts, entry, time_zone)
+        parts.append('<audio controls')
+        parts.append(f' src="{srcpath}">')
+        parts.append('</audio>\n')
+        entry_tail(parts, entry, time_zone)
+        return ''.join(parts)
+    # Videos
+    if entry_type in {'mp4', 'ogg', 'webm'}:
+        os.mkdir(dirpath)
+        basename = get_basename(entry, default='video')
+        ext = _TYPE2EXT[entry_type]
+        filename = basename + ext
+        srcpath = html.escape(os.path.join(relpath, filename))
+        export_entry(entry, os.path.join(dirpath, filename))
+        parts = []
+        entry_head(parts, entry, time_zone)
+        parts.append('<video controls>\n')
+        parts.append(f'  <source src={srcpath}>')
+        parts.append('</video>\n')
+        entry_tail(parts, entry, time_zone)
         return ''.join(parts)
     # Default scenario for a file
     parts = []
     entry_head(parts, entry, time_zone)
-    ext = psp.datatypes.get_extension(entry_type, default='')
+    try:
+        ext = _TYPE2EXT[entry_type]
+    except KeyError:
+        ctx = psp.filetypes.get_context()
+        try:
+            ext = ctx.get_default_extension(entry_type)
+        except LookupError:
+            ext = ''
     basename = get_basename(entry, default='something')
     filename = basename + ext
     filepath = os.path.join(dirpath, filename)
     os.mkdir(dirpath)
-    entry.export(filepath)
+    export_entry(entry, filepath)
     src = html.escape(os.path.join(relpath, filename))
     parts.append(f'<a href="{src}">'
                  f'<pre class="no-bg">'
                  f'{html.escape(filename, quote=False)}'
                  f'</pre></a>\n')
+    entry_tail(parts, entry, time_zone)
     return ''.join(parts)
 
 
@@ -444,20 +553,15 @@ def get_status_html(panel, time_zone):
 # The real work
 def entry_head(parts, entry, time_zone):
     # global time_format    # not really needed since
-                            # we're not mutating it
+                            # we're not mutating) it
     title = (EntryFormatter(time_format=time_format, time_zone=time_zone)
-             .get_title(entry.panel.date, entry.date_time))
+             .get_title(entry.panel.date, entry.time))
     parts.append('<h2>')
     parts.append(html.escape(title).replace('  ', ' &nbsp;'))
     parts.append('</h2>\n')
     attrs = []
 
-    if entry.has_title():
-        parts.append('<h3>')
-        parts.append(html.escape(entry.get_title()))
-        parts.append('</h3>')
-
-    question = entry.get_attribute('question', '')
+    question = get_question(entry)
     if question:
         attrs.append(('Question', question))
 
@@ -470,29 +574,52 @@ def entry_head(parts, entry, time_zone):
         else:
             attrs.append(('Type', ent_type))
 
-    desc = entry.get_meta_attribute('desc', '')
+    try:
+        meta = entry.get_meta_attributes()
+    except AttributeError:
+        meta = {}
+
+    desc = meta.pop('desc', '')
     if desc:
         attrs.append(('Description', desc))
 
-    created = entry.get_meta_attribute('created', None)
+    created = meta.pop('created', None)
     if created is not None:
         attrs.append(('Created', str(created)))
 
-    modified = entry.get_meta_attribute('modified', None)
+    modified = meta.pop('modified', None)
     if modified is not None:
         attrs.append(('Modified', str(modified)))
 
-    posted = entry.get_meta_attribute('posted', None)
-    if posted is not None and posted != entry.date_time:
+    posted = meta.pop('posted', None)
+    if posted is not None and posted != entry.time:
         attrs.append(('Posted', str(posted)))
 
-    caption = entry.get_attribute('caption', '')
+    caption = get_caption(entry)
     if caption:
         attrs.append(('Caption', caption))
 
-    tr = entry.get_attribute('transcription', '')
+    tr = get_transcription(entry)
     if tr:
         attrs.append(('Transcription', tr))
+
+    hide = meta.pop('hide', False)
+    if hide:
+        parts.append('<details>\n')
+        if not isinstance(hide, bool):
+            parts.append('<summary>')
+            parts.append(convert_markdown(hide) or html.escape(hide))
+            parts.append('</summary>\n')
+        else:
+            parts.append('<summary>Here lies a mysterious hidden '
+                         'entry...</summary>\n')
+
+    # ignore empty tags (DON'T put this out there!)
+    if 'tags' in meta and not meta['tags']:
+        meta.pop('tags')
+
+    for key, value in meta.items():
+        attrs.append((key, repr(value)))
 
     for term, value in attrs:
         parts.append('<div class="card-attr">\n')
@@ -506,6 +633,17 @@ def entry_head(parts, entry, time_zone):
                    html.escape(f'{term}: {value}'))
         parts.append(replace_stuff_for_monospace(content))
         parts.append('</div>\n')
+
+    if has_title(entry):
+        parts.append('<hr />')
+        parts.append('<h1 class="title">')
+        parts.append(html.escape(get_title(entry)))
+        parts.append('</h1>\n')
+
+
+def entry_tail(parts, entry, time_zone):
+    if get_meta_attribute(entry, 'hide', False):
+        parts.append('</details>\n')
 
 
 def get_entry_text(entry):
@@ -526,11 +664,15 @@ def plain_to_html(entry, time_zone):
     parts.append('<pre class="no-bg">\n')
     parts.append(html.escape(get_entry_text(entry)))
     parts.append('</pre>')
+    entry_tail(parts, entry, time_zone)
     return ''.join(parts)
 
 
 def markdown_to_html(entry, dirpath, relpath, time_zone):
-    pandoc_format = entry.get_meta_attribute('pandoc-format', 'markdown')
+    pandoc_format = get_meta_attribute(entry, 'pandoc-format', 'markdown')
+    # if entry.panel.date.timetuple()[:3] == (2023, 2, 13) and \
+    #         entry.time.timetuple()[:5] == (2023, 2, 13, 20, 16):
+    #     breakpoint()
     doc = convert_markdown(get_entry_text(entry), format=pandoc_format)
     if doc is None:
         return None
@@ -538,10 +680,11 @@ def markdown_to_html(entry, dirpath, relpath, time_zone):
     parts = []
     entry_head(parts, entry, time_zone)
     if isinstance(entry, BigEntry):
-        entry.extractall(dirpath)
+        entry.extract_all(dirpath)
         os.unlink(os.path.join(dirpath, entry.get_main_file()))
     doc = replace_urls(doc, dirpath, relpath)
     parts.append(replace_stuff_for_monospace(doc))
+    entry_tail(parts, entry, time_zone)
     return ''.join(parts)
 
 
@@ -569,7 +712,7 @@ def tex_to_html(entry, dirpath, relpath, time_zone):
 
     with tempfile.TemporaryDirectory() as tmpdir:
         if isinstance(entry, BigEntry):
-            entry.extractall(tmpdir)
+            entry.extract_all(tmpdir)
             filename = entry.get_main_file()
         else:
             raise ValueError('tex_to_html() should be called with a bigentry!')
@@ -603,10 +746,54 @@ def tex_to_html(entry, dirpath, relpath, time_zone):
                          f'<pre class="no-bg">'
                          f'{html.escape(pdf_name, quote=False)}</pre>'
                          f'</a>\n')
+
     if isinstance(entry, BigEntry):
-        entry.extractall(dirpath)
+        entry.extract_all(dirpath)
         os.unlink(os.path.join(dirpath, entry.get_main_file()))
+    entry_tail(parts, entry, time_zone)
     return ''.join(parts)
+
+
+def heif_to_jpg(entry, target):
+    try:
+        heif_file = pyheif.read(entry.get_data())
+        im = Image.frombytes(
+            heif_file.mode,
+            heif_file.size,
+            heif_file.data,
+            'raw',
+            heif_file.mode,
+            heif_file.stride)
+        im.save(target, format='jpeg')
+        return target
+    # this is supposed to just catch ffi.error but
+    # i don't know how the fuck i am going to import
+    # a C extension module
+    except Exception:
+        pass
+    with tempfile.NamedTemporaryFile(
+            suffix='.heif', delete=False) as file:
+        with entry.stream_raw_data() as fp:
+            shutil.copyfileobj(fp, file)
+    try:
+        subprocess.check_call(['convert', file.name, target],
+                              # stdout=subprocess.DEVNULL,
+                              # stderr=subprocess.DEVNULL,
+                              )
+    finally:
+        os.unlink(file.name)
+
+
+def can_convert_heif(entry):
+    file = tempfile.NamedTemporaryFile(delete=False)
+    file.close()
+    try:
+        heif_to_jpg(entry, file.name)
+    except ValueError:
+        return False
+    finally:
+        os.unlink(file.name)
+    return True
 
 
 def convert_markdown(doc, *, format='markdown'):
@@ -619,16 +806,20 @@ def convert_markdown(doc, *, format='markdown'):
 
 
 def get_basename(entry, default=default_filename):
-    if entry.has_meta_attribute('filename'):
-        filename = entry.get_meta_attribute('filename')
-    elif entry.has_source():
-        filename = os.path.basename(entry.get_source())
-    else:
-        return default
-    for ext in psp.datatypes.list_extensions():
-        if filename.endswith(ext):
-            return filename[:-len(ext)]
-    return filename.split('.')[0]
+    filename = get_meta_attribute(entry, 'filename', None)
+    e_type = entry.get_type()
+    if filename is None:
+        if entry.has_source():
+            filename = os.path.basename(entry.get_source())
+        else:
+            return default
+    ctx = psp.filetypes.get_context()
+    if ctx.has_type(e_type):
+        _, exts, _ = ctx.get_type(e_type)
+        for ext in exts:
+            if filename.endswith(ext):
+                return filename[:-len(ext)]
+    return filename
 
 
 # There's the <base> tag in HTML that allows you to set the base
@@ -643,12 +834,21 @@ def replace_urls(doc, dirpath, relpath):
         return doc
     soup = bs4.BeautifulSoup(doc, 'html.parser')
     for a_elem in soup.find_all('a'):
-        href = a_elem['href']
+        # EAFP over LBYL
+        try:
+            href = a_elem['href']
+        except KeyError:
+            continue
+        href = urllib.parse.unquote(href)
         if os.path.exists(os.path.join(dirpath, href)):
             a_elem['href'] = os.path.join(relpath, href)
     # only occasionally does the <video> tag contain source I guess?
     for src_elem in soup.find_all(['img', 'audio', 'source', 'video']):
-        src = src_elem['src']
+        try:
+            src = src_elem['src']
+        except KeyError:
+            continue
+        src = urllib.parse.unquote(src)
         if os.path.exists(os.path.join(dirpath, src)):
             src_elem['src'] = os.path.join(relpath, src)
     # can't use soup.prettify() since it may add spurious space :(
@@ -656,78 +856,104 @@ def replace_urls(doc, dirpath, relpath):
 
 
 def export_panels(panels, outdir, *, dumper=None, loader=None,
-                  panel_formatter=None, entry_formatter=None,
-                  encoding='utf-8'):
+                  panel_formatter=None, encoding='utf-8', **kwargs):
+    for invalid in {'sidebar_extra'}:
+        if invalid in kwargs:
+            raise ValueError(f'invalid keyword argument: {invalid!r}')
     if dumper is None:
-        dumper = BigDumper()
+        dumper = JSONDumper()
     if loader is None:
-        loader = BigLoader(error_on_warning=True)
+        loader = JSONLoader()
+    loader.configure(error_on_warning=True)
     if panel_formatter is None:
         panel_formatter = PanelFormatter(infer_time_zone=False)
     panel_formatter.width = 120
     panel_formatter.configure(time_format=time_format)
-    if entry_formatter is None:
-        entry_formatter = EntryFormatter()
 
     n_panels = len(panels)
     progress_bar = tqdm.tqdm(panels)
+    updated = 0
+    created = 0
     for index, panel in enumerate(progress_bar):
         dirpath = os.path.join(outdir, *str(panel.date).split('-'))
         bk_name = '.bk'
         bk = os.path.join(dirpath, bk_name)
+        bk_json = os.path.join(bk, 'backup.json')
+        bk_nav = os.path.join(bk, 'nav_info.json')
         nav_elements = []
         nav_info = {}
         if index > 0:
             prev_date = panels[index - 1].date
             prev_path = os.path.join(
-                *['..'] * 3, *str(prev_date).split('-'), 'main.html')
+                *['..'] * 3, *str(prev_date).split('-'), 'index.html')
             nav_elements.append(f'<a href="{prev_path}">Prev</a>')
             nav_info['prev'] = str(prev_date)
         if index < n_panels - 1:
             next_date = panels[index + 1].date
             next_path = os.path.join(
-                *['..'] * 3, *str(next_date).split('-'), 'main.html')
+                *['..'] * 3, *str(next_date).split('-'), 'index.html')
             nav_elements.append(f'<a href="{next_path}">Next</a>')
             nav_info['next'] = str(next_date)
+        nav_info['time_format'] = time_format
+        nav_info['css'] = kwargs.get('css', None) or 'stylesheet.css'
+        nav_info['mathjax'] = kwargs.get('mathjax', None) or MATHJAX_URL
         if os.path.exists(dirpath):
             loader.configure(base_dir=bk)
             try:
-                with open(os.path.join(bk, 'backup.json'),
-                          encoding=encoding) as fp:
-                    orig_panel = loader.load(fp)[0]
-                with open(os.path.join(bk, 'nav_info.json'),
-                          encoding=encoding) as fp:
+                with open(bk_json, encoding=encoding) as fp:
+                    orig_panel = next(loader.load(fp))
+                with open(bk_nav, encoding=encoding) as fp:
                     orig_nav_info = json.load(fp)
-            except (UnicodeDecodeError, FileNotFoundError):
+            except Exception:
+                # whatever the heck happened it's a malformed backup
+                # and we need to re-export them
                 pass
             else:
-                if (psp.util.panels_equal(orig_panel, panel)
-                        and orig_nav_info == nav_info):
+                if orig_panel == panel and orig_nav_info == nav_info:
                     progress_bar.set_description(f'skipping {panel.date}')
                     continue
             action = 'updating'
+            updated += 1
             shutil.rmtree(dirpath)
         else:
             action = 'creating'
+            created += 1
         progress_bar.set_description(f'{action} {panel.date}')
-        os.makedirs(dirpath)
+        os.makedirs(bk)
         nav_elements.append('<a href="main.txt">Plain</a>')
         nav_elements.append(f'<a href="{bk_name}/backup.json">JSON</a>')
         content = '&nbsp;&nbsp;'.join(nav_elements)
         extra = f'<div class="card">{content}</div>'
-        write_panel_html(panel, dirpath, sidebar_extra=extra)
-        dumper.dump([panel], bk, encoding=encoding)
-        with open(os.path.join(bk, 'nav_info.json'), 'w',
-                  encoding=encoding) as fp:
+        write_panel_html(panel, dirpath, sidebar_extra=extra, **kwargs)
+        dumper.configure(base_dir=bk)
+        with open(bk_json, 'w', encoding=encoding) as fp:
+            dumper.dump([panel], fp)
+        with open(bk_nav, 'w', encoding=encoding) as fp:
             json.dump(nav_info, fp)
-        # Reload the panel so relative path names are correct
-        loader.configure(base_dir=bk)
-        with open(os.path.join(bk, 'backup.json'),
-                  encoding=encoding) as fp:
-            panel = loader.load(fp)[0]
+        try:
+            loader.configure(base_dir=bk)
+            with open(bk_json, encoding=encoding) as fp:
+                panel = next(loader.load(fp))
+        except Exception:
+            import sys, traceback
+            print('RELOADING FAILED! removing it...', file=sys.stderr)
+            print(traceback.format_exc(), file=sys.stderr)
+            shutil.rmtree(bk)
         panel_formatter.configure(base_dir=bk)
         with open(os.path.join(dirpath, 'main.txt'), 'w',
                   encoding=encoding) as fp:
-            fp.write(panel_formatter.format(
-                panel, entry_formatter=entry_formatter))
+            fp.write(panel_formatter.format(panel))
             fp.write('\n')
+
+    parts = []
+    if updated:
+        s = '' if updated == 1 else 's'
+        parts.append(f'updated {updated} panel{s}')
+    if created:
+        s = '' if created == 1 else 's'
+        parts.append(f'created {created} panel{s}')
+    if parts:
+        print(' and '.join(parts).capitalize(), end='')
+        print('.')
+    else:
+        print('No changes.')
