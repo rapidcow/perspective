@@ -18,6 +18,10 @@ The web version of this documentation can be found [here][perspe]
 
 ### Prerequisites
 
+**CAUTION CAUTION CAUTION** the pinned `Sphinx==5.0.0`
+dependency do not work past Python 3.13 due to dropped
+dead battery packages.
+
 **Make sure to install the dependencies first using
 `python3 -m pip install -r requirements.txt`!!**
 
