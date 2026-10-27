@@ -21,17 +21,27 @@ To install, run the following commands in your terminal:
 
 .. code-block:: sh
 
-   git clone https://git.rapidcow.org/perspective.git
-   # perspective is no longer on github - but it *is* on codeberg!
-   git clone https://codeberg.org/rapidcow/perspective.git
+   git clone https://git.rapidcow.org/pub/project/perspective.git
+
+   # *or*....
+   # but since perspective is no longer on codeberg due to
+   # recent concerns with AI-assisted projects.  lib psp isn't
+   # *yet* "vibe-coded" but it may be soon due to the limited
+   # interest and energy i've had this thing i've struggled to
+   # build on for 3 years.  anyways you can use gitlab :v
+
+   git clone https://gitlab.com/rapidcow/perspective.git
+
+   # Then:
+
    python3 -m pip install perspective/src
 
 or one-liners:
 
 .. code-block:: sh
 
-   python3 -m pip install git+https://git.rapidcow.org/perspective.git@v0.1#subdirectory=src
-   python3 -m pip install git+https://codeberg.org/rapidcow/perspective.git@v0.1#subdirectory=src
+   python3 -m pip install git+https://git.rapidcow.org/pub/project/perspective.git@v0.1#subdirectory=src
+   python3 -m pip install git+https://gitlab.com/rapidcow/perspective.git@v0.1#subdirectory=src
 
 Remember to replace ``python3`` with the name of your Python 3 interpreter!
 (``pip install`` / ``pip3 install`` also work - sometimes.)
