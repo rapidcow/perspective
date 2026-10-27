@@ -118,11 +118,6 @@ export PROJECT=zh_CN
 sphinx -M html src build
 ```
 
-(P.S. The projects uploaded to readthedocs.org all refer to this
-repository and have no difference but the language and environment
-variable settings!  Those are not determined by `.readthedocs.yaml`,
-fortunately.)
-
 ## Getting translation text for a different language
 
 The following is borrowed from steps 3 to 6 of the
