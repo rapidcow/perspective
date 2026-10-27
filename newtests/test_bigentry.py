@@ -102,7 +102,8 @@ class TestBigEntryManager(unittest.TestCase):
     @tempdir
     def test_pull_request_005(self, root):
         """TrellixVulnTeam's security fix
-        https://github.com/rapidcow/perspective/pull/5
+        https://github.com/rapidcow/perspective/pull/5 (dead link)
+        https://gitlab.com/rapidcow/perspective/-/commit/7e88de1c6fd2a3a2a57c1f53a18d3a678c1833d1
         """
         for tar_format, mode in [('tar', ''), ('gztar', ':gz'),
                                  ('bztar', ':bz2'), ('xztar', ':xz')]:
