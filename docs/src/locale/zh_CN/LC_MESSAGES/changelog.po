@@ -9,205 +9,244 @@ msgid ""
 msgstr ""
 "Project-Id-Version: The Perspective Library \n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2022-08-11 09:01+0800\n"
+"POT-Creation-Date: 2026-10-27 05:11-0500\n"
 "PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
 "Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
 "Language-Team: LANGUAGE <LL@li.org>\n"
 "MIME-Version: 1.0\n"
 "Content-Type: text/plain; charset=utf-8\n"
 "Content-Transfer-Encoding: 8bit\n"
-"Generated-By: Babel 2.10.3\n"
+"Generated-By: Babel 2.18.0\n"
 
-#: ../../src/changelog/0.2.rst:5
-msgid "Release 0.2"
+#: ../../src/changelog/0.1.rst:11
+msgid "Release 0.1"
 msgstr ""
 
-#: ../../src/changelog/0.2.rst
+#: ../../src/changelog/0.1.rst:15
+msgid "Release 0.1.0 (in development)"
+msgstr ""
+
+#: ../../src/changelog/0.1.rst
 msgid "Author"
 msgstr ""
 
-#: ../../src/changelog/0.2.rst:7
+#: ../../src/changelog/0.1.rst:17
 msgid "rapidcow <thegentlecow@gmail.com>"
 msgstr ""
 
-#: ../../src/changelog/0.2.rst:12
-msgid "Release 0.2.0 (in development)"
+#: ../../src/changelog/0.1.rst:19
+msgid ""
+"This documentation didn't exist before this release, so these changes are"
+" kept here exclusively for the record!"
 msgstr ""
 
-#: ../../src/changelog/0.2.rst:45
+#: ../../src/changelog/0.1.rst:49
+msgid "Renaming"
+msgstr ""
+
+#: ../../src/changelog/0.1.rst:51
+msgid "Mostly shortenings, meh"
+msgstr ""
+
+#: ../../src/changelog/0.1.rst:53
+msgid "``psp.processors.json_processor`` -> ``psp.serializers.json``"
+msgstr ""
+
+#: ../../src/changelog/0.1.rst:54
+msgid "``psp.extensions`` -> ``psp.ext``"
+msgstr ""
+
+#: ../../src/changelog/0.1.rst:55
+msgid ""
+"``psp.main`` -> ``psp.cli`` (will be a package with messed-up functions "
+"for user-friendliness + show-off)"
+msgstr ""
+
+#: ../../src/changelog/0.1.rst:60
 msgid "Attribute protocol!"
 msgstr ""
 
-#: ../../src/changelog/0.2.rst:48
+#: ../../src/changelog/0.1.rst:63
 msgid "New class: ``Configurable``!"
 msgstr ""
 
-#: ../../src/changelog/0.2.rst:51
+#: ../../src/changelog/0.1.rst:66
 msgid "Extensions!"
 msgstr ""
 
-#: ../../src/changelog/0.2.rst:53
+#: ../../src/changelog/0.1.rst:68
 msgid "New modules (mention this first): ``captions`` and ``metadata``!"
 msgstr ""
 
-#: ../../src/changelog/0.2.rst:54
+#: ../../src/changelog/0.1.rst:69
 msgid "See the extensions tutorial"
 msgstr ""
 
-#: ../../src/changelog/0.2.rst:58
+#: ../../src/changelog/0.1.rst:73
 msgid "From ``datatypes`` to ``filetypes``"
 msgstr ""
 
-#: ../../src/changelog/0.2.rst:62
+#: ../../src/changelog/0.1.rst:77
 msgid "New class: ``InferenceManager``!"
 msgstr ""
 
-#: ../../src/changelog/0.2.rst:65
+#: ../../src/changelog/0.1.rst:80
 msgid "JSONLoader"
 msgstr ""
 
-#: ../../src/changelog/0.2.rst:67
+#: ../../src/changelog/0.1.rst:82
 msgid ""
 "|load| no longer takes a file path, |load_json| method is added (re-"
 "added?) as a hook for loading a JSON archive"
 msgstr ""
 
-#: ../../src/changelog/0.2.rst:70
+#: ../../src/changelog/0.1.rst:85
 msgid "Removed the ``date`` argument in |load| and |load_data|"
 msgstr ""
 
-#: ../../src/changelog/0.2.rst:72
+#: ../../src/changelog/0.1.rst:87
 msgid ""
-"|load| or |load_data| now returns a generator.  Use "
-"``list(loader.load())`` to obtain an identical result before."
+"|load| or |load_data| now returns a *generator*.  Use "
+"``list(loader.load())`` to obtain an identical result to before (or "
+"alternatively, use the |fload_json| function)"
 msgstr ""
 
-#: ../../src/changelog/0.2.rst:75
+#: ../../src/changelog/0.1.rst:91
 msgid ""
 "Removed the ``check_panel_duplicates`` option given that |load| now "
 "returns a generator and the option works on top of the fact that panels "
-"are loaded entirely a list.  instead, when you do load from a list, use a"
+"are loaded entirely a list.  Instead, when you do load from a list, use a"
 " function (copied directly from the code)::"
 msgstr ""
 
-#: ../../src/changelog/0.2.rst:95
+#: ../../src/changelog/0.1.rst:112
 msgid "then something like ::"
 msgstr ""
 
-#: ../../src/changelog/0.2.rst:101
+#: ../../src/changelog/0.1.rst:118
 msgid "should work."
 msgstr ""
 
-#: ../../src/changelog/0.2.rst:103
+#: ../../src/changelog/0.1.rst:120
 msgid ""
 "parse_datetime(s, tzinfo, fold) parameters are all positional! "
 "(parse_time(s, tzinfo, fold) similarly)"
 msgstr ""
 
-#: ../../src/changelog/0.2.rst:106
+#: ../../src/changelog/0.1.rst:123
 msgid ""
 "paths option is removed. to extend the lookup paths, you may override "
 "split_data(), though it is not recommended as lookup paths should be "
 "sufficiently contained within the JSON archive"
 msgstr ""
 
-#: ../../src/changelog/0.2.rst:110
+#: ../../src/changelog/0.1.rst:127
 msgid ""
 "parameters of process_entry() are now ``(entry, panel, attrs)`` instead "
 "of ``(panel, entry, attrs)``.  No idea why I put *panel* first before "
 "given how important *entry* is compared to the rest."
 msgstr ""
 
-#: ../../src/changelog/0.2.rst:119
+#: ../../src/changelog/0.1.rst:131
 msgid "IMPORTANT!!! now tz and paths are all guaranteed to be set by split_data()"
 msgstr ""
 
-#: ../../src/changelog/0.2.rst:124
+#: ../../src/changelog/0.1.rst:134
+msgid "loader: attrs are never copied unless absolutely necessary"
+msgstr ""
+
+#: ../../src/changelog/0.1.rst:138
 msgid "JSONDumper"
 msgstr ""
 
-#: ../../src/changelog/0.2.rst:126
+#: ../../src/changelog/0.1.rst:140
 msgid "a completely revamped interface!!"
 msgstr ""
 
-#: ../../src/changelog/0.2.rst:127
+#: ../../src/changelog/0.1.rst:141
 msgid "dump() no longer takes a file path"
 msgstr ""
 
-#: ../../src/changelog/0.2.rst:128
+#: ../../src/changelog/0.1.rst:142
 msgid "dump_json(data, fp) for interface"
 msgstr ""
 
-#: ../../src/changelog/0.2.rst:130
+#: ../../src/changelog/0.1.rst:144
 msgid ""
 "data can now be any iterable and JSONDumper won't put them all in a list "
 "beforehand!"
 msgstr ""
 
-#: ../../src/changelog/0.2.rst:133
+#: ../../src/changelog/0.1.rst:147
 msgid ""
 "handle_datetime() and handle_timezone() removed, instead now there's "
 "write_entry_date_and_time() and format_timezone()"
 msgstr ""
 
-#: ../../src/changelog/0.2.rst:138
+#: ../../src/changelog/0.1.rst:150
+msgid ""
+"input paths are no longer precomputed, see get_input_path() for all "
+"related functions"
+msgstr ""
+
+#: ../../src/changelog/0.1.rst:155
 msgid "Streaming interface"
 msgstr ""
 
-#: ../../src/changelog/0.2.rst:140
+#: ../../src/changelog/0.1.rst:157
 msgid ""
 "Now you can stream data with entries! though you would be responsible for"
 " closing the file-like object..."
 msgstr ""
 
-#: ../../src/changelog/0.2.rst:143
+#: ../../src/changelog/0.1.rst:160
 msgid ""
 "This can be helpful for remote access.  If one day someone decides to "
 "implement it, that is."
 msgstr ""
 
-#: ../../src/changelog/0.2.rst:146
+#: ../../src/changelog/0.1.rst:163
 msgid ""
 "Entry.stream_data() should be consistent with Entry.get_data(). That is, "
 "when get_data() returns str, stream_data() should stream str. And "
 "likewise for bytes."
 msgstr ""
 
-#: ../../src/changelog/0.2.rst:150
+#: ../../src/changelog/0.1.rst:167
 msgid "Entry.stream_raw_data() should be consistent with Entry.get_raw_data()."
 msgstr ""
 
-#: ../../src/changelog/0.2.rst:152
+#: ../../src/changelog/0.1.rst:169
 msgid ""
 "For operations possible with file-like objects, refer to the :mod:`io` "
 "module."
 msgstr ""
 
-#: ../../src/changelog/0.2.rst:159
+#: ../../src/changelog/0.1.rst:176
 msgid "Panel and Entry"
 msgstr ""
 
-#: ../../src/changelog/0.2.rst:161
+#: ../../src/changelog/0.1.rst:178
 msgid "``set_source()`` no longer accepts None, use ``set_raw_data(b'')`` instead"
 msgstr ""
 
-#: ../../src/changelog/0.2.rst:162
+#: ../../src/changelog/0.1.rst:179
 msgid "Entry has ``__init__(time, /, insight=False)``"
 msgstr ""
 
-#: ../../src/changelog/0.2.rst:163
+#: ../../src/changelog/0.1.rst:180
 msgid "Panel has ``__init__(date, /)``"
 msgstr ""
 
-#: ../../src/changelog/0.2.rst:165
+#: ../../src/changelog/0.1.rst:182
 msgid "Entry.date_time renamed to Entry.time"
 msgstr ""
 
-#: ../../src/changelog/0.2.rst:167
+#: ../../src/changelog/0.1.rst:184
 msgid "``Entry.has_raw_data()`` is removed due to being too ambiguous"
 msgstr ""
 
-#: ../../src/changelog/0.2.rst:169
+#: ../../src/changelog/0.1.rst:186
 msgid ""
 "``get_raw_data()`` still retrieves the raw data depending on whether the "
 "data is in-memory or stored in a file but ``has_raw_data()`` gives off "
@@ -216,11 +255,11 @@ msgid ""
 "to be set at the same time."
 msgstr ""
 
-#: ../../src/changelog/0.2.rst:175
+#: ../../src/changelog/0.1.rst:192
 msgid "``Entry.load_data()`` is removed"
 msgstr ""
 
-#: ../../src/changelog/0.2.rst:177
+#: ../../src/changelog/0.1.rst:194
 msgid ""
 "having raw data AND source path was simply dumb. what happens when the "
 "file is changed externally?  our current implementation says to "
@@ -228,30 +267,30 @@ msgid ""
 "source path essentially ineffective?"
 msgstr ""
 
-#: ../../src/changelog/0.2.rst:182
+#: ../../src/changelog/0.1.rst:199
 msgid ""
 "in case anyone REALLY wants to load the data into memory, just setting "
 "the raw data explicitly will do::"
 msgstr ""
 
-#: ../../src/changelog/0.2.rst:187
+#: ../../src/changelog/0.1.rst:204
 msgid ""
 "``Entry.export()`` is removed.  Now with the new streaming interface, the"
 " lines::"
 msgstr ""
 
-#: ../../src/changelog/0.2.rst:193
+#: ../../src/changelog/0.1.rst:210
 msgid "may be replaced with::"
 msgstr ""
 
-#: ../../src/changelog/0.2.rst:202
+#: ../../src/changelog/0.1.rst:219
 msgid ""
 "To copy by chunks, you can replace ``fp.write(fsrc.read())`` with "
 "``psp.util.copyfileobj(fsrc, fp)`` instead (``psp.util.copyfileobj()`` "
 "directly uses :func:`shutil.copyfileobj`, by the way)."
 msgstr ""
 
-#: ../../src/changelog/0.2.rst:206
+#: ../../src/changelog/0.1.rst:223
 msgid ""
 "The difference is that it is now up to *you* to decide how exporting "
 "should work!  Should it write to a different encoding or do you want to "
@@ -259,29 +298,41 @@ msgid ""
 "write one chunk at a time?"
 msgstr ""
 
-#: ../../src/changelog/0.2.rst:211
+#: ../../src/changelog/0.1.rst:228
 msgid ""
 "I can't answer all these questions all at once for everyone, so I'm "
 "leaving them to you now."
 msgstr ""
 
-#: ../../src/changelog/0.2.rst:214
+#: ../../src/changelog/0.1.rst:231
 msgid "``Entry.set_source()`` no longer checks for file existence"
 msgstr ""
 
-#: ../../src/changelog/0.2.rst:218
-msgid "Other Changes"
+#: ../../src/changelog/0.1.rst:235
+msgid "Main program"
 msgstr ""
 
-#: ../../src/changelog/0.2.rst:220
+#: ../../src/changelog/0.1.rst:237
+msgid "you can now create projects (STILL very much WIP though)"
+msgstr ""
+
+#: ../../src/changelog/0.1.rst:239
+msgid "hacky imports are still a thing (BWAHH WHYYY)"
+msgstr ""
+
+#: ../../src/changelog/0.1.rst:243
+msgid "Other Changes (TEMP)"
+msgstr ""
+
+#: ../../src/changelog/0.1.rst:245
 msgid "``util.panels_equal()`` and ``util.entries_equal()`` are removed, use ::"
 msgstr ""
 
-#: ../../src/changelog/0.2.rst:226
+#: ../../src/changelog/0.1.rst:251
 msgid "instead of ::"
 msgstr ""
 
-#: ../../src/changelog/0.2.rst:233
+#: ../../src/changelog/0.1.rst:258
 msgid ""
 "Most of equality is implemented with the equality of each member (as "
 "described in :ref:`the types module <types>`), with the exception of the "
@@ -291,58 +342,110 @@ msgid ""
 "unequal when ``utcoffset()`` depends on the fold attribute).)"
 msgstr ""
 
-#: ../../src/changelog/0.2.rst:241
+#: ../../src/changelog/0.1.rst:266
 msgid ""
-"``__init__.py`` no longer imports :class:`Panel <psp.types.Panel>` or "
-":class:`Entry <psp.types.Entry>`. you have to import explicitly from "
-"``psp.types`` now."
+"``__init__.py`` no longer imports the ``types.Panel`` or ``types.Entry`` "
+"class.  You have to import explicitly from ``psp.types`` now."
 msgstr ""
 
-#: ../../src/changelog/0.2.rst:245
+#: ../../src/changelog/0.1.rst:269
 msgid ""
-"new convenience functions added! ``util.fileobjequal`` and "
-"``util.copyfileobj``"
+"New convenience functions added! ``util.fileobjequal()`` and "
+"``util.copyfileobj()``"
 msgstr ""
 
-#: ../../src/changelog/0.2.rst:251
+#: ../../src/changelog/0.1.rst:274
 msgid ""
-"change arguments of the ``JSONLoader.process_entry`` method from "
-"``(panel, entry, attrs)`` to ``(entry, panel, attrs)``"
+"change arguments of the |process_entry| method from ``(panel, entry, "
+"attrs)`` to ``(entry, panel, attrs)``"
 msgstr ""
 
-#: ../../src/changelog/0.2.rst:254
+#: ../../src/changelog/0.1.rst:277
 msgid ""
 "it makes more sense as it follows logical order: the part being actually "
 "processed (entry) and the part being accessed (attrs)"
 msgstr ""
 
-#: ../../src/changelog/0.2.rst:257
-msgid "make loader and dumper only accept file pointers"
+#: ../../src/changelog/0.1.rst:280
+msgid "make loader and dumper only accept file objects"
 msgstr ""
 
-#: ../../src/changelog/0.2.rst:259
-msgid "load_json() and dump_json() being sole exceptions"
+#: ../../src/changelog/0.1.rst:282
+msgid "|fload_json| and |fdump_json| being sole exceptions"
 msgstr ""
 
-#: ../../src/changelog/0.2.rst:261
-msgid "load_iter(fp): generator"
-msgstr ""
-
-#: ../../src/changelog/0.2.rst:263
-msgid "loader: attrs are never copied unless absolutely necessary"
-msgstr ""
-
-#: ../../src/changelog/0.2.rst:265
+#: ../../src/changelog/0.1.rst:284
 msgid "find_paths: a public generator"
+msgstr ""
+
+#: ../../src/changelog/0.1.rst:286
+msgid ""
+"base_dir in JSONLoader and JSONDumper now take None which activates this "
+"sort of \"restricted\" mode that causes an error to be raised whenever "
+"access to the file system is attempted"
 msgstr ""
 
 #: ../../src/changelog/index.rst:5
 msgid "Changelog"
 msgstr ""
 
-#: ../../src/changelog/index.rst:7
-msgid ""
-"Changes ever since 0.2.0 (because I actually changed so much this time it"
-" *has* to be addressed)"
-msgstr ""
+#~ msgid "Release 0.2"
+#~ msgstr ""
+
+#~ msgid "Release 0.2.0 (in development)"
+#~ msgstr ""
+
+#~ msgid ""
+#~ "|load| or |load_data| now returns a "
+#~ "generator.  Use ``list(loader.load())`` to "
+#~ "obtain an identical result before."
+#~ msgstr ""
+
+#~ msgid ""
+#~ "Removed the ``check_panel_duplicates`` option "
+#~ "given that |load| now returns a "
+#~ "generator and the option works on "
+#~ "top of the fact that panels are"
+#~ " loaded entirely a list.  instead, "
+#~ "when you do load from a list, "
+#~ "use a function (copied directly from "
+#~ "the code)::"
+#~ msgstr ""
+
+#~ msgid "Other Changes"
+#~ msgstr ""
+
+#~ msgid ""
+#~ "``__init__.py`` no longer imports "
+#~ ":class:`Panel <psp.types.Panel>` or :class:`Entry"
+#~ " <psp.types.Entry>`. you have to import "
+#~ "explicitly from ``psp.types`` now."
+#~ msgstr ""
+
+#~ msgid ""
+#~ "new convenience functions added! "
+#~ "``util.fileobjequal`` and ``util.copyfileobj``"
+#~ msgstr ""
+
+#~ msgid ""
+#~ "change arguments of the "
+#~ "``JSONLoader.process_entry`` method from ``(panel,"
+#~ " entry, attrs)`` to ``(entry, panel, "
+#~ "attrs)``"
+#~ msgstr ""
+
+#~ msgid "make loader and dumper only accept file pointers"
+#~ msgstr ""
+
+#~ msgid "load_json() and dump_json() being sole exceptions"
+#~ msgstr ""
+
+#~ msgid "load_iter(fp): generator"
+#~ msgstr ""
+
+#~ msgid ""
+#~ "Changes ever since 0.2.0 (because I "
+#~ "actually changed so much this time "
+#~ "it *has* to be addressed)"
+#~ msgstr ""
 

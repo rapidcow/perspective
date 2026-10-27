@@ -1,0 +1,49 @@
+# SOME DESCRIPTIVE TITLE.
+# Copyright (C) 2021–2024, rapidcow :)
+# This file is distributed under the same license as the The Perspective
+# Journal package.
+# FIRST AUTHOR <EMAIL@ADDRESS>, 2026.
+#
+#, fuzzy
+msgid ""
+msgstr ""
+"Project-Id-Version: The Perspective Journal \n"
+"Report-Msgid-Bugs-To: \n"
+"POT-Creation-Date: 2026-10-27 05:11-0500\n"
+"PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
+"Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
+"Language: zh_CN\n"
+"Language-Team: zh_CN <LL@li.org>\n"
+"Plural-Forms: nplurals=1; plural=0;\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=utf-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+"Generated-By: Babel 2.18.0\n"
+
+#: ../../src/contrib.rst:3
+msgid "Contributing"
+msgstr ""
+
+#: ../../src/contrib.rst:5
+msgid ""
+"Email me patches.  Pull requests (or git-request-pull) are okay, but I "
+"don't do centralized \"issue trackers\"."
+msgstr ""
+
+#: ../../src/contrib.rst:8
+msgid ""
+"My email is just ``firstname at rapidcow dot org``. Pick whatever first "
+"name you know me as; I can receive from all of them!  (Finding my first "
+"name isn't that hard.  It's a human test in a sense, i.e. to see if you "
+"understand that my old email \"dev\" is short for development and not "
+"really my name.)"
+msgstr ""
+
+#: ../../src/contrib.rst:16
+msgid "Documentation"
+msgstr ""
+
+#: ../../src/contrib.rst:18
+msgid "Read ``docs/README.md`` in the repository."
+msgstr ""
+

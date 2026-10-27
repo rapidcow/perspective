@@ -9,40 +9,38 @@ msgid ""
 msgstr ""
 "Project-Id-Version: The Perspective Library \n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2022-06-01 10:45+0800\n"
+"POT-Creation-Date: 2026-10-27 05:11-0500\n"
 "PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
 "Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
 "Language-Team: LANGUAGE <LL@li.org>\n"
 "MIME-Version: 1.0\n"
 "Content-Type: text/plain; charset=utf-8\n"
 "Content-Transfer-Encoding: 8bit\n"
-"Generated-By: Babel 2.10.1\n"
+"Generated-By: Babel 2.18.0\n"
 
-#: ../../intro/about.rst:5
+#: ../../src/intro/about.rst:5
 msgid "What is this?"
 msgstr "这是什么？"
 
-#: ../../intro/about.rst:7
+#: ../../src/intro/about.rst:7
 msgid ""
-"The Perspective library is one of my personal coding projects which I "
-"decided to upload to `a GitHub repository "
-"<https://github.com/rapidcow/perspective>`_ due to how useful it has "
-"become to me.  This right here is a little documentation for all the "
-"gibberish source code and stuff I have."
+"The Perspective library is utility for processing, displaying, and "
+"validating a vendor-independent model based on JSON."
 msgstr ""
 
-#: ../../intro/about.rst:13
+#: ../../src/intro/about.rst:11
 msgid ""
-"As for basicproc.py_, well, you can say it was a prototype of the "
-"library. It had all the core concepts like time zone, lookup paths, and "
-"the keys, except too many functionalities are condensed into one single "
-"class. Over time it grew larger (> 1000 lines) and adding new features "
-"like exporting entries and formatting different time zones was impossible"
-" without terrible exploitation of the syntax, so the Perspective library "
-"was made to replace it and extend the features from there on."
+"As for ``basicproc.py`` (if you know what that is), well, you can say it "
+"was a prototype of the library. It had all the core concepts like time "
+"zone, lookup paths, and the keys, except too many functionalities are "
+"condensed into one single class. Over time it grew larger (> 1000 lines) "
+"and adding new features like exporting entries and formatting different "
+"time zones was impossible without terrible exploitation of the syntax, so"
+" the Perspective library was made to replace it and extend the features "
+"from there on."
 msgstr ""
 
-#: ../../intro/about.rst:23
+#: ../../src/intro/about.rst:20
 msgid ""
 "I chose to include it not because of its practical uses but the ideas "
 "I've established while designing it, which more or less are copied "
@@ -51,39 +49,132 @@ msgid ""
 " I had time to XD)"
 msgstr ""
 
-#: ../../intro/about.rst:28
+#: ../../src/intro/about.rst:25
 msgid "There are two objectives I would like to achieve with this library:"
 msgstr ""
 
-#: ../../intro/about.rst:30
+#: ../../src/intro/about.rst:27
 msgid ""
 "A tool to help back up entries from the iOS journaling app Perspective "
 "(and diaries in general!)"
 msgstr ""
 
-#: ../../intro/about.rst:32
+#: ../../src/intro/about.rst:29
 msgid "A programming interface for doing fancy stuff to the backup files"
 msgstr ""
 
-#: ../../intro/install.rst:5
-msgid "Installation"
-msgstr "安装"
-
-#: ../../intro/install.rst:7
-msgid "Run the following commands in your terminal/shell/whatever:"
+#: ../../src/intro/about.rst:33
+msgid "Okay, that's cool and all, but what *can* it do?"
 msgstr ""
 
-#: ../../intro/install.rst:15
-msgid "where ``python3`` is the name of your Python 3 interpreter."
-msgstr ""
-
-#: ../../intro/install.rst:17
+#: ../../src/intro/about.rst:35
 msgid ""
-"It might be helpful to use a `virtual environment`_. In that case you can"
-" instead run"
+"I'm glad you asked!  It's hard for me to show it to you guys, but I'll "
+"try..."
 msgstr ""
 
-#: ../../intro/install.rst:32
-msgid "See the above link for how to activate a virtual environment."
+#: ../../src/intro/about.rst:38
+msgid ""
+"The ``psp`` package operates on what are called *backup files* as basic "
+"building blocks, which are essentially JSON files with a special format. "
+"Here's what one might look like:"
 msgstr ""
+
+#: ../../src/intro/about.rst:63
+msgid "Save the above file as ``backup.json`` to run these examples:"
+msgstr ""
+
+#: ../../src/intro/about.rst:68
+msgid ""
+"A main program that prints out a panel on a specific day from a backup "
+"file:"
+msgstr ""
+
+#: ../../src/intro/about.rst:85
+msgid ""
+"Or maybe sometimes you forgor the date 💀 (don't worry, I never remember "
+"them either)"
+msgstr ""
+
+#: ../../src/intro/about.rst:113
+msgid "Works in a similar way for multiple backup files too!"
+msgstr ""
+
+#: ../../src/intro/about.rst:115
+msgid "An API that can do the same thing (but more flexible)::"
+msgstr ""
+
+#: ../../src/intro/about.rst:124
+msgid ""
+"Time zone!  Despite :func:`~psp.stringify.print_panel` hiding it whenever"
+" it can, time is always internally stored as aware "
+":class:`~datetime.datetime` objects:"
+msgstr ""
+
+#: ../../src/intro/about.rst:209
+msgid "Basic configuration of the output:"
+msgstr ""
+
+#: ../../src/intro/about.rst:223
+msgid "Here's what ``config.py`` looks like::"
+msgstr ""
+
+#: ../../src/intro/about.rst:267
+msgid "Some more advanced uses:"
+msgstr ""
+
+#: ../../src/intro/about.rst:269
+msgid "An interactive prompt where you can experiment with stuff"
+msgstr ""
+
+#: ../../src/intro/about.rst:292
+msgid "Also you can do hacky code like this:"
+msgstr ""
+
+#~ msgid ""
+#~ "The Perspective library is one of "
+#~ "my personal coding projects which I "
+#~ "decided to upload to `a GitHub "
+#~ "repository <https://github.com/rapidcow/perspective>`_ due"
+#~ " to how useful it has become to"
+#~ " me.  This right here is a "
+#~ "little documentation for all the "
+#~ "gibberish source code and stuff I "
+#~ "have."
+#~ msgstr ""
+
+#~ msgid ""
+#~ "As for basicproc.py_, well, you can "
+#~ "say it was a prototype of the "
+#~ "library. It had all the core "
+#~ "concepts like time zone, lookup paths,"
+#~ " and the keys, except too many "
+#~ "functionalities are condensed into one "
+#~ "single class. Over time it grew "
+#~ "larger (> 1000 lines) and adding "
+#~ "new features like exporting entries and"
+#~ " formatting different time zones was "
+#~ "impossible without terrible exploitation of"
+#~ " the syntax, so the Perspective "
+#~ "library was made to replace it and"
+#~ " extend the features from there on."
+#~ msgstr ""
+
+#~ msgid "Installation"
+#~ msgstr "安装"
+
+#~ msgid "Run the following commands in your terminal/shell/whatever:"
+#~ msgstr ""
+
+#~ msgid "where ``python3`` is the name of your Python 3 interpreter."
+#~ msgstr ""
+
+#~ msgid ""
+#~ "It might be helpful to use a "
+#~ "`virtual environment`_. In that case you"
+#~ " can instead run"
+#~ msgstr ""
+
+#~ msgid "See the above link for how to activate a virtual environment."
+#~ msgstr ""
 

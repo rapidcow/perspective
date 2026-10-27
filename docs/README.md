@@ -119,10 +119,19 @@ repository and have no difference but the language and environment
 variable settings!  Those are not determined by `.readthedocs.yaml`,
 fortunately.)
 
+## Getting translation text for a different language
+
 The following is borrowed from steps 3 to 6 of the
 [sphinx-intl quick guide][quick].  I'll use Simplified Chinese (zh_CN)
 for the following examples, but just keep in mind it's the same for other
-languages.
+languages.  Note that sphinx-intl is *not* pinned by `requirements.txt`
+and should be installed separately with
+
+```sh
+pip install sphinx-intl
+```
+
+(I believe whatever version pip resolves is fine.)
 
 For adding translation of some language (with code `zh_CN` again):
 
