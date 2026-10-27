@@ -34,7 +34,7 @@ To install, run the following commands in your terminal:
 
    # Then:
 
-   python3 -m pip install perspective/src
+   python3 -m pip install ./perspective/src
 
 or one-liners:
 
