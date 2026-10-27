@@ -30,11 +30,14 @@ dynamic = ["version"]
 # thanks pypa qvq
 # https://packaging.python.org/en/latest/guides/writing-pyproject-toml/#urls
 [project.urls]
-Documentation = "https://docs.rapidcow.org/perspective"
-Repository = "https://git.rapidcow.org/perspective"
-Homepage = "https://git.rapidcow.org/perspective/about/"
-Issues = "https://codeberg.org/rapidcow/perspective/issues"
-#Changelog = "https://git.rapidcow.org/perspective/tree/CHANGELOG"
+Documentation = "https://sphinx.rapidcow.org/perspective/"
+# Due to how culturally entangled the concept of a repository
+# is with its Web view, I will be leaving my git.rapidcow.org
+# out of this hellscape...
+Repository = "https://gitlab.com/rapidcow/perspective"
+Homepage = "https://foss.rapidcow.org/project/perspective/"
+#Issues = "there are none."
+#Changelog = "WIP!"
 
 [project.scripts]
 psp = "psp.cli:main"

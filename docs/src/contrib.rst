@@ -2,18 +2,15 @@
 Contributing
 ============
 
-Since the home page for this homepage isn't quite up in the
-web yet besides this documentation site I'll have to leave
-this page in.
+Email me patches.  Pull requests (or git-request-pull)
+are okay, but I don't do centralized "issue trackers".
 
-Still, for the purpose of putting things in one place,
-go to these pages in my Git server for:
-
-*  Development and contribution guides:
-   `<https://git.rapidcow.org/perspective/about/CONTRIB.md>`_
-
-*  Similar guides but for this very documentation:
-   `<https://git.rapidcow.org/perspective/about/docs/README.md>`_
+My email is just ``firstname at rapidcow dot org``.
+Pick whatever first name you know me as; I can receive
+from all of them!  (Finding my first name isn't that
+hard.  It's a human test in a sense, i.e. to see if
+you understand that my old email "dev" is short for
+development and not really my name.)
 
 Documentation
 -------------

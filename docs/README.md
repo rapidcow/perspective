@@ -1,8 +1,8 @@
 # Documentation
 
 This is the source of the documentation for the Perspective library,
-including [`basicproc.py`][] (currently considered to be
-moved to rapidcow.org/projects/perspective), this `psp` package
+including `basicproc.py` (now **private** for reasons I am not obliged
+to share with strangers on the wider Internet :), this `psp` package
 (considered for the same reason due to its excessive length),
 and the structure of `backup.json`!
 
@@ -11,10 +11,7 @@ HTML theme used there is [Furo](https://github.com/pradyunsg/furo) since it
 has dark mode that protects my eyes from going blind Ovo
 
 The web version of this documentation can be found [here][perspe]
-(hosted by [Read The Docs][]!)  **EDIT**: it still is hosted by readthedocs,
-but if you want a more permanent URL, use
-<https://docs.rapidcow.org/perspective>.  I will try my best to
-make this accessible for as long as I can. :D
+(hosted by GitHub Pages).
 
 
 ## Build
@@ -74,15 +71,8 @@ sphinx-build -M {target} src build
 ```
 
 Note that doctest on basicproc.py won't be run unless it is installed.
-It's completely optional but you can install it by cloning the gist
-like so:
-
-```sh
-git clone https://gist.github.com/a0490a57965061ae06e5c43b2c97e46c.git basicproc
-pip install basicproc
-```
-
-After the installation is done you may remove the `basicproc/` directory.
+But of course, you can't install it anymore, because it's private...
+so those tests are none of your business. >n>
 
 
 ### Building with a different language
@@ -169,12 +159,16 @@ translation really (like [this](https://docs.manim.org.cn/) is pretty
 good, but given the time I have now I'd like to focus on just English
 before anything crazy happens :/
 
+As of now there is no Chinese translation build: due to how little
+I have translated it'd be virtually useless to make a separate build.
+Maybe in another life time, I will speak Chinese like the hoodie boy
+once did....  (Right now my mandarin is also (excuse my profanity-)
+total shit. XP)
+
 
 [sphinx]: https://www.sphinx-doc.org/en/master/
-[perspe]: https://perspe.readthedocs.io/en/latest/
-[read the docs]: https://readthedocs.org/
+[perspe]: https://sphinx.rapidcow.org/perspective/
 
-[`basicproc.py`]: https://gist.github.com/rapidcow/a0490a57965061ae06e5c43b2c97e46c
 [venv]: https://docs.python.org/3/library/venv.html
 [doctest]: https://www.sphinx-doc.org/en/master/usage/extensions/doctest.html
 [quick]: https://www.sphinx-doc.org/en/master/usage/advanced/intl.html#quick-guide
