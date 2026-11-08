@@ -9,7 +9,7 @@
 - [ ] rename psp.processors -> psp.serializers, json_processor -> simply json
     * make it clear that users do not want to import directly from any of them; just using `from psp.serializers import ...` should be enough
     * also XXX: does JSONDumper check ambiguous directory names? what about big entries referring to directories??? (how does it make sense to serialize then????? maybe we should just still stick to archive files & find some other way for users to edit them.....)
-    * add a new processor like [plainconv](https://gist.github.com/rapidcow/c2dda740d428db832b91b82e265a3b01) for simple text format (we can consider adopting YAML/HTML 5/etc)
+    * add a new processor like `lib/plainconv.py` for simple text format (we can consider adopting YAML/HTML 5/etc)
 - [ ] make `get_*_extensions` return a list of strings, and let `make_*_class` return something based on them (may prepare a lookup table for extension classes similar to `sys.modules` except for classes)
 
     RATIONALE: make it so that it is possible to inject entries into Django database (along with perhaps static files???)
